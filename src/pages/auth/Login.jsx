@@ -24,7 +24,7 @@ const Login = () => {
       // Navigate based on role
       if (user.role === 'SUPER_ADMIN') {
         navigate('/super-admin');
-      } else if (['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user.role)) {
+      } else if (['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user.role)) {
         navigate('/company-admin');
       } else if (user.role === 'CLIENT') {
         navigate('/client-portal');
@@ -97,14 +97,12 @@ const Login = () => {
 
               {/* Staff Roles */}
               <div className="space-y-2">
-                <h4 className="text-slate-200 font-bold text-sm">Staff & Team Roles</h4>
+                <h4 className="text-slate-200 font-bold text-sm">Staff &amp; Team Roles</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { role: 'PM', email: 'pm@kaal.ca' },
-
                     { role: 'Foreman', email: 'foreman@kaal.ca' },
                     { role: 'Worker', email: 'worker@kaal.ca' },
-                    
                   ].map(u => (
                     <div key={u.role} className="p-2 bg-white/5 rounded-lg border border-white/5 text-[10px]">
                       <p className="text-slate-300 font-bold mb-1">{u.role}</p>
@@ -114,6 +112,16 @@ const Login = () => {
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-500 mt-2">* Default password for all staff: <span className="text-slate-300 font-bold">123456</span></p>
+              </div>
+
+              {/* Subcontractor Section */}
+              <div className="space-y-2">
+                <h4 className="text-slate-200 font-bold text-sm">🔧 Subcontractor</h4>
+                <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 space-y-1">
+                  <p className="text-xs text-slate-400 flex justify-between"><span>Email:</span> <code className="text-orange-300">subcontractor@kaal.ca</code></p>
+                  <p className="text-xs text-slate-400 flex justify-between"><span>Pass:</span> <code className="text-orange-300">123456</code></p>
+                  <button onClick={() => fillCredentials('subcontractor@kaal.ca')} className="mt-2 text-[10px] bg-orange-500/20 text-orange-300 px-2 py-1 rounded hover:bg-orange-500/30 transition">Auto-fill</button>
+                </div>
               </div>
             </div>
           </div>
