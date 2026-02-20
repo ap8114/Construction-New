@@ -48,58 +48,85 @@ const DEMO = [
 ];
 
 const Payroll = () => {
-    const [timesheets, setTimesheets] = useState([]);
+    const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [period, setPeriod] = useState('this-week');
     const [modal, setModal] = useState(false);
     const [step, setStep] = useState(1);
     const [selected, setSelected] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    const getDates = (p) => {
+        const now = new Date();
+        let start, end;
+        if (p === 'this-week') {
+            start = new Date(now.setDate(now.getDate() - now.getDay()));
+            end = new Date();
+        } else if (p === 'last-week') {
+            const first = now.getDate() - now.getDay() - 7;
+            start = new Date(now.setDate(first));
+            end = new Date(now.setDate(first + 6));
+        } else if (p === 'this-month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date();
+        } else {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0);
+        }
+        return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+    };
+
+    const fetchPayroll = async () => {
+        setLoading(true);
+        try {
+            const { start, end } = getDates(period);
+            const r = await api.get(`/payroll/preview?startDate=${start}&endDate=${end}`);
+            setRows(r.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        api.get('/timesheets')
-            .then(r => setTimesheets(r.data || []))
-            .catch(() => { })
-            .finally(() => setLoading(false));
-    }, []);
+        fetchPayroll();
+    }, [period]);
 
-    // Build rows from real timesheets, fall back to demo
-    const realRows = (() => {
-        const map = {};
-        timesheets.forEach(ts => {
-            const uid = ts.userId?._id || ts.userId;
-            const name = ts.userId?.fullName || 'Unknown';
-            const role = ts.userId?.role?.replace('COMPANY_', '') || 'WORKER';
-            if (!uid) return;
-            if (!map[uid]) map[uid] = { uid, name, role, hours: 0, entries: 0, rate: 35, status: 'pending' };
-            if (ts.clockIn && ts.clockOut) {
-                map[uid].hours += (new Date(ts.clockOut) - new Date(ts.clockIn)) / 3600000;
-                map[uid].entries += 1;
-                if (ts.status === 'approved') map[uid].status = 'paid';
-            }
-        });
-        return Object.values(map).map(r => ({
-            ...r,
-            hours: +r.hours.toFixed(2),
-            gross: +(r.hours * r.rate).toFixed(2),
-            tax: +(r.hours * r.rate * 0.18).toFixed(2),
-            net: +(r.hours * r.rate * 0.82).toFixed(2),
-        }));
-    })();
+    const handleRunPayroll = async () => {
+        setSubmitting(true);
+        try {
+            const { start, end } = getDates(period);
+            const selectedRows = rows.filter(r => selected.includes(r.userId));
+            await api.post('/payroll/run', {
+                records: selectedRows.length > 0 ? selectedRows : rows,
+                startDate: start,
+                endDate: end
+            });
+            setStep(3);
+        } catch (e) {
+            alert('Failed to run payroll');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
-    const rows = realRows.length > 0 ? realRows : DEMO;
     const filtered = rows.filter(r =>
         r.name.toLowerCase().includes(search.toLowerCase()) ||
         r.role.toLowerCase().includes(search.toLowerCase())
     );
 
-    const totGross = rows.reduce((s, r) => s + r.gross, 0);
-    const totNet = rows.reduce((s, r) => s + r.net, 0);
-    const totTax = rows.reduce((s, r) => s + r.tax, 0);
-    const totHours = rows.reduce((s, r) => s + r.hours, 0);
+    const totGross = rows.reduce((s, r) => s + r.grossPay, 0);
+    const totNet = rows.reduce((s, r) => s + r.netPay, 0);
+    const totCPP = rows.reduce((s, r) => s + (r.cpp || 0), 0);
+    const totEI = rows.reduce((s, r) => s + (r.ei || 0), 0);
+    const totTax = rows.reduce((s, r) => s + (r.federalTax || 0), 0);
+    const totWCB = rows.reduce((s, r) => s + (r.wcb || 0), 0);
+    const totHours = rows.reduce((s, r) => s + r.totalHours, 0);
 
     const toggleRow = uid => setSelected(p => p.includes(uid) ? p.filter(x => x !== uid) : [...p, uid]);
-    const toggleAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(r => r.uid));
+    const toggleAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(r => r.userId));
 
     const periods = [
         { v: 'this-week', l: 'This Week' }, { v: 'last-week', l: 'Last Week' },
@@ -129,10 +156,10 @@ const Payroll = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard title="Total Gross" value={`$${totGross.toLocaleString()}`} sub="this pay period" icon={DollarSign} color="bg-blue-600" trend="+4.2%" />
-                <StatCard title="Total Net Pay" value={`$${totNet.toLocaleString()}`} sub="after deductions" icon={Wallet} color="bg-emerald-500" trend="+3.8%" />
-                <StatCard title="Tax Withheld" value={`$${totTax.toLocaleString()}`} sub="18% flat rate" icon={FileText} color="bg-orange-400" />
-                <StatCard title="Total Hours" value={`${totHours.toFixed(1)}h`} sub={`${rows.length} employees`} icon={Clock} color="bg-indigo-500" trend="+2.1%" />
+                <StatCard title="Total Gross" value={`$${totGross.toLocaleString()}`} sub="this pay period" icon={DollarSign} color="bg-blue-600" />
+                <StatCard title="Total Net Pay" value={`$${totNet.toLocaleString()}`} sub="after deductions" icon={Wallet} color="bg-emerald-500" />
+                <StatCard title="Deductions" value={`$${(totCPP + totEI + totTax + totWCB).toLocaleString()}`} sub="CPP, EI, Tax, WCB" icon={FileText} color="bg-orange-400" />
+                <StatCard title="Total Hours" value={`${totHours.toFixed(1)}h`} sub={`${rows.length} employees`} icon={Clock} color="bg-indigo-500" />
             </div>
 
             {/* Toolbar */}
@@ -173,8 +200,8 @@ const Payroll = () => {
                                     <input type="checkbox" checked={selected.length === filtered.length && filtered.length > 0}
                                         onChange={toggleAll} className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
                                 </th>
-                                {['Employee', 'Role', 'Hours', 'Rate/hr', 'Gross Pay', 'Tax (18%)', 'Net Pay', 'Status', ''].map(h => (
-                                    <th key={h} className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
+                                {['Employee', 'Role', 'Hours', 'Rate/hr', 'Gross', 'CPP', 'EI', 'Fed Tax', 'WCB', 'Net Pay', 'Status', ''].map(h => (
+                                    <th key={h} className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">{h ? h : ''}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -191,9 +218,9 @@ const Payroll = () => {
                                     </div>
                                 </td></tr>
                             ) : filtered.map(row => (
-                                <tr key={row.uid} className={`hover:bg-slate-50/50 transition-colors group ${selected.includes(row.uid) ? 'bg-blue-50/30' : ''}`}>
+                                <tr key={row.userId} className={`hover:bg-slate-50/50 transition-colors group ${selected.includes(row.userId) ? 'bg-blue-50/30' : ''}`}>
                                     <td className="px-8 py-5">
-                                        <input type="checkbox" checked={selected.includes(row.uid)} onChange={() => toggleRow(row.uid)}
+                                        <input type="checkbox" checked={selected.includes(row.userId)} onChange={() => toggleRow(row.userId)}
                                             className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
                                     </td>
                                     <td className="px-6 py-5">
@@ -203,19 +230,22 @@ const Payroll = () => {
                                             </div>
                                             <div>
                                                 <p className="font-black text-slate-900 leading-tight">{row.name}</p>
-                                                <p className="text-[10px] font-bold text-slate-400">{row.entries} entries</p>
+                                                <p className="text-[10px] font-bold text-slate-400">{row.totalHours.toFixed(1)}h worked</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
                                         <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-tight">{row.role}</span>
                                     </td>
-                                    <td className="px-6 py-5 font-black text-slate-900">{row.hours}h</td>
-                                    <td className="px-6 py-5 font-bold text-slate-500">${row.rate}/hr</td>
-                                    <td className="px-6 py-5 font-black text-slate-900">${row.gross.toLocaleString()}</td>
-                                    <td className="px-6 py-5 font-bold text-red-500">-${row.tax.toLocaleString()}</td>
-                                    <td className="px-6 py-5"><span className="font-black text-emerald-600 text-base">${row.net.toLocaleString()}</span></td>
-                                    <td className="px-6 py-5"><StatusBadge status={row.status} /></td>
+                                    <td className="px-6 py-5 font-black text-slate-900">{row.totalHours.toFixed(1)}h</td>
+                                    <td className="px-6 py-5 font-bold text-slate-500">${row.rate}</td>
+                                    <td className="px-6 py-5 font-black text-slate-900">${row.grossPay.toLocaleString()}</td>
+                                    <td className="px-6 py-5 text-red-400 font-bold">-${row.cpp.toLocaleString()}</td>
+                                    <td className="px-6 py-5 text-red-400 font-bold">-${row.ei.toLocaleString()}</td>
+                                    <td className="px-6 py-5 text-red-400 font-bold">-${row.federalTax.toLocaleString()}</td>
+                                    <td className="px-6 py-5 text-orange-400 font-bold">${row.wcb.toLocaleString()}*</td>
+                                    <td className="px-6 py-5"><span className="font-black text-emerald-600 text-base">${row.netPay.toLocaleString()}</span></td>
+                                    <td className="px-6 py-5"><StatusBadge status="pending" /></td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Eye size={16} /></button>
@@ -233,7 +263,10 @@ const Payroll = () => {
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pay Period Totals</span>
                                     </td>
                                     <td className="px-6 py-5 font-black">${totGross.toLocaleString()}</td>
+                                    <td className="px-6 py-5 font-black text-red-400">-${totCPP.toLocaleString()}</td>
+                                    <td className="px-6 py-5 font-black text-red-400">-${totEI.toLocaleString()}</td>
                                     <td className="px-6 py-5 font-black text-red-400">-${totTax.toLocaleString()}</td>
+                                    <td className="px-6 py-5 font-black text-orange-400">${totWCB.toLocaleString()}</td>
                                     <td className="px-6 py-5 font-black text-emerald-400 text-base">${totNet.toLocaleString()}</td>
                                     <td colSpan="2" />
                                 </tr>
@@ -270,7 +303,7 @@ const Payroll = () => {
                                             { l: 'Employees', v: `${rows.length} crew members` },
                                             { l: 'Total Hours', v: `${totHours.toFixed(1)}h` },
                                             { l: 'Gross Pay', v: `$${totGross.toLocaleString()}` },
-                                            { l: 'Tax Withheld', v: `$${totTax.toLocaleString()}` },
+                                            { l: 'CPP/EI/Tax', v: `-$${(totCPP + totEI + totTax).toLocaleString()}` },
                                             { l: 'Net Payout', v: `$${totNet.toLocaleString()}`, hi: true },
                                         ].map(item => (
                                             <div key={item.l} className={`flex justify-between items-center p-4 rounded-2xl ${item.hi ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50'}`}>
@@ -324,9 +357,9 @@ const Payroll = () => {
                                             className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
                                             {step > 1 ? 'Back' : 'Cancel'}
                                         </button>
-                                        <button onClick={() => setStep(s => s + 1)}
+                                        <button onClick={() => handleRunPayroll()} disabled={submitting}
                                             className="flex-1 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
-                                            {step === 2 ? <><Send size={16} /> Authorize</> : <><ChevronRight size={16} /> Continue</>}
+                                            {submitting ? 'Processing...' : step === 2 ? <><Send size={16} /> Authorize</> : <><ChevronRight size={16} /> Continue</>}
                                         </button>
                                     </>
                                 ) : (

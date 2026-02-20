@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Clock, FileText,
   Wrench, ClipboardList, BarChart2, DollarSign,
   Users, Settings, LogOut, Menu, X, Bell, MessageSquare,
-  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera
+  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion
 } from 'lucide-react';
 
 const CompanyAdminLayout = () => {
@@ -68,6 +68,7 @@ const CompanyAdminLayout = () => {
     { icon: ClipboardList, label: 'Purchase Orders', path: '/company-admin/purchase-orders', permission: 'VIEW_PO' },
     { icon: FileText, label: 'Invoices', path: '/company-admin/invoices', permission: 'VIEW_INVOICES' },
     { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT' },
+    { icon: FileQuestion, label: 'RFI', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
     { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
     { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
     { icon: Users, label: 'Users', path: '/company-admin/team', permission: 'VIEW_TEAM' },
@@ -256,10 +257,10 @@ const CompanyAdminLayout = () => {
                     {user?.fullName || 'Owner Demo'}
                   </p>
                   <p className={`text-[10px] font-bold uppercase tracking-widest ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-500' :
-                      user?.role === 'WORKER' ? 'text-emerald-500' :
-                        user?.role === 'FOREMAN' ? 'text-blue-500' :
-                          user?.role === 'PM' ? 'text-violet-500' :
-                            'text-slate-400'
+                    user?.role === 'WORKER' ? 'text-emerald-500' :
+                      user?.role === 'FOREMAN' ? 'text-blue-500' :
+                        user?.role === 'PM' ? 'text-violet-500' :
+                          'text-slate-400'
                     }`}>
                     {user?.role?.replace('_', ' ') || 'Company Owner'}
                   </p>

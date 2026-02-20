@@ -48,6 +48,13 @@ import WorkerPunch from './pages/company-admin/WorkerPunch';
 import CrewClock from './pages/company-admin/CrewClock';
 import Deficiencies from './pages/jobs/Deficiencies';
 
+// RFI Module
+import RFIDashboard from './pages/company-admin/RFIDashboard';
+import RFIList from './pages/company-admin/RFIList';
+import CreateRFI from './pages/company-admin/CreateRFI';
+import RFIDetail from './pages/company-admin/RFIDetail';
+
+
 import ProjectTeamHome from './pages/project-team/Home';
 import UploadPage from './pages/project-team/Upload';
 import TasksPage from './pages/project-team/Tasks';
@@ -139,6 +146,12 @@ function App() {
         <Route path="clock" element={<WorkerPunch />} />
         <Route path="crew-clock" element={<CrewClock />} />
         <Route path="settings" element={<Settings />} />
+
+        {/* RFI Routes */}
+        <Route path="rfi" element={<RFIDashboard />} />
+        <Route path="rfi/list" element={<RFIList />} />
+        <Route path="rfi/create" element={<CreateRFI />} />
+        <Route path="rfi/:id" element={<RFIDetail />} />
 
         <Route path="*" element={<ComingSoon title="Module Not Found" />} />
       </Route>

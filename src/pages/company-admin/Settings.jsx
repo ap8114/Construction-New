@@ -230,6 +230,7 @@ const RoleSettings = () => {
     'VIEW_PROFILE': 'View My Profile',
     'ACCESS_SETTINGS': 'Access Settings',
     'CLOCK_IN_CREW': 'Clock In Crew',
+    'VIEW_RFI': 'View RFI',
   };
 
   const fetchRoles = async () => {
