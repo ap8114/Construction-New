@@ -44,6 +44,8 @@ const ProjectDetails = () => {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [deletingId, setDeletingId] = useState(null);
+    const [equipment, setEquipment] = useState([]);
+    const [returningEquipId, setReturningEquipId] = useState(null);
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -51,14 +53,16 @@ const ProjectDetails = () => {
     const fetchAll = async () => {
         try {
             setLoading(true);
-            const [projRes, jobsRes, usersRes] = await Promise.all([
+            const [projRes, jobsRes, usersRes, equipRes] = await Promise.all([
                 api.get(`/projects/${projectId}`),
                 api.get(`/jobs?projectId=${projectId}`).catch(() => ({ data: [] })),
-                api.get('/auth/users').catch(() => ({ data: [] }))
+                api.get('/auth/users').catch(() => ({ data: [] })),
+                api.get('/equipment').catch(() => ({ data: [] }))
             ]);
             setProject(projRes.data);
             setJobs(jobsRes.data || []);
             setUsers(usersRes.data || []);
+            setEquipment(equipRes.data || []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -100,6 +104,11 @@ const ProjectDetails = () => {
 
     // ── Delete Job ─────────────────────────────────────────────────────────────
     const handleDeleteJob = async (jobId) => {
+        const jobEquipment = equipment.filter(e => e.assignedJob?._id === jobId || e.assignedJob === jobId);
+        if (jobEquipment.length > 0) {
+            alert(`Cannot delete job. There are ${jobEquipment.length} items of equipment still assigned to it. Please return all equipment first.`);
+            return;
+        }
         if (!window.confirm('Delete this job?')) return;
         try {
             setDeletingId(jobId);
@@ -109,6 +118,27 @@ const ProjectDetails = () => {
             console.error(err);
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    const handleReturnEquipment = async (equipId) => {
+        try {
+            setReturningEquipId(equipId);
+            await api.post(`/equipment/${equipId}/return`);
+            setEquipment(prev => prev.map(e => e._id === equipId ? { ...e, assignedJob: null } : e));
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setReturningEquipId(null);
+        }
+    };
+
+    const handleUpdateJobStatus = async (jobId, newStatus) => {
+        try {
+            await api.patch(`/jobs/${jobId}`, { status: newStatus });
+            setJobs(prev => prev.map(j => j._id === jobId ? { ...j, status: newStatus } : j));
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -356,8 +386,33 @@ const ProjectDetails = () => {
                                             )}
                                         </div>
                                     </div>
-                                    <StatusBadge status={job.status} />
+                                    <div className="relative group/status">
+                                        <StatusBadge status={job.status} />
+                                        {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                                            <select
+                                                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                                                value={job.status}
+                                                onChange={(e) => handleUpdateJobStatus(job._id, e.target.value)}
+                                            >
+                                                <option value="planning">Planning</option>
+                                                <option value="active">Active</option>
+                                                <option value="on-hold">On Hold</option>
+                                                <option value="completed">Completed</option>
+                                            </select>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Alert for Completed Job with Equipment */}
+                                {job.status === 'completed' && equipment.some(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)) && (
+                                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3 animate-pulse">
+                                        <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-[11px] font-black text-red-700 uppercase tracking-widest leading-none mb-1">Attention Required</p>
+                                            <p className="text-xs font-bold text-red-600/80">Job completed but equipment still assigned.</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Details */}
                                 <div className="space-y-3 flex-1">
@@ -450,6 +505,38 @@ const ProjectDetails = () => {
                                             <span className="text-xs font-black text-slate-800">${Number(job.budget).toLocaleString()}</span>
                                         </div>
                                     )}
+
+                                    {/* Job Equipment List */}
+                                    <div className="pt-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Equipment On Site</span>
+                                            <span className="text-[10px] font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
+                                                {equipment.filter(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)).length}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {equipment.filter(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)).map(e => (
+                                                <div key={e._id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2 group/equip">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${e.category === 'Small Tools' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                            <Briefcase size={12} />
+                                                        </div>
+                                                        <span className="text-[11px] font-bold text-slate-700 truncate">{e.name}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleReturnEquipment(e._id)}
+                                                        disabled={returningEquipId === e._id}
+                                                        className="opacity-0 group-hover/equip:opacity-100 transition-all text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100"
+                                                    >
+                                                        {returningEquipId === e._id ? '...' : 'Return'}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {equipment.filter(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)).length === 0 && (
+                                                <p className="text-[11px] text-slate-300 font-bold italic">No equipment assigned</p>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Actions */}

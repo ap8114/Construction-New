@@ -95,7 +95,8 @@ const CompanyAdminDashboard = () => {
     equipmentRunning: 0,
     openPos: 0,
     openPosValue: 0,
-    pendingApprovals: 0
+    pendingApprovals: 0,
+    equipmentAlerts: 0
   });
 
   const [trendData, setTrendData] = useState([]);
@@ -130,6 +131,11 @@ const CompanyAdminDashboard = () => {
         setTimer(data.workerMetrics.timer || 0);
       }
       if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
+
+      // Fetch equipment alerts separately as it's a new feature
+      const equipRes = await api.get('/equipment');
+      const alertsCount = equipRes.data?.filter(e => e.assignedJob?.status === 'completed').length || 0;
+      setMetrics(prev => ({ ...prev, equipmentAlerts: alertsCount }));
 
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -497,6 +503,11 @@ const CompanyAdminDashboard = () => {
               <h3 className="text-lg font-black text-slate-800 mb-6 tracking-tight">Attention & Alerts</h3>
               <div className="space-y-3">
                 <AlertItem label="Missing Timesheets" count={2} color="bg-red-500/90 text-white" />
+                {metrics.equipmentAlerts > 0 && (
+                  <div onClick={() => navigate('/company-admin/equipment')}>
+                    <AlertItem label="Pending Equipment Returns" count={metrics.equipmentAlerts} color="bg-red-600 animate-pulse text-white shadow-lg shadow-red-200" />
+                  </div>
+                )}
                 <AlertItem label="Equipment Hour Not Submitted" count={1} color="bg-orange-400/90 text-white" />
                 {(isOwner || isPM) && <AlertItem label="Pending Approvals" count={5} color="bg-blue-500/90 text-white" />}
                 <AlertItem label="Offline Sync Pending" count={4} color="bg-slate-400/90 text-white" />

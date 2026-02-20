@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     ArrowLeft, Briefcase, MapPin, Calendar, HardHat,
-    DollarSign, CheckCircle, Loader, AlertTriangle, ChevronRight
+    DollarSign, CheckCircle, Loader, AlertTriangle, ChevronRight,
+    Search, X
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -21,6 +22,10 @@ const CreateJob = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [equipment, setEquipment] = useState([]);
+    const [selectedEquipment, setSelectedEquipment] = useState([]);
+    const [equipSearch, setEquipSearch] = useState('');
+    const [isEquipOpen, setIsEquipOpen] = useState(false);
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -40,12 +45,15 @@ const CreateJob = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [projRes, teamRes] = await Promise.all([
+                const [projRes, teamRes, equipRes] = await Promise.all([
                     api.get(`/projects/${projectId}`),
                     api.get('/auth/users').catch(() => ({ data: [] })),
+                    api.get('/equipment').catch(() => ({ data: [] })),
                 ]);
                 setProject(projRes.data);
                 const team = teamRes.data || [];
+                // More robust filter: show equipment if it's not assigned or explicitly idle
+                setEquipment(equipRes.data?.filter(e => !e.assignedJob || e.status === 'idle') || []);
 
                 // Assignment filter: Always show Foremen and Workers for job level
                 setForemen(team.filter(m => ['FOREMAN', 'WORKER'].includes(m.role)));
@@ -69,6 +77,7 @@ const CreateJob = () => {
                 ...form,
                 projectId,
                 companyId: user?.companyId,
+                equipmentIds: selectedEquipment,
             });
             setSuccess(true);
             setTimeout(() => navigate(`/company-admin/projects/${projectId}`), 1500);
@@ -160,7 +169,7 @@ const CreateJob = () => {
                 </div>
 
                 {/* ── Form Card ── */}
-                <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm relative">
 
                     {/* Section: Basic Info */}
                     <div className="p-8 space-y-6">
@@ -327,6 +336,145 @@ const CreateJob = () => {
                             className={inputCls + ' resize-none'}
                             placeholder="Describe the scope of work, special instructions, or any notes..."
                         />
+                    </div>
+
+                    {/* Section: Equipment Assignment */}
+                    <div className="h-px bg-slate-100 mx-8" />
+                    <div className="p-8 space-y-6">
+                        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <Briefcase size={16} className="text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 className="font-black text-slate-800 text-lg">Equipment Assignment</h2>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Select tools or heavy equipment for this job</p>
+                            </div>
+                        </div>
+
+                        {equipment.length === 0 ? (
+                            <div className="p-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-center">
+                                <p className="text-xs font-bold text-slate-400">No available equipment found in inventory.</p>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                {/* Searchable Select Toggle */}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEquipOpen(!isEquipOpen)}
+                                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-left transition-all hover:border-blue-400 focus:ring-4 focus:ring-blue-500/5 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedEquipment.length === 0 ? (
+                                                <span className="text-slate-400 font-bold text-sm italic">Click to search and assign equipment...</span>
+                                            ) : (
+                                                selectedEquipment.map(id => {
+                                                    const item = equipment.find(e => e._id === id);
+                                                    return (
+                                                        <span key={id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-xs font-black uppercase tracking-tight">
+                                                            {item?.name}
+                                                            <X
+                                                                size={14}
+                                                                className="cursor-pointer hover:text-blue-900"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedEquipment(selectedEquipment.filter(sid => sid !== id));
+                                                                }}
+                                                            />
+                                                        </span>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                        <ChevronRight size={18} className={`text-slate-300 transition-transform ${isEquipOpen ? 'rotate-90' : ''}`} />
+                                    </div>
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {isEquipOpen && (
+                                    <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-slate-200 rounded-3xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="p-4 border-b border-slate-50 bg-slate-50/50">
+                                            <div className="relative">
+                                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by name or type..."
+                                                    value={equipSearch}
+                                                    onChange={(e) => setEquipSearch(e.target.value)}
+                                                    className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-500/50"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                            {equipment.filter(e =>
+                                                (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                                (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                                (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
+                                            ).map(item => (
+                                                <div
+                                                    key={item._id}
+                                                    onClick={() => {
+                                                        if (selectedEquipment.includes(item._id)) {
+                                                            setSelectedEquipment(selectedEquipment.filter(id => id !== item._id));
+                                                        } else {
+                                                            setSelectedEquipment([...selectedEquipment, item._id]);
+                                                        }
+                                                    }}
+                                                    className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2
+                                                        ${selectedEquipment.includes(item._id)
+                                                            ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm'
+                                                            : 'hover:bg-slate-50 border-transparent text-slate-700'}`}
+                                                >
+                                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm
+                                                        ${item.category === 'Small Tools' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                        <Briefcase size={20} />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-[14px] font-black text-slate-900 leading-tight">{item.name}</p>
+                                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">
+                                                                {item.category === 'Small Tools' ? 'Tool' : 'Heavy'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                            {item.type} <span className="mx-1 text-slate-200">|</span>
+                                                            SN: <span className="text-blue-600/70">#{item.serialNumber || 'NA'}</span>
+                                                        </p>
+                                                    </div>
+                                                    {selectedEquipment.includes(item._id) && (
+                                                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                                                            <CheckCircle size={14} className="text-white" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {equipment.filter(e =>
+                                                (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                                (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                                (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
+                                            ).length === 0 && (
+                                                    <div className="py-8 text-center bg-slate-50/50 rounded-2xl mx-2">
+                                                        <Search size={24} className="mx-auto text-slate-200 mb-2" />
+                                                        <p className="text-xs font-bold text-slate-400">No equipment matching "{equipSearch}"</p>
+                                                    </div>
+                                                )}
+                                        </div>
+                                        <div className="p-3 bg-slate-50 flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                {selectedEquipment.length} item(s) selected
+                                            </span>
+                                            <button
+                                                onClick={() => setIsEquipOpen(false)}
+                                                className="px-4 py-1.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-800 transition-all"
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
