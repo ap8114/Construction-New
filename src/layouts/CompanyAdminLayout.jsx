@@ -58,7 +58,7 @@ const CompanyAdminLayout = () => {
     { icon: Briefcase, label: 'Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
     // { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
     { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
-    { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_OUT' },
+    { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
     { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
     { icon: FileText, label: 'Daily Logs', path: '/company-admin/daily-logs', permission: 'VIEW_DAILY_LOGS' },
     { icon: PenTool, label: 'Drawings', path: '/company-admin/drawings', permission: 'VIEW_DRAWINGS' },

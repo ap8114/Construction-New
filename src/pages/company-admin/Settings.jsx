@@ -230,6 +230,7 @@ const RoleSettings = () => {
     'VIEW_EQUIPMENT': 'View Equipment',
     'VIEW_PROFILE': 'View My Profile',
     'ACCESS_SETTINGS': 'Access Settings',
+    'CLOCK_IN_CREW': 'Clock In Crew',
   };
 
   const fetchRoles = async () => {
