@@ -144,7 +144,12 @@ const CompanyAdminLayout = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate text-white">{user?.fullName || 'John Doe'}</p>
-              <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 truncate">
+              <p className={`text-[10px] uppercase tracking-wider font-extrabold truncate ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-400' :
+                user?.role === 'WORKER' ? 'text-emerald-400' :
+                  user?.role === 'FOREMAN' ? 'text-blue-400' :
+                    user?.role === 'PM' ? 'text-violet-400' :
+                      'text-slate-400'
+                }`}>
                 {user?.role?.replace('_', ' ') || 'Owner Demo'}
               </p>
             </div>
@@ -250,7 +255,12 @@ const CompanyAdminLayout = () => {
                   <p className="text-sm font-bold text-slate-900 leading-tight">
                     {user?.fullName || 'Owner Demo'}
                   </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <p className={`text-[10px] font-bold uppercase tracking-widest ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-500' :
+                      user?.role === 'WORKER' ? 'text-emerald-500' :
+                        user?.role === 'FOREMAN' ? 'text-blue-500' :
+                          user?.role === 'PM' ? 'text-violet-500' :
+                            'text-slate-400'
+                    }`}>
                     {user?.role?.replace('_', ' ') || 'Company Owner'}
                   </p>
                 </div>

@@ -173,6 +173,7 @@ const CompanyAdminDashboard = () => {
   const isPM = user?.role === 'PM';
   const isForeman = user?.role === 'FOREMAN';
   const isWorker = user?.role === 'WORKER';
+  const isSubcontractor = user?.role === 'SUBCONTRACTOR';
   const isOwnerOrPM = isOwner || isPM;
 
   return (
@@ -193,8 +194,8 @@ const CompanyAdminDashboard = () => {
         </div> */}
       </div>
 
-      {/* Worker Clock Widget */}
-      {isWorker && (
+      {/* Worker / Subcontractor Clock Widget */}
+      {(isWorker || isSubcontractor) && (
         <div className="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-slate-200 overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <Clock size={120} />
@@ -263,6 +264,14 @@ const CompanyAdminDashboard = () => {
             <SummaryCard title="Weekly Target" value={workerMetrics.weeklyTarget} subtext={workerMetrics.weeklyDone} icon={TrendingUp} color="bg-emerald-500" loading={loading} />
           </>
         )}
+
+        {isSubcontractor && (
+          <>
+            <SummaryCard title="My Hours Today" value={workerMetrics.myHoursToday} icon={Clock} color="bg-orange-500" loading={loading} />
+            <SummaryCard title="Current Job" value={workerMetrics.currentJob} icon={Briefcase} color="bg-blue-500" loading={loading} />
+            <SummaryCard title="Weekly Target" value={workerMetrics.weeklyTarget} subtext={workerMetrics.weeklyDone} icon={TrendingUp} color="bg-emerald-500" loading={loading} />
+          </>
+        )}
       </div>
 
       {/* Quick Actions & Alerts Section */}
@@ -299,11 +308,20 @@ const CompanyAdminDashboard = () => {
                   <QuickActionButton label="Request Correction" icon={RefreshCw} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/timesheets')} />
                 </>
               )}
+
+              {isSubcontractor && (
+                <>
+                  <QuickActionButton label="Clock In / Out" icon={Clock} bg="bg-orange-500" color="text-white" onClick={() => navigate('/company-admin/clock')} />
+                  <QuickActionButton label="Add Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
+                  <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
+                  <QuickActionButton label="View Schedule" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/schedule')} />
+                </>
+              )}
             </div>
           </div>
 
-          {/* My Recent Activity - For Workers */}
-          {isWorker && (
+          {/* My Recent Activity - For Workers & Subcontractors */}
+          {(isWorker || isSubcontractor) && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-lg font-black text-slate-800 tracking-tight">My Recent Activity</h3>

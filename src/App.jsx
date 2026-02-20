@@ -61,6 +61,7 @@ import ClientApprovals from './pages/client-portal/Approvals';
 import ClientInvoices from './pages/client-portal/Invoices';
 import ClientMessages from './pages/client-portal/Messages';
 
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
@@ -106,7 +107,7 @@ function App() {
       <Route
         path="/company-admin"
         element={
-          <ProtectedRoute allowedRoles={['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER']}>
+          <ProtectedRoute allowedRoles={['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR']}>
             <CompanyAdminLayout />
           </ProtectedRoute>
         }
@@ -170,8 +171,7 @@ function App() {
         }
       >
         <Route index element={<ClientPortalDashboard />} />
-        {/* <Route path="timeline" element={<ClientTimeline />} /> */}
-        <Route path="projects" element={<Projects />} /> {/* Reusing Projects page? Or need a client specific one? User said "Project Overview". Projects page might be too much. Let's send them to Dashboard for now or Projects if read only. I'll use Projects for now but ClientPortalLayout had "Project Overview" pointing to /client-portal/projects. */}
+        <Route path="projects" element={<Projects />} />
         <Route path="photos" element={<ClientPhotos />} />
         <Route path="drawings" element={<Drawings />} />
         <Route path="approvals" element={<ClientApprovals />} />
