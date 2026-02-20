@@ -80,39 +80,15 @@ const Chat = () => {
         }
     }, [activeChat]);
 
-    // Fetch Projects and Users as "Chat Groups"
+    // Fetch Chat Units (Rooms and People) based on permissions
     useEffect(() => {
         const fetchConversations = async () => {
             try {
-                const [projRes, teamRes] = await Promise.all([
-                    api.get('/projects'),
-                    api.get('/auth/users')
-                ]);
+                const res = await api.get('/chat/rooms');
+                setConversations(res.data);
 
-                const projectChats = projRes.data.map(p => ({
-                    id: p._id,
-                    name: p.name,
-                    lastMessage: 'Project Room',
-                    isGroup: true,
-                    status: p.status,
-                    role: 'Project'
-                }));
-
-                const userChats = teamRes.data
-                    .filter(u => u._id !== user?._id && !['CLIENT', 'ENGINEER'].includes(u.role))
-                    .map(u => ({
-                        id: u._id,
-                        name: u.fullName,
-                        lastMessage: 'Direct Message',
-                        isGroup: false,
-                        status: 'online', // Placeholder
-                        role: u.role
-                    }));
-
-                setConversations([...projectChats, ...userChats]);
-
-                if (!activeChat && projectChats.length > 0) {
-                    setActiveChat(projectChats[0]);
+                if (!activeChat && res.data.length > 0) {
+                    setActiveChat(res.data[0]);
                 }
             } catch (error) {
                 console.error('Error fetching chat entities:', error);
@@ -129,9 +105,9 @@ const Chat = () => {
 
         const fetchMessages = async () => {
             try {
-                const endpoint = activeChat.isGroup
-                    ? `/chat/${activeChat.id}`
-                    : `/chat/private/${activeChat.id}`;
+                const endpoint = !activeChat.isGroup
+                    ? `/chat/private/${activeChat.id}`
+                    : `/chat/${activeChat.id}`;
 
                 const res = await api.get(endpoint);
                 const formattedMessages = res.data.map(msg => ({
@@ -148,7 +124,7 @@ const Chat = () => {
             }
         };
         fetchMessages();
-    }, [activeChat, user?._id]);
+    }, [activeChat?.id, user?._id]);
 
     const handleSend = async () => {
         if (!newMessage.trim() || !activeChat) return;
@@ -175,8 +151,9 @@ const Chat = () => {
         const matchesSearch = chat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (chat.role && chat.role.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        if (filter === 'groups') return matchesSearch && chat.isGroup;
-        if (filter === 'direct') return matchesSearch && !chat.isGroup;
+        if (filter === 'company') return matchesSearch && chat.type === 'company';
+        if (filter === 'project') return matchesSearch && chat.type === 'project';
+        if (filter === 'direct') return matchesSearch && chat.type === 'private';
         return matchesSearch;
     });
 
@@ -186,7 +163,7 @@ const Chat = () => {
             <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/50">
                 <div className="p-4 border-b border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="font-black text-slate-800 uppercase tracking-tighter text-lg">Messages</h2>
+                        <h2 className="font-black text-slate-800 uppercase tracking-tighter text-lg">KAAL CHAT</h2>
                         <div className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold flex items-center gap-1 uppercase tracking-widest shadow-sm border border-emerald-200">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                             {onlineCount} Online
@@ -196,24 +173,25 @@ const Chat = () => {
                         <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search chats..."
+                            placeholder="Search team or projects..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                         />
                     </div>
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
                         {[
                             { id: 'all', label: 'All' },
-                            { id: 'groups', label: 'Project' },
-                            { id: 'direct', label: 'Individual' }
+                            { id: 'company', label: 'Global' },
+                            { id: 'project', label: 'Project' },
+                            { id: 'direct', label: 'Direct' }
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setFilter(tab.id)}
-                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${filter === tab.id
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                className={`flex-1 min-w-[50px] py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${filter === tab.id
+                                    ? 'bg-white text-blue-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 {tab.label}
@@ -231,12 +209,16 @@ const Chat = () => {
                     `}
                         >
                             <div className="relative">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-slate-500 transition-all shadow-sm
-                                    ${activeChat?.id === chat.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 group-hover:bg-slate-50'}
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all shadow-sm
+                                    ${activeChat?.id === chat.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 group-hover:bg-slate-50 text-slate-500'}
                                 `}>
                                     {chat.name.charAt(0)}
                                 </div>
-                                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-50 ${chat.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
+                                {chat.type === 'company' && (
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-slate-50 flex items-center justify-center">
+                                        <UsersIcon size={10} className="text-white" />
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-1">
@@ -244,7 +226,7 @@ const Chat = () => {
                                         {chat.name}
                                     </h4>
                                 </div>
-                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{chat.role || chat.status}</p>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{chat.role || chat.type}</p>
                             </div>
                         </div>
                     ))}
@@ -258,7 +240,9 @@ const Chat = () => {
                         {/* Header */}
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md z-10 shadow-sm sticky top-0">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center font-bold text-white shadow-xl shadow-slate-200">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-xl
+                                    ${activeChat.type === 'company' ? 'bg-blue-600' : 'bg-slate-900'}
+                                `}>
                                     {activeChat.name.charAt(0)}
                                 </div>
                                 <div>
@@ -266,13 +250,12 @@ const Chat = () => {
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                                         <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-                                            {activeChat.isGroup ? 'Active Project Room' : `${activeChat.role} • Personal Chat`}
+                                            {activeChat.type === 'company' ? 'Global Company Hub' :
+                                                activeChat.type === 'project' ? 'Project Site Transmission' :
+                                                    `${activeChat.role} • Direct Message`}
                                         </p>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex gap-2">
-                                {/* Actions removed as requested */}
                             </div>
                         </div>
 
@@ -289,7 +272,9 @@ const Chat = () => {
                                         <MessageSquare size={48} className="text-slate-400" />
                                     </div>
                                     <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-10">
-                                        {activeChat.isGroup ? 'Starting the project transmission...' : 'Secure end-to-end site coordination...'}
+                                        {activeChat.type === 'company' ? 'Secure Company Frequency Open' :
+                                            activeChat.type === 'project' ? 'Starting the project transmission...' :
+                                                'Secure end-to-end site coordination...'}
                                     </p>
                                 </div>
                             )}
@@ -330,7 +315,7 @@ const Chat = () => {
                                 <div className="flex-1 relative group">
                                     <input
                                         type="text"
-                                        placeholder="Type a construction site transmission..."
+                                        placeholder={`Transmission to ${activeChat.name}...`}
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
@@ -361,7 +346,7 @@ const Chat = () => {
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Command Center</h3>
-                            <p className="text-slate-400 text-sm max-w-xs font-semibold leading-relaxed">Select a project from the left to begin real-time site coordination.</p>
+                            <p className="text-slate-400 text-sm max-w-xs font-semibold leading-relaxed">Select a conversation from the left to begin site coordination.</p>
                         </div>
                     </div>
                 )}
