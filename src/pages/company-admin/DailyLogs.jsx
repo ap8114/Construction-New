@@ -295,14 +295,17 @@ const DailyLogs = () => {
                         </div>
                     </div>
 
-                    <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col md:flex-row gap-6">
-                        <div className="flex-1 space-y-2">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Site Conditions</label>
-                            <div className="flex items-center gap-3">
+                    <div className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 space-y-6">
+                        {/* Site Conditions */}
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <CloudSun size={14} className="text-orange-500" /> Site Conditions
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
                                 <select
                                     value={formData.weather.status}
                                     onChange={e => setFormData({ ...formData, weather: { ...formData.weather, status: e.target.value } })}
-                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-black text-sm outline-none shadow-sm transition-all"
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-sm outline-none shadow-sm focus:border-blue-500/30 transition-all"
                                 >
                                     <option>Sunny</option>
                                     <option>Cloudy</option>
@@ -310,23 +313,29 @@ const DailyLogs = () => {
                                     <option>Windy</option>
                                     <option>Snowy</option>
                                 </select>
-                                <div className="relative w-24">
-                                    <Thermometer size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <div className="relative">
+                                    <Thermometer size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="number"
                                         value={formData.weather.temperature}
                                         onChange={e => setFormData({ ...formData, weather: { ...formData.weather, temperature: e.target.value } })}
-                                        placeholder="72"
-                                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-black text-sm outline-none shadow-sm pr-9"
+                                        placeholder="Temp"
+                                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 font-bold text-sm outline-none shadow-sm focus:border-blue-500/30 transition-all"
                                     />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">°F</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="w-px bg-slate-200 hidden md:block"></div>
-                        <div className="flex-1 space-y-2">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Team Availability</label>
-                            <div className="flex items-center gap-3">
-                                <div className="relative flex-1">
+
+                        <div className="h-px bg-slate-200/60"></div>
+
+                        {/* Team Availability */}
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Users size={14} className="text-blue-600" /> Team Availability
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="relative">
                                     <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="number"
@@ -337,10 +346,10 @@ const DailyLogs = () => {
                                             setFormData({ ...formData, manpower: newManpower });
                                         }}
                                         placeholder="Count"
-                                        className="w-full bg-white border border-slate-200 rounded-xl px-9 py-2.5 font-black text-sm outline-none shadow-sm"
+                                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 font-bold text-sm outline-none shadow-sm focus:border-blue-500/30 transition-all"
                                     />
                                 </div>
-                                <div className="relative w-32">
+                                <div className="relative">
                                     <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="number"
@@ -350,9 +359,10 @@ const DailyLogs = () => {
                                             newManpower[0].hours = parseInt(e.target.value) || 0;
                                             setFormData({ ...formData, manpower: newManpower });
                                         }}
-                                        className="w-full bg-white border border-slate-200 rounded-xl px-9 py-2.5 font-black text-sm outline-none shadow-sm"
+                                        placeholder="Hrs"
+                                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-14 py-2.5 font-bold text-sm outline-none shadow-sm focus:border-blue-500/30 transition-all"
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 italic">HRS/EA</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 italic">HRS/EA</span>
                                 </div>
                             </div>
                         </div>
