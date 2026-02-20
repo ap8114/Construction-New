@@ -17,7 +17,7 @@ const CreateJob = () => {
     const { user } = useAuth();
 
     const [project, setProject] = useState(null);
-    const [foremen, setForemen] = useState([]);
+    const [assignableUsers, setAssignableUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -34,7 +34,7 @@ const CreateJob = () => {
         location: '',
         startDate: '',
         endDate: '',
-        foremanId: '',
+        pmId: '', // changed from foremanId
         budget: '',
         status: 'planning',
         description: '',
@@ -59,8 +59,14 @@ const CreateJob = () => {
                 });
                 setEquipment(availableEquip);
 
-                // Assignment filter: Always show Foremen and Workers for job level
-                setForemen(team.filter(m => ['FOREMAN', 'WORKER'].includes(m.role)));
+                // Assignment filter: Admins assign PMs, PMs assign Foremen/Workers, Foremen assign Workers
+                if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) {
+                    setAssignableUsers(team.filter(m => m.role === 'PM'));
+                } else if (user?.role === 'PM') {
+                    setAssignableUsers(team.filter(m => ['FOREMAN', 'WORKER'].includes(m.role)));
+                } else if (user?.role === 'FOREMAN') {
+                    setAssignableUsers(team.filter(m => m.role === 'WORKER'));
+                }
             } catch (err) {
                 console.error(err);
                 setError('Failed to load project data.');
@@ -79,6 +85,7 @@ const CreateJob = () => {
             setError('');
             await api.post('/jobs', {
                 ...form,
+                foremanId: form.pmId, // Mapping pmId back to foremanId field for backend compatibility
                 projectId,
                 companyId: user?.companyId,
                 equipmentIds: selectedEquipment,
@@ -251,27 +258,31 @@ const CreateJob = () => {
                             <h2 className="font-black text-slate-800 text-lg">Assignment</h2>
                         </div>
 
-                        {/* Foreman */}
+                        {/* Assignment Dropdown */}
                         <div>
                             <label className={labelCls}>
                                 <HardHat size={12} className="text-orange-500" />
-                                Assigned Foreman / Supervisor
+                                {user?.role === 'FOREMAN' ? 'Assign Worker' :
+                                    user?.role === 'PM' ? 'Assign Foreman / Supervisor' :
+                                        'Assigned Project Manager'}
                             </label>
                             <select
-                                value={form.foremanId}
-                                onChange={e => setForm({ ...form, foremanId: e.target.value })}
+                                value={form.pmId}
+                                onChange={e => setForm({ ...form, pmId: e.target.value })}
                                 className={inputCls + ' appearance-none cursor-pointer'}
                             >
-                                <option value="">— Select a Foreman / Supervisor —</option>
-                                {foremen.length === 0 ? (
-                                    <option disabled>No foremen found — add team members first</option>
-                                ) : foremen.map(f => (
-                                    <option key={f._id} value={f._id}>
-                                        {f.fullName} · {f.role?.replace('COMPANY_', '')}
+                                <option value="">— Select {user?.role === 'FOREMAN' ? 'a Worker' :
+                                    user?.role === 'PM' ? 'a Foreman' :
+                                        'a Project Manager'} —</option>
+                                {assignableUsers.length === 0 ? (
+                                    <option disabled>No users found to assign</option>
+                                ) : assignableUsers.map(u => (
+                                    <option key={u._id} value={u._id}>
+                                        {u.fullName} ({u.role})
                                     </option>
                                 ))}
                             </select>
-                            {foremen.length === 0 && (
+                            {assignableUsers.length === 0 && (
                                 <p className="mt-2 text-[11px] text-amber-600 font-bold flex items-center gap-1.5">
                                     <AlertTriangle size={12} />
                                     No suitable team members found to assign.

@@ -65,7 +65,7 @@ const AlertItem = ({ type, count, label, color }) => (
   </div>
 );
 
-const DailyLogCard = ({ job, date, foreman, photos }) => (
+const DailyLogCard = ({ job, date, foreman, foremanRole, photos }) => (
   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 hover:border-slate-200 bg-white sm:bg-transparent">
     <div className="flex items-center gap-4 flex-1 min-w-0">
       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-slate-200 overflow-hidden flex-shrink-0 shadow-sm border border-slate-200">
@@ -74,7 +74,9 @@ const DailyLogCard = ({ job, date, foreman, photos }) => (
       <div className="flex-1 min-w-0">
         <h4 className="text-sm font-black text-slate-900 truncate tracking-tight uppercase">{job}</h4>
         <p className="text-[11px] font-bold text-slate-500 mt-0.5">{date}</p>
-        <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">Foreman: {foreman}</p>
+        <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+          {foremanRole === 'PM' ? 'Project Manager' : 'Site Foreman'}: {foreman}
+        </p>
       </div>
     </div>
     {/* <button className="w-full sm:w-auto px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-black hover:bg-blue-600 hover:text-white transition-all whitespace-nowrap border border-blue-100">
@@ -453,7 +455,7 @@ const CompanyAdminDashboard = () => {
                   <div>
                     <h4 className="text-sm font-black text-slate-900 tracking-tight">North Tower</h4>
                     <p className="text-xs font-bold text-slate-400">Mon 10, 2022</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 mt-0.5">Foreman: Jom</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 mt-0.5">Lead: Jom</p>
                   </div>
                 </div>
                 <div className="h-40 w-full mt-4">
@@ -523,7 +525,7 @@ const CompanyAdminDashboard = () => {
               </div>
               <div className="space-y-2">
                 {recentDailyLogs.map((log, idx) => (
-                  <DailyLogCard key={idx} job={log.job} date={log.date} foreman={log.foreman} />
+                  <DailyLogCard key={idx} job={log.job} date={log.date} foreman={log.foreman} foremanRole={log.foremanRole} />
                 ))}
                 {recentDailyLogs.length === 0 && (
                   <div className="p-10 text-center text-slate-400 text-sm font-bold italic">No daily logs submitted yet.</div>

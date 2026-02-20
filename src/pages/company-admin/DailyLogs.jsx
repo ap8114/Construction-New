@@ -227,7 +227,10 @@ const DailyLogs = () => {
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-black text-slate-900 leading-none">{log.reportedBy?.fullName || 'Unknown'}</p>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Foreman</p>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                                {log.reportedBy?.role === 'PM' ? 'Project Manager' :
+                                                    log.reportedBy?.role === 'FOREMAN' ? 'Site Foreman' : 'Lead Worker'}
+                                            </p>
                                         </div>
                                     </div>
                                     <button className="text-blue-600 hover:text-blue-800 transition-colors">

@@ -146,7 +146,7 @@ const Timesheets = () => {
                         </button>
                     ) : (
                         <button
-                            onClick={() => alert('Correction Request feature coming soon! Please contact your foreman.')}
+                            onClick={() => alert('Correction Request feature coming soon! Please contact your project manager.')}
                             className="bg-orange-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-orange-600 transition shadow-lg shadow-orange-200 font-black text-sm uppercase tracking-tight"
                         >
                             <RefreshCw size={18} /> Request Correction
