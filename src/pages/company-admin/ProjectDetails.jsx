@@ -416,7 +416,7 @@ const ProjectDetails = () => {
 
                                 {/* Details */}
                                 <div className="space-y-3 flex-1">
-                                    {/* Project Manager & Foreman */}
+                                    {/* Project Manager & Site Assignment */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center gap-2 text-slate-500">
                                             <Users size={13} className="text-blue-400 shrink-0" />
@@ -429,18 +429,28 @@ const ProjectDetails = () => {
                                             <div className="flex items-center gap-2 text-slate-500">
                                                 <HardHat size={13} className="text-slate-400 shrink-0" />
                                                 <span className="text-xs font-bold truncate">
-                                                    Site Foreman: {job.foremanId?.fullName || users.find(u => u._id === (job.foremanId?._id || job.foremanId))?.fullName || 'Unassigned'}
+                                                    {(() => {
+                                                        const assignee = job.foremanId?.role || users.find(u => u._id === (job.foremanId?._id || job.foremanId))?.role;
+                                                        if (assignee === 'PM') return 'Project Manager';
+                                                        if (assignee === 'FOREMAN') return 'Site Foreman';
+                                                        if (assignee === 'WORKER') return 'Lead Worker';
+                                                        return 'Lead';
+                                                    })()}: {job.foremanId?.fullName || users.find(u => u._id === (job.foremanId?._id || job.foremanId))?.fullName || 'Unassigned'}
                                                 </span>
                                             </div>
-                                            {user?.role === 'PM' && (
+                                            {(['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
                                                 <select
                                                     className="absolute inset-0 opacity-0 cursor-pointer w-full"
                                                     value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}
                                                     onChange={(e) => handleAssignForeman(job._id, e.target.value)}
                                                 >
-                                                    <option value="">Assign Foreman</option>
-                                                    {users.filter(u => ['FOREMAN', 'WORKER'].includes(u.role)).map(u => (
-                                                        <option key={u._id} value={u._id}>{u.fullName}</option>
+                                                    <option value="">Assign {user?.role === 'PM' ? 'Foreman' : 'Project Manager'}</option>
+                                                    {users.filter(u => {
+                                                        if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) return u.role === 'PM';
+                                                        if (user?.role === 'PM') return ['FOREMAN', 'WORKER'].includes(u.role);
+                                                        return false;
+                                                    }).map(u => (
+                                                        <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
                                                     ))}
                                                 </select>
                                             )}
@@ -455,8 +465,20 @@ const ProjectDetails = () => {
                                                 Crew: {job.assignedWorkers?.length || 0} assigned
                                             </span>
                                         </div>
-                                        {user?.role === 'PM' && (
+                                        {['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role) && (
                                             <div className="absolute inset-0 opacity-0 cursor-pointer w-full" onClick={() => setIsAssigningWorkers(job._id)}></div>
+                                        )}
+                                        {user?.role === 'FOREMAN' && (
+                                            <select
+                                                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                                                value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}
+                                                onChange={(e) => handleAssignForeman(job._id, e.target.value)}
+                                            >
+                                                <option value="">Assign Worker</option>
+                                                {users.filter(u => u.role === 'WORKER').map(u => (
+                                                    <option key={u._id} value={u._id}>{u.fullName} (WORKER)</option>
+                                                ))}
+                                            </select>
                                         )}
                                     </div>
 
@@ -576,7 +598,7 @@ const ProjectDetails = () => {
                                 <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                     <th className="px-6 py-4">Job Name</th>
                                     <th className="px-6 py-4">Location</th>
-                                    <th className="px-6 py-4">{user?.role === 'COMPANY_OWNER' ? 'Project Manager' : 'Foreman'}</th>
+                                    <th className="px-6 py-4">Project Manager</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4">Dates</th>
                                     {showBudget && <th className="px-6 py-4">Budget</th>}
@@ -624,9 +646,10 @@ const ProjectDetails = () => {
                             </tbody>
                         </table>
                     </div>
-                )}
-            </div>
-        </div>
+                )
+                }
+            </div >
+        </div >
     );
 };
 
