@@ -144,6 +144,21 @@ const ProjectDetails = () => {
 
     // ── Filter ─────────────────────────────────────────────────────────────────
     const filteredJobs = jobs.filter(j => {
+        // Role-based visibility check
+        const isForemanOrSub = ['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
+        const isWorker = user?.role === 'WORKER';
+
+        const isAssignedAsForeman = isForemanOrSub &&
+            (typeof j.foremanId === 'object' ? j.foremanId?._id === user?._id : j.foremanId === user?._id);
+
+        const isAssignedAsWorker = isWorker &&
+            j.assignedWorkers?.some(w => (typeof w === 'object' ? w._id === user?._id : w === user?._id));
+
+        const hasAccess = ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM', 'ENGINEER'].includes(user?.role) ||
+            isAssignedAsForeman || isAssignedAsWorker;
+
+        if (!hasAccess) return false;
+
         const matchSearch = j.name.toLowerCase().includes(search.toLowerCase()) ||
             (j.location || '').toLowerCase().includes(search.toLowerCase());
         const matchStatus = filterStatus === 'all' || j.status === filterStatus;
@@ -151,10 +166,10 @@ const ProjectDetails = () => {
     });
 
     const jobStats = {
-        total: jobs.length,
-        active: jobs.filter(j => j.status === 'active').length,
-        completed: jobs.filter(j => j.status === 'completed').length,
-        planning: jobs.filter(j => j.status === 'planning').length,
+        total: filteredJobs.length,
+        active: filteredJobs.filter(j => j.status === 'active').length,
+        completed: filteredJobs.filter(j => j.status === 'completed').length,
+        planning: filteredJobs.filter(j => j.status === 'planning').length,
     };
 
     const getLocationStr = (loc) => {
@@ -444,10 +459,10 @@ const ProjectDetails = () => {
                                                     value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}
                                                     onChange={(e) => handleAssignForeman(job._id, e.target.value)}
                                                 >
-                                                    <option value="">Assign {user?.role === 'PM' ? 'Foreman' : 'Project Manager'}</option>
+                                                    <option value="">Assign {user?.role === 'PM' ? 'Foreman/Sub' : 'Project Manager'}</option>
                                                     {users.filter(u => {
                                                         if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) return u.role === 'PM';
-                                                        if (user?.role === 'PM') return ['FOREMAN', 'WORKER'].includes(u.role);
+                                                        if (user?.role === 'PM') return ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
                                                         return false;
                                                     }).map(u => (
                                                         <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
@@ -468,7 +483,7 @@ const ProjectDetails = () => {
                                         {['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role) && (
                                             <div className="absolute inset-0 opacity-0 cursor-pointer w-full" onClick={() => setIsAssigningWorkers(job._id)}></div>
                                         )}
-                                        {user?.role === 'FOREMAN' && (
+                                        {['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
                                             <select
                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full"
                                                 value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}

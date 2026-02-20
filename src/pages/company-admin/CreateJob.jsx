@@ -59,12 +59,12 @@ const CreateJob = () => {
                 });
                 setEquipment(availableEquip);
 
-                // Assignment filter: Admins assign PMs, PMs assign Foremen/Workers, Foremen assign Workers
+                // Assignment filter: Admins assign PMs, PMs assign Foremen/Subcontractors, Foremen assign Workers
                 if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) {
                     setAssignableUsers(team.filter(m => m.role === 'PM'));
                 } else if (user?.role === 'PM') {
-                    setAssignableUsers(team.filter(m => ['FOREMAN', 'WORKER'].includes(m.role)));
-                } else if (user?.role === 'FOREMAN') {
+                    setAssignableUsers(team.filter(m => ['FOREMAN', 'SUBCONTRACTOR'].includes(m.role)));
+                } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
                     setAssignableUsers(team.filter(m => m.role === 'WORKER'));
                 }
             } catch (err) {
@@ -262,8 +262,8 @@ const CreateJob = () => {
                         <div>
                             <label className={labelCls}>
                                 <HardHat size={12} className="text-orange-500" />
-                                {user?.role === 'FOREMAN' ? 'Assign Worker' :
-                                    user?.role === 'PM' ? 'Assign Foreman / Supervisor' :
+                                {(['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) ? 'Assign Worker' :
+                                    user?.role === 'PM' ? 'Assign Foreman / Subcontractor' :
                                         'Assigned Project Manager'}
                             </label>
                             <select
@@ -271,8 +271,8 @@ const CreateJob = () => {
                                 onChange={e => setForm({ ...form, pmId: e.target.value })}
                                 className={inputCls + ' appearance-none cursor-pointer'}
                             >
-                                <option value="">— Select {user?.role === 'FOREMAN' ? 'a Worker' :
-                                    user?.role === 'PM' ? 'a Foreman' :
+                                <option value="">— Select {(['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) ? 'a Worker' :
+                                    user?.role === 'PM' ? 'a Foreman / Sub' :
                                         'a Project Manager'} —</option>
                                 {assignableUsers.length === 0 ? (
                                     <option disabled>No users found to assign</option>

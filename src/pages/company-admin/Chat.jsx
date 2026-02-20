@@ -40,8 +40,14 @@ const Chat = () => {
         });
 
         socketRef.current.on('new_message', (chat) => {
-            // Check if the message belongs to the active project chat
-            if (activeChat && chat.projectId === activeChat.id) {
+            // Check if the message belongs to the active project chat or private chat
+            const isProjectMatch = activeChat?.isGroup && chat.projectId === activeChat.id;
+            const isPrivateMatch = !activeChat?.isGroup && (
+                (chat.sender._id === activeChat?.id && chat.receiverId === user?._id) ||
+                (chat.sender._id === user?._id && chat.receiverId === activeChat?.id)
+            );
+
+            if (isProjectMatch || isPrivateMatch) {
                 const formattedMsg = {
                     id: chat._id,
                     sender: chat.sender.fullName,
@@ -52,7 +58,6 @@ const Chat = () => {
                 };
 
                 setMessages(prev => {
-                    // Avoid duplicates if REST re-fetch also happened
                     if (prev.find(m => m.id === chat._id)) return prev;
                     return [...prev, formattedMsg];
                 });
@@ -73,32 +78,48 @@ const Chat = () => {
         }
     }, [activeChat]);
 
-    // Fetch Projects as "Chat Groups"
+    // Fetch Projects and Users as "Chat Groups"
     useEffect(() => {
-        const fetchProjects = async () => {
+        const fetchConversations = async () => {
             try {
-                const res = await api.get('/projects');
-                const projectChats = res.data.map(p => ({
+                const [projRes, teamRes] = await Promise.all([
+                    api.get('/projects'),
+                    api.get('/auth/users')
+                ]);
+
+                const projectChats = projRes.data.map(p => ({
                     id: p._id,
                     name: p.name,
-                    lastMessage: 'Click to view chat',
-                    time: '',
-                    unread: 0,
+                    lastMessage: 'Project Room',
                     isGroup: true,
-                    status: p.status
+                    status: p.status,
+                    role: 'Project'
                 }));
-                setConversations(projectChats);
-                if (projectChats.length > 0 && !activeChat) {
+
+                const userChats = teamRes.data
+                    .filter(u => u._id !== user?._id)
+                    .map(u => ({
+                        id: u._id,
+                        name: u.fullName,
+                        lastMessage: 'Direct Message',
+                        isGroup: false,
+                        status: 'online', // Placeholder
+                        role: u.role
+                    }));
+
+                setConversations([...projectChats, ...userChats]);
+
+                if (!activeChat && projectChats.length > 0) {
                     setActiveChat(projectChats[0]);
                 }
             } catch (error) {
-                console.error('Error fetching projects for chat:', error);
+                console.error('Error fetching chat entities:', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProjects();
-    }, []);
+        fetchConversations();
+    }, [user?._id]);
 
     // Fetch Messages History for Active Chat
     useEffect(() => {
@@ -106,7 +127,11 @@ const Chat = () => {
 
         const fetchMessages = async () => {
             try {
-                const res = await api.get(`/chat/${activeChat.id}`);
+                const endpoint = activeChat.isGroup
+                    ? `/chat/${activeChat.id}`
+                    : `/chat/private/${activeChat.id}`;
+
+                const res = await api.get(endpoint);
                 const formattedMessages = res.data.map(msg => ({
                     id: msg._id,
                     sender: msg.sender?.fullName || 'Unknown',
@@ -127,13 +152,14 @@ const Chat = () => {
         if (!newMessage.trim() || !activeChat) return;
 
         const messageContent = newMessage;
-        setNewMessage(''); // Clear input optimistically
+        setNewMessage('');
 
         try {
-            await api.post('/chat', {
-                projectId: activeChat.id,
-                message: messageContent
-            });
+            const payload = activeChat.isGroup
+                ? { projectId: activeChat.id, message: messageContent }
+                : { receiverId: activeChat.id, message: messageContent };
+
+            await api.post('/chat', payload);
             // The socket 'new_message' event will handle the UI update
         } catch (error) {
             console.error('Error sending message:', error);
@@ -159,7 +185,7 @@ const Chat = () => {
                         <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search projects..."
+                            placeholder="Search contacts..."
                             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                         />
                     </div>
@@ -187,7 +213,7 @@ const Chat = () => {
                                         {chat.name}
                                     </h4>
                                 </div>
-                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{chat.status}</p>
+                                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{chat.role || chat.status}</p>
                             </div>
                         </div>
                     ))}
@@ -208,7 +234,9 @@ const Chat = () => {
                                     <h3 className="font-black text-slate-800 text-lg leading-tight uppercase tracking-tight">{activeChat.name}</h3>
                                     <div className="flex items-center gap-2 mt-1">
                                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Active Project Room</p>
+                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                                            {activeChat.isGroup ? 'Active Project Room' : `${activeChat.role} • Personal Chat`}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -229,7 +257,9 @@ const Chat = () => {
                                     <div className="p-4 bg-slate-100 rounded-full">
                                         <MessageSquare size={48} className="text-slate-400" />
                                     </div>
-                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-10">Starting the project transmission...</p>
+                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-10">
+                                        {activeChat.isGroup ? 'Starting the project transmission...' : 'Secure end-to-end site coordination...'}
+                                    </p>
                                 </div>
                             )}
 
