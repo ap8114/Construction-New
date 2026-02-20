@@ -1,0 +1,447 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import api from '../../utils/api';
+
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <h3 className="font-bold text-slate-800">{title}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Drawings = () => {
+  const { user } = useAuth();
+  const canManage = ['COMPANY_OWNER', 'PM'].includes(user?.role);
+
+  const [drawings, setDrawings] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterDiscipline, setFilterDiscipline] = useState('All Disciplines');
+
+  // Modal States
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const [selectedDrawing, setSelectedDrawing] = useState(null);
+  const [formData, setFormData] = useState({
+    projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null
+  });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [drwRes, projRes] = await Promise.all([
+        api.get('/drawings'),
+        api.get('/projects')
+      ]);
+      setDrawings(drwRes.data);
+      setProjects(projRes.data);
+    } catch (error) {
+      console.error('Error fetching drawing data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Derived State (Filtering)
+  const filteredDrawings = drawings.filter(drawing => {
+    const matchesSearch = drawing.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterDiscipline === 'All Disciplines' || drawing.category === filterDiscipline.toLowerCase();
+    return matchesSearch && matchesFilter;
+  });
+
+  // Handlers
+  const handleUploadClick = () => {
+    setFormData({ projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null });
+    setIsUploadOpen(true);
+  };
+
+  const handleSaveUpload = async () => {
+    try {
+      // For now, simulating file upload by just sending metadata
+      // In a real app, this would be a Multipart form or S3 upload
+      const payload = {
+        ...formData,
+        fileUrl: 'https://example.com/drawings/' + (formData.file?.name || 'drawing.pdf')
+      };
+      await api.post('/drawings', payload);
+      fetchData();
+      setIsUploadOpen(false);
+    } catch (error) {
+      console.error('Error uploading drawing:', error);
+    }
+  };
+
+  const handleView = (drawing) => {
+    setSelectedDrawing(drawing);
+    setIsViewOpen(true);
+  };
+
+  const handleDelete = (drawing) => {
+    setSelectedDrawing(drawing);
+    setIsDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/drawings/${selectedDrawing._id}`);
+      fetchData();
+      setIsDeleteOpen(false);
+    } catch (error) {
+      console.error('Error deleting drawing:', error);
+    }
+  };
+
+  const handleDownload = (drawing) => {
+    if (drawing.fileUrl) {
+      const link = document.createElement('a');
+      link.href = drawing.fileUrl;
+      link.download = drawing.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert(`Downloading ${drawing.name}... (Dummy Simulation)`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Drawings & Blueprints</h1>
+          <p className="text-slate-500 text-sm">Manage latest revisions and architectural plans.</p>
+        </div>
+        {canManage && (
+          <button
+            onClick={handleUploadClick}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 flex items-center gap-2 transition"
+          >
+            <Upload size={18} /> Upload Revision
+          </button>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-4 border-b border-slate-50 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search drawings..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 rounded-lg text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
+          <select
+            value={filterDiscipline}
+            onChange={(e) => setFilterDiscipline(e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer"
+          >
+            <option>All Disciplines</option>
+            <option>Architectural</option>
+            <option>Structural</option>
+            <option>Electrical</option>
+            <option>Plumbing</option>
+            <option>Landscape</option>
+          </select>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold">
+              <tr>
+                <th className="px-6 py-4 whitespace-nowrap">Drawing Name</th>
+                <th className="px-6 py-4 whitespace-nowrap">Project</th>
+                <th className="px-6 py-4 whitespace-nowrap">Version</th>
+                <th className="px-6 py-4 whitespace-nowrap">Date</th>
+                <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-right whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center">
+                    <Loader className="animate-spin text-blue-600 mx-auto" />
+                  </td>
+                </tr>
+              ) : filteredDrawings.length > 0 ? (
+                filteredDrawings.map((drawing) => (
+                  <tr key={drawing._id} className="border-b border-slate-50 hover:bg-slate-50 transition group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded text-blue-600 group-hover:bg-blue-100 transition">
+                          <FileText size={20} />
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-800 block">{drawing.title}</span>
+                          <span className="text-xs text-slate-400 uppercase">{drawing.category}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-medium">{drawing.projectId?.name || '---'}</td>
+                    <td className="px-6 py-4 text-slate-500 font-medium">v{drawing.currentVersion}.0</td>
+                    <td className="px-6 py-4">{new Date(drawing.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase inline-flex items-center gap-1
+                        ${drawing.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                          drawing.status === 'superseded' ? 'bg-orange-100 text-orange-700' :
+                            'bg-slate-100 text-slate-600'}`}>
+                        {drawing.status === 'active' && <CheckCircle size={10} />}
+                        {drawing.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => handleView(drawing)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="View Details">
+                          <Eye size={18} />
+                        </button>
+                        <button onClick={() => handleDownload(drawing)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition" title="Download">
+                          <Download size={18} />
+                        </button>
+                        {canManage && (
+                          <button onClick={() => handleDelete(drawing)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-slate-400">
+                    No drawings found matching your search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modals */}
+
+      {/* Upload Modal */}
+      <Modal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} title="Upload New Revision">
+        <div className="space-y-4">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative">
+            <input
+              type="file"
+              accept=".pdf,.dwg,.dxf"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  setFormData({ ...formData, file: file, name: file.name });
+                }
+              }}
+            />
+            <Upload className="mx-auto text-slate-400 mb-2" size={32} />
+            {formData.file ? (
+              <div>
+                <p className="text-sm font-bold text-blue-600 truncate px-4">{formData.file.name}</p>
+                <p className="text-xs text-slate-500">{(formData.file.size / (1024 * 1024)).toFixed(2)} MB</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-slate-600">Click to upload or drag and drop</p>
+                <p className="text-xs text-slate-400">PDF, DWG, DXF up to 50MB</p>
+              </>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Project</label>
+            <select
+              value={formData.projectId}
+              onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
+              required
+            >
+              <option value="">Select Project</option>
+              {projects.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Drawing Title</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
+              placeholder="e.g. First Floor Plan"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Drawing Number</label>
+              <input
+                type="text"
+                value={formData.drawingNumber}
+                onChange={e => setFormData({ ...formData, drawingNumber: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
+                placeholder="e.g. A-101"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <select
+                value={formData.category}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
+              >
+                <option value="architectural">Architectural</option>
+                <option value="structural">Structural</option>
+                <option value="mechanical">Mechanical</option>
+                <option value="electrical">Electrical</option>
+                <option value="plumbing">Plumbing</option>
+                <option value="civil">Civil</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={e => setFormData({ ...formData, status: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
+            >
+              <option>Draft</option>
+              <option>In Review</option>
+              <option>Approved</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={handleSaveUpload}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200 flex items-center gap-2"
+            >
+              <Save size={18} /> Upload Drawing
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Drawing Details">
+        {selectedDrawing && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+              <div className="bg-white p-3 rounded-lg shadow-sm text-blue-600">
+                <FileText size={32} />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800 text-lg">{selectedDrawing.title}</h4>
+                <p className="text-sm text-slate-500">{selectedDrawing.drawingNumber} • {selectedDrawing.category}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-y-4 text-sm">
+              <div>
+                <p className="text-slate-500 mb-1">Project</p>
+                <p className="font-medium text-slate-800">{selectedDrawing.projectId?.name || '---'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 mb-1">Current Version</p>
+                <p className="font-medium text-slate-800">v{selectedDrawing.currentVersion}.0</p>
+              </div>
+              <div>
+                <p className="text-slate-500 mb-1">Upload Date</p>
+                <p className="font-medium text-slate-800">{new Date(selectedDrawing.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 mb-1">Status</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase inline-block
+                        ${selectedDrawing.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedDrawing.status === 'superseded' ? 'bg-orange-100 text-orange-700' :
+                      'bg-slate-100 text-slate-600'}`}>
+                  {selectedDrawing.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Version History ({selectedDrawing.versions?.length})</p>
+              <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {selectedDrawing.versions?.map((v, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-100 text-xs">
+                    <div>
+                      <span className="font-bold text-slate-700">v{v.versionNumber}.0</span>
+                      <p className="text-slate-500 italic">{v.description || 'No description'}</p>
+                    </div>
+                    <span className="text-slate-400">{new Date(v.uploadedAt).toLocaleDateString()}</span>
+                  </div>
+                )).reverse()}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <button onClick={() => handleDownload(selectedDrawing)} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium flex justify-center items-center gap-2">
+                <Download size={18} /> Download Current
+              </button>
+              <button onClick={() => setIsViewOpen(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 transition font-medium">
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} title="Delete Drawing">
+        <div className="text-center space-y-4">
+          <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+            <AlertTriangle className="text-red-600" size={32} />
+          </div>
+          <div>
+            <p className="font-medium text-slate-800">Delete this drawing revision?</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Are you sure you want to delete <b>{selectedDrawing?.name}</b>?<br />
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex justify-center gap-3 pt-2">
+            <button onClick={() => setIsDeleteOpen(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-medium">
+              Cancel
+            </button>
+            <button onClick={confirmDelete} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-medium shadow-lg shadow-red-200">
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+    </div>
+  );
+};
+
+export default Drawings;
