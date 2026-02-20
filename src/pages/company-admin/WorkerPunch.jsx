@@ -74,45 +74,36 @@ const WorkerPunch = () => {
     const handleToggle = async () => {
         try {
             setLoading(true);
+            const getPosition = () => new Promise((resolve) => {
+                if (!navigator.geolocation) return resolve(null);
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve(pos.coords),
+                    () => resolve(null),
+                    { timeout: 5000 }
+                );
+            });
+
             if (!isClockedIn) {
                 // Clock In
-                // Get current location
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    const res = await api.post('/timelogs/clock-in', {
-                        projectId: '65d1a5e5e4b0c5d1a5e5e4b0', // Fallback/Current Project ID
-                        latitude,
-                        longitude,
-                        deviceInfo: navigator.userAgent
-                    });
-                    setCurrentTimeLog(res.data);
-                    setIsClockedIn(true);
-                }, async (err) => {
-                    // Fallback without GPS if denied but still record time
-                    const res = await api.post('/timelogs/clock-in', {
-                        projectId: '65d1a5e5e4b0c5d1a5e5e4b0',
-                        deviceInfo: navigator.userAgent
-                    });
-                    setCurrentTimeLog(res.data);
-                    setIsClockedIn(true);
+                const coords = await getPosition();
+                const res = await api.post('/timelogs/clock-in', {
+                    projectId: '65d1a5e5e4b0c5d1a5e5e4b0',
+                    latitude: coords?.latitude,
+                    longitude: coords?.longitude,
+                    deviceInfo: navigator.userAgent
                 });
-            } else if (currentTimeLog) {
+                setCurrentTimeLog(res.data);
+                setIsClockedIn(true);
+            } else {
                 // Clock Out
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    await api.post('/timelogs/clock-out', {
-                        latitude,
-                        longitude
-                    });
-                    setIsClockedIn(false);
-                    setCurrentTimeLog(null);
-                    setTimer(0);
-                }, async (err) => {
-                    await api.post('/timelogs/clock-out', {});
-                    setIsClockedIn(false);
-                    setCurrentTimeLog(null);
-                    setTimer(0);
+                const coords = await getPosition();
+                await api.post('/timelogs/clock-out', {
+                    latitude: coords?.latitude,
+                    longitude: coords?.longitude
                 });
+                setIsClockedIn(false);
+                setCurrentTimeLog(null);
+                setTimer(0);
             }
         } catch (error) {
             console.error('Error toggling clock:', error);

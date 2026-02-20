@@ -124,7 +124,7 @@ const CompanyAdminDashboard = () => {
       const res = await api.get('/reports/stats');
       const data = res.data;
 
-      if (data.metrics) setMetrics(data.metrics);
+      if (data.metrics) setMetrics(prev => ({ ...data.metrics, myJobs: data.myJobs || prev.myJobs || [] }));
       if (data.trendData) setTrendData(data.trendData);
       if (data.crewActivity) setCrewActivity(data.crewActivity);
       if (data.recentDailyLogs) setRecentDailyLogs(data.recentDailyLogs);
@@ -178,6 +178,46 @@ const CompanyAdminDashboard = () => {
     return () => clearInterval(interval);
   }, [isClockedIn]);
 
+  const handleToggle = async () => {
+    try {
+      setLoading(true);
+      const getPosition = () => new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          () => resolve(null),
+          { timeout: 5000 }
+        );
+      });
+
+      if (!isClockedIn) {
+        const coords = await getPosition();
+        await api.post('/timelogs/clock-in', {
+          projectId: '65d1a5e5e4b0c5d1a5e5e4b0', // Fallback
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
+          deviceInfo: navigator.userAgent
+        });
+        setIsClockedIn(true);
+        fetchDashboardData();
+      } else {
+        const coords = await getPosition();
+        await api.post('/timelogs/clock-out', {
+          latitude: coords?.latitude,
+          longitude: coords?.longitude
+        });
+        setIsClockedIn(false);
+        setTimer(0);
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Error toggling clock:', error);
+      alert('Failed to update attendance status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -229,16 +269,15 @@ const CompanyAdminDashboard = () => {
                 <MapPin size={16} className="text-slate-400" /> {workerMetrics.currentJob}
               </p>
             </div>
-
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               <button
-                onClick={() => navigate('/company-admin/clock')}
+                onClick={handleToggle}
                 className={`flex-1 md:flex-none px-12 py-5 rounded-2xl font-black text-lg uppercase tracking-tight shadow-lg transition-all transform active:scale-95 ${isClockedIn
                   ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200'
                   : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
                   }`}
               >
-                {isClockedIn ? 'Stop Tracking' : 'Start Tracking'}
+                {isClockedIn ? 'Stop Clock Out' : 'Start Clock In'}
               </button>
             </div>
           </div>
@@ -327,14 +366,37 @@ const CompanyAdminDashboard = () => {
 
               {isSubcontractor && (
                 <>
-                  <QuickActionButton label="Clock In / Out" icon={Clock} bg="bg-orange-500" color="text-white" onClick={() => navigate('/company-admin/clock')} />
-                  <QuickActionButton label="Add Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
+                  <QuickActionButton label={isClockedIn ? "Stop Clock Out" : "Start Clock In"} icon={Clock} bg={isClockedIn ? "bg-red-500" : "bg-orange-500"} color="text-white" onClick={handleToggle} />
                   <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
-                  <QuickActionButton label="View Schedule" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/schedule')} />
                 </>
               )}
             </div>
           </div>
+
+          {/* Assigned Jobs - For Subcontractors & Foremen */}
+          {(isForeman || isSubcontractor) && metrics.myJobs?.length > 0 && (
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-lg font-black text-slate-800 tracking-tight">Active Assignments</h3>
+              </div>
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {metrics.myJobs.map(job => (
+                  <div key={job.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black">
+                        <Briefcase size={20} />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900 text-sm tracking-tight">{job.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Site Assignment</p>
+                      </div>
+                    </div>
+                    <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* My Recent Activity - For Workers & Subcontractors */}
           {(isWorker || isSubcontractor) && (
@@ -569,7 +631,7 @@ const CompanyAdminDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

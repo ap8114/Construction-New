@@ -17,7 +17,7 @@ const Timesheets = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const socketRef = useRef();
     const { user } = useAuth();
-    const isWorker = user?.role === 'WORKER';
+    const isWorker = user?.role === 'WORKER' || user?.role === 'SUBCONTRACTOR';
 
     const fetchData = async () => {
         try {
