@@ -52,8 +52,12 @@ const CreateJob = () => {
                 ]);
                 setProject(projRes.data);
                 const team = teamRes.data || [];
-                // More robust filter: show equipment if it's not assigned or explicitly idle
-                setEquipment(equipRes.data?.filter(e => !e.assignedJob || e.status === 'idle') || []);
+                // Filter: show if not assigned to a job OR explicitly idle
+                const availableEquip = (equipRes.data || []).filter(e => {
+                    const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
+                    return !isAssigned || e.status === 'idle';
+                });
+                setEquipment(availableEquip);
 
                 // Assignment filter: Always show Foremen and Workers for job level
                 setForemen(team.filter(m => ['FOREMAN', 'WORKER'].includes(m.role)));
@@ -392,13 +396,13 @@ const CreateJob = () => {
 
                                 {/* Dropdown Menu */}
                                 {isEquipOpen && (
-                                    <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-slate-200 rounded-3xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-slate-200 rounded-3xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 border-b-4 border-b-blue-500/20">
                                         <div className="p-4 border-b border-slate-50 bg-slate-50/50">
                                             <div className="relative">
                                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Search by name or type..."
+                                                    placeholder="Search by name, type, or serial..."
                                                     value={equipSearch}
                                                     onChange={(e) => setEquipSearch(e.target.value)}
                                                     className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-500/50"
@@ -406,7 +410,7 @@ const CreateJob = () => {
                                                 />
                                             </div>
                                         </div>
-                                        <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                        <div className="max-h-[350px] overflow-y-auto p-2 space-y-1 custom-scrollbar min-h-[100px]">
                                             {equipment.filter(e =>
                                                 (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
                                                 (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
@@ -449,26 +453,28 @@ const CreateJob = () => {
                                                     )}
                                                 </div>
                                             ))}
-                                            {equipment.filter(e =>
+
+                                            {equipment.length > 0 && equipment.filter(e =>
                                                 (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
                                                 (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
                                                 (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
                                             ).length === 0 && (
-                                                    <div className="py-8 text-center bg-slate-50/50 rounded-2xl mx-2">
-                                                        <Search size={24} className="mx-auto text-slate-200 mb-2" />
-                                                        <p className="text-xs font-bold text-slate-400">No equipment matching "{equipSearch}"</p>
+                                                    <div className="py-12 text-center bg-slate-50/50 rounded-2xl mx-2">
+                                                        <Search size={32} className="mx-auto text-slate-200 mb-2" />
+                                                        <p className="text-sm font-bold text-slate-400">No equipment matching "{equipSearch}"</p>
                                                     </div>
                                                 )}
                                         </div>
-                                        <div className="p-3 bg-slate-50 flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                {selectedEquipment.length} item(s) selected
-                                            </span>
+                                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Selection</p>
+                                                <p className="text-xs font-black text-slate-900">{selectedEquipment.length} item(s) to assign</p>
+                                            </div>
                                             <button
                                                 onClick={() => setIsEquipOpen(false)}
-                                                className="px-4 py-1.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-800 transition-all"
+                                                className="px-6 py-2.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
                                             >
-                                                Done
+                                                Confirm Selection
                                             </button>
                                         </div>
                                     </div>
