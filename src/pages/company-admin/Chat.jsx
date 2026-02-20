@@ -12,6 +12,8 @@ const Chat = () => {
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [onlineCount, setOnlineCount] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filter, setFilter] = useState('all'); // 'all', 'groups', 'direct'
     const socketRef = useRef();
     const messagesEndRef = useRef(null);
 
@@ -97,7 +99,7 @@ const Chat = () => {
                 }));
 
                 const userChats = teamRes.data
-                    .filter(u => u._id !== user?._id)
+                    .filter(u => u._id !== user?._id && !['CLIENT', 'ENGINEER'].includes(u.role))
                     .map(u => ({
                         id: u._id,
                         name: u.fullName,
@@ -169,6 +171,15 @@ const Chat = () => {
 
     if (loading) return <div className="p-10 text-center">Loading chats...</div>;
 
+    const filteredConversations = conversations.filter(chat => {
+        const matchesSearch = chat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (chat.role && chat.role.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        if (filter === 'groups') return matchesSearch && chat.isGroup;
+        if (filter === 'direct') return matchesSearch && !chat.isGroup;
+        return matchesSearch;
+    });
+
     return (
         <div className="flex h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-fade-in">
             {/* Sidebar - Chat List */}
@@ -185,13 +196,33 @@ const Chat = () => {
                         <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search contacts..."
+                            placeholder="Search chats..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                         />
                     </div>
+                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                        {[
+                            { id: 'all', label: 'All' },
+                            { id: 'groups', label: 'Project' },
+                            { id: 'direct', label: 'Individual' }
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setFilter(tab.id)}
+                                className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${filter === tab.id
+                                        ? 'bg-white text-blue-600 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {conversations.map(chat => (
+                    {filteredConversations.map(chat => (
                         <div
                             key={chat.id}
                             onClick={() => setActiveChat(chat)}

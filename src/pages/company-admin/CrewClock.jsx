@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Users, Clock, Search, Filter, CheckCircle, XCircle,
     MoreHorizontal, MapPin, AlertCircle, Play, Square,
     ChevronRight, ArrowRight, ShieldCheck, UserCheck,
     RefreshCw, Calendar, Check
 } from 'lucide-react';
+import { io } from 'socket.io-client';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +21,7 @@ const CrewClock = () => {
         offClock: 0,
         totalCrew: 0
     });
+    const socketRef = useRef();
 
     const fetchData = async () => {
         try {
@@ -60,6 +62,21 @@ const CrewClock = () => {
 
     useEffect(() => {
         fetchData();
+
+        // Connect socket
+        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+        socketRef.current = io(socketUrl);
+        socketRef.current.emit('register_user', user);
+
+        socketRef.current.on('attendance_update', (data) => {
+            console.log('Attendance update received:', data);
+            // Re-fetch data or update state locally
+            fetchData();
+        });
+
+        return () => {
+            if (socketRef.current) socketRef.current.disconnect();
+        };
     }, []);
 
     const toggleSelection = (id) => {

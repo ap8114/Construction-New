@@ -5,8 +5,9 @@ import {
   ChevronDown, Bell, Wrench, ClipboardList, Clock, Briefcase,
   MoreHorizontal, Smartphone, ExternalLink
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, AreaChart, Area, LineChart, Line
@@ -115,6 +116,7 @@ const CompanyAdminDashboard = () => {
   const [myRecentActivity, setMyRecentActivity] = useState([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [timer, setTimer] = useState(0);
+  const socketRef = useRef();
 
   const fetchDashboardData = async () => {
     try {
@@ -148,6 +150,20 @@ const CompanyAdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Connect socket
+    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+    socketRef.current = io(socketUrl);
+    socketRef.current.emit('register_user', user);
+
+    socketRef.current.on('attendance_update', (data) => {
+      console.log('Dashboard attendance update:', data);
+      fetchDashboardData();
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, []);
 
   useEffect(() => {

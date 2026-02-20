@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock, MapPin, CheckCircle, Camera, RefreshCw, AlertCircle, Play, Square, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const WorkerPunch = () => {
@@ -11,17 +13,56 @@ const WorkerPunch = () => {
     const [activeJob, setActiveJob] = useState('North Tower Construction');
     const [siteLocation, setSiteLocation] = useState('Parkview, Block C');
 
+    const [loading, setLoading] = useState(true);
+    const [currentTimeLog, setCurrentTimeLog] = useState(null);
+    const socketRef = useRef();
+
+    // Fetch active log on mount
+    useEffect(() => {
+        const fetchActiveLog = async () => {
+            try {
+                const res = await api.get('/timelogs');
+                const active = res.data.find(log => log.userId?._id === user?._id && !log.clockOut);
+                if (active) {
+                    setCurrentTimeLog(active);
+                    setIsClockedIn(true);
+                    // Calculate initial timer value
+                    const startTime = new Date(active.clockIn).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.floor((now - startTime) / 1000));
+                }
+            } catch (error) {
+                console.error('Error fetching active log:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchActiveLog();
+
+        // Connect socket for status broadcasting
+        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+        socketRef.current = io(socketUrl);
+        socketRef.current.emit('register_user', user);
+
+        return () => {
+            if (socketRef.current) socketRef.current.disconnect();
+        };
+    }, [user?._id]);
+
     useEffect(() => {
         let interval;
-        if (isClockedIn) {
+        if (isClockedIn && currentTimeLog) {
             interval = setInterval(() => {
-                setTimer((prev) => prev + 1);
+                const startTime = new Date(currentTimeLog.clockIn).getTime();
+                const now = new Date().getTime();
+                setTimer(Math.floor((now - startTime) / 1000));
             }, 1000);
         } else {
             clearInterval(interval);
         }
         return () => clearInterval(interval);
-    }, [isClockedIn]);
+    }, [isClockedIn, currentTimeLog]);
 
     const formatTime = (seconds) => {
         const h = Math.floor(seconds / 3600);
@@ -30,8 +71,55 @@ const WorkerPunch = () => {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const handleToggle = () => {
-        setIsClockedIn(!isClockedIn);
+    const handleToggle = async () => {
+        try {
+            setLoading(true);
+            if (!isClockedIn) {
+                // Clock In
+                // Get current location
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    const res = await api.post('/timelogs/clock-in', {
+                        projectId: '65d1a5e5e4b0c5d1a5e5e4b0', // Fallback/Current Project ID
+                        latitude,
+                        longitude,
+                        deviceInfo: navigator.userAgent
+                    });
+                    setCurrentTimeLog(res.data);
+                    setIsClockedIn(true);
+                }, async (err) => {
+                    // Fallback without GPS if denied but still record time
+                    const res = await api.post('/timelogs/clock-in', {
+                        projectId: '65d1a5e5e4b0c5d1a5e5e4b0',
+                        deviceInfo: navigator.userAgent
+                    });
+                    setCurrentTimeLog(res.data);
+                    setIsClockedIn(true);
+                });
+            } else if (currentTimeLog) {
+                // Clock Out
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    await api.post('/timelogs/clock-out', {
+                        latitude,
+                        longitude
+                    });
+                    setIsClockedIn(false);
+                    setCurrentTimeLog(null);
+                    setTimer(0);
+                }, async (err) => {
+                    await api.post('/timelogs/clock-out', {});
+                    setIsClockedIn(false);
+                    setCurrentTimeLog(null);
+                    setTimer(0);
+                });
+            }
+        } catch (error) {
+            console.error('Error toggling clock:', error);
+            alert('Failed to update attendance status');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const recentLogs = [
@@ -75,8 +163,8 @@ const WorkerPunch = () => {
                         <button
                             onClick={handleToggle}
                             className={`w-full py-6 rounded-3xl font-black text-xl uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isClockedIn
-                                    ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 hover:-translate-y-1'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:-translate-y-1'
+                                ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 hover:-translate-y-1'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:-translate-y-1'
                                 }`}
                         >
                             {isClockedIn ? (
@@ -97,7 +185,9 @@ const WorkerPunch = () => {
                 <div className="bg-slate-50 p-6 border-t border-slate-100 grid grid-cols-2 gap-4">
                     <div className="text-center border-r border-slate-200">
                         <p className="text-[10px] font-black text-slate-400 uppercase">Started At</p>
-                        <p className="font-bold text-slate-900">{isClockedIn ? '07:00 AM' : '--:--'}</p>
+                        <p className="font-bold text-slate-900">
+                            {currentTimeLog ? new Date(currentTimeLog.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                        </p>
                     </div>
                     <div className="text-center">
                         <p className="text-[10px] font-black text-slate-400 uppercase">Site Entry</p>

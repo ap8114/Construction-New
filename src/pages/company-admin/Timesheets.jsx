@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Clock, MapPin, CheckCircle, XCircle, Search, Filter,
     Download, FileText, User, Calendar, Loader, MoreHorizontal,
     ChevronRight, ExternalLink, Hash, Check, Trash2, ShieldCheck, AlertCircle, TrendingUp, RefreshCw
 } from 'lucide-react';
+import { io } from 'socket.io-client';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -14,6 +15,7 @@ const Timesheets = () => {
     const [loading, setLoading] = useState(true);
     const [selectedEntry, setSelectedEntry] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const socketRef = useRef();
     const { user } = useAuth();
     const isWorker = user?.role === 'WORKER';
 
@@ -33,6 +35,20 @@ const Timesheets = () => {
 
     useEffect(() => {
         fetchData();
+
+        // Connect socket
+        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+        socketRef.current = io(socketUrl);
+        socketRef.current.emit('register_user', user);
+
+        socketRef.current.on('attendance_update', (data) => {
+            console.log('Timesheet attendance update:', data);
+            fetchData();
+        });
+
+        return () => {
+            if (socketRef.current) socketRef.current.disconnect();
+        };
     }, []);
 
     const filteredEntries = entries.filter(entry =>
