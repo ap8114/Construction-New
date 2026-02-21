@@ -607,7 +607,7 @@ const CompanyAdminDashboard = () => {
                   </div>
                 )}
                 <AlertItem label="Equipment Hour Not Submitted" count={1} color="bg-orange-400/90 text-white" />
-                {(isOwner || isPM) && <AlertItem label="Pending Approvals" count={5} color="bg-blue-500/90 text-white" />}
+                {(isOwner || isPM) && <AlertItem label="Pending Approvals" count={metrics.pendingApprovals} color="bg-blue-500/90 text-white" />}
                 <AlertItem label="Offline Sync Pending" count={4} color="bg-slate-400/90 text-white" />
               </div>
             </div>

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Invoices = () => {
     const navigate = useNavigate();
@@ -109,6 +111,143 @@ const Invoices = () => {
         }
     };
 
+    const handleDownloadPDF = (inv) => {
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+
+            // 1. Header Section
+            // Logo placeholder (simulating the square logo in image)
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(20, 15, 15, 15, 3, 3, 'F');
+
+            // Company Info (Left)
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            doc.text('Kaal Construction Ltd', 20, 40);
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100);
+            doc.text('company@gmail.com', 20, 46);
+            doc.text('1234567890', 20, 51);
+            doc.text('123 Business St', 20, 56);
+
+            // Invoice Title & Info (Right)
+            doc.setFontSize(28);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text('INVOICE', pageWidth - 20, 25, { align: 'right' });
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(100);
+            doc.text(`Number: #${inv.invoiceNumber}`, pageWidth - 20, 35, { align: 'right' });
+            doc.text(`Issue: ${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 40, { align: 'right' });
+            doc.text(`Due Date: ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 45, { align: 'right' });
+
+            doc.setDrawColor(241, 245, 249);
+            doc.line(20, 70, pageWidth - 20, 70);
+
+            // 2. Billing Section
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(148, 163, 184);
+            doc.text('BILL TO:', 20, 85);
+            doc.text('SHIP TO:', pageWidth - 20, 85, { align: 'right' });
+
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text(inv.clientId?.fullName || 'Client', 20, 93);
+            doc.text(inv.projectId?.address || 'address23', pageWidth - 20, 93, { align: 'right' });
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100);
+            doc.text(inv.clientId?.address || 'indore', 20, 99);
+
+            // 3. Table Section
+            const tableColumn = ["ITEM / DESCRIPTION", "QTY", "RATE", "TOTAL"];
+            const tableRows = (inv.items || []).map(item => [
+                { content: `${item.description || 'text'}\nProfessional Grade Construction Material`, styles: { fontStyle: 'bold' } },
+                item.quantity || 1,
+                `£${(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                `£${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            ]);
+
+            autoTable(doc, {
+                startY: 110,
+                head: [tableColumn],
+                body: tableRows,
+                theme: 'plain',
+                headStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [148, 163, 184],
+                    fontSize: 8,
+                    fontStyle: 'bold',
+                    halign: (index) => index > 0 ? 'center' : 'left'
+                },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { halign: 'center', fontStyle: 'bold' },
+                    2: { halign: 'right', fontStyle: 'bold' },
+                    3: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
+                },
+                styles: { fontSize: 9, cellPadding: 6 },
+                didParseCell: (data) => {
+                    if (data.section === 'head') {
+                        data.cell.styles.textColor = [148, 163, 184];
+                    }
+                }
+            });
+
+            // 4. Summary Section
+            const finalY = doc.lastAutoTable.finalY + 15;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(148, 163, 184);
+            doc.text('Sub Total', pageWidth - 60, finalY);
+            doc.setTextColor(15, 23, 42);
+            doc.text(`£${(inv.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
+
+            doc.setTextColor(148, 163, 184);
+            doc.text('Tax', pageWidth - 60, finalY + 8);
+            doc.setTextColor(15, 23, 42);
+            doc.text('£0.00', pageWidth - 20, finalY + 8, { align: 'right' });
+
+            doc.setDrawColor(241, 245, 249);
+            doc.line(pageWidth - 65, finalY + 14, pageWidth - 20, finalY + 14);
+
+            doc.setFontSize(12);
+            doc.setTextColor(15, 23, 42);
+            doc.text('TOTAL', pageWidth - 60, finalY + 25);
+            doc.setFontSize(16);
+            doc.setTextColor(37, 99, 235); // Blue-600
+            doc.text(`£${(inv.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY + 25, { align: 'right' });
+
+            // 5. Footer Notes
+            const footerY = 240;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text('Notes', 20, footerY);
+
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(148, 163, 184);
+            const notes = "This accounting software is designed to assist users in managing financial data such as invoices, expenses, payments, reports, and tax-related records. All information and reports generated by the system depend on the data entered by the user, and users should verify details before final submission. The software may receive updates, improvements, or feature changes to enhance performance, accuracy, and security. Regular data backups are recommended to avoid potential data loss.";
+            const splitNotes = doc.splitTextToSize(notes, pageWidth - 40);
+            doc.text(splitNotes, 20, footerY + 8);
+
+            doc.save(`Invoice_${inv.invoiceNumber}.pdf`);
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            alert('Failed to generate PDF. Please check the console for details.');
+        }
+    };
+
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this invoice?')) {
             try {
@@ -136,7 +275,7 @@ const Invoices = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Invoices</h1>
+                    <h1 className="text-2xl font-bold text-slate-800">Invoices <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2">PDF Export Active</span></h1>
                     <p className="text-slate-500 text-sm">Create and manage client invoices.</p>
                 </div>
                 <button
@@ -243,7 +382,11 @@ const Invoices = () => {
                                             <Eye size={16} />
                                         </button>
                                         <button
-                                            onClick={() => navigate(`/company-admin/invoices/${inv._id}?print=true`)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                console.log('Download button clicked directly');
+                                                handleDownloadPDF(inv);
+                                            }}
                                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                             title="Download PDF"
                                         >

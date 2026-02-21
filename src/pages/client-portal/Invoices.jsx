@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Download, CheckCircle, Clock, AlertTriangle, Loader } from 'lucide-react';
 import api from '../../utils/api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -21,8 +23,43 @@ const Invoices = () => {
     fetchInvoices();
   }, []);
 
-  const handleDownload = (id) => {
-    alert(`Downloading invoice ${id}...`);
+  const handleDownload = (invoice) => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.text('INVOICE', 105, 20, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Number: ${invoice.invoiceNumber || invoice._id}`, 20, 40);
+    doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 20, 45);
+
+    doc.setTextColor(0);
+    doc.setFontSize(12);
+    doc.text('Kaal Construction Ltd', 20, 60);
+    doc.text('Project: ' + (invoice.projectId?.name || '---'), 20, 65);
+
+    const tableColumn = ["Description", "Quantity", "Rate", "Total"];
+    const tableRows = (invoice.items || []).map(item => [
+      item.description,
+      item.quantity,
+      `$${(item.unitPrice || 0).toLocaleString()}`,
+      `$${(item.total || 0).toLocaleString()}`
+    ]);
+
+    doc.autoTable({
+      startY: 80,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      headStyles: { fillColor: [51, 65, 85] }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.text(`Total Amount: $${(invoice.totalAmount || 0).toLocaleString()}`, 190, finalY, { align: 'right' });
+
+    doc.save(`Invoice_${invoice.invoiceNumber || 'Detail'}.pdf`);
   };
 
   if (loading) {
@@ -77,7 +114,7 @@ const Invoices = () => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <button
-                    onClick={() => handleDownload(invoice._id)}
+                    onClick={() => handleDownload(invoice)}
                     className="text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 p-2 rounded-lg"
                     title="Download Invoice"
                   >

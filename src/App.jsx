@@ -40,6 +40,8 @@ import DailyLogs from './pages/company-admin/DailyLogs';
 import Invoices from './pages/company-admin/Invoices';
 import InvoiceDetail from './pages/company-admin/InvoiceDetail';
 import PurchaseOrders from './pages/company-admin/PurchaseOrders';
+import PurchaseOrderForm from './pages/company-admin/PurchaseOrderForm';
+import PurchaseOrderDetail from './pages/company-admin/PurchaseOrderDetail';
 import Clients from './pages/company-admin/Clients';
 import Reports from './pages/company-admin/Reports';
 import Payroll from './pages/company-admin/Payroll';
@@ -139,6 +141,9 @@ function App() {
         <Route path="invoices" element={<Invoices />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="purchase-orders" element={<PurchaseOrders />} />
+        <Route path="purchase-orders/new" element={<PurchaseOrderForm />} />
+        <Route path="purchase-orders/edit/:id" element={<PurchaseOrderForm />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
         <Route path="clients" element={<Clients />} />
         <Route path="reports" element={<Reports />} />
         <Route path="payroll" element={<Payroll />} />
