@@ -64,7 +64,7 @@ const CrewClock = () => {
         fetchData();
 
         // Connect socket
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
         socketRef.current = io(socketUrl);
         socketRef.current.emit('register_user', user);
 

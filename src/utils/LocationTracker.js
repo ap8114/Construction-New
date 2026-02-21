@@ -5,7 +5,7 @@ class LocationTracker {
         this.socket = null;
         this.watchId = null;
         this.user = null;
-        this.socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+        this.socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
     }
 
     init(user) {
