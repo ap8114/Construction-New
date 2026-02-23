@@ -25,18 +25,65 @@ const Timesheets = () => {
     const { user } = useAuth();
     const isWorker = user?.role === 'WORKER' || user?.role === 'SUBCONTRACTOR';
 
+    const [activeTab, setActiveTab] = useState('logs');
+    const [corrections, setCorrections] = useState([]);
+    const [isCorrectionLoading, setIsCorrectionLoading] = useState(false);
+
     const fetchData = async () => {
         try {
             setLoading(true);
             const response = await api.get('/timelogs');
             const data = isWorker ? response.data.filter(e => e.userId?._id === user._id) : response.data;
             setEntries(data);
+
+            // If admin/pm, also fetch correction requests
+            if (!isWorker) {
+                fetchCorrections();
+            }
+
             // Fetch addresses for entries with GPS
             fetchGpsAddresses(data);
         } catch (error) {
             console.error('Error fetching time logs:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCorrections = async () => {
+        try {
+            setIsCorrectionLoading(true);
+            const res = await api.get('/corrections');
+            setCorrections(res.data);
+        } catch (error) {
+            console.error('Error fetching corrections:', error);
+        } finally {
+            setIsCorrectionLoading(false);
+        }
+    };
+
+    const handleApproveCorrection = async (id) => {
+        try {
+            await api.patch(`/corrections/${id}`, { status: 'approved' });
+            fetchCorrections();
+            fetchData(); // Refresh logs to show updated times
+            alert('Correction request approved and timelog updated.');
+        } catch (error) {
+            console.error('Error approving correction:', error);
+            alert('Failed to approve correction.');
+        }
+    };
+
+    const handleRejectCorrection = async (id) => {
+        const reason = window.prompt('Enter rejection reason:');
+        if (reason === null) return;
+        try {
+            await api.patch(`/corrections/${id}`, { status: 'rejected', reviewNotes: reason });
+            fetchCorrections();
+            alert('Correction request rejected.');
+        } catch (error) {
+            console.error('Error rejecting correction:', error);
+            alert('Failed to reject correction.');
         }
     };
 
@@ -262,220 +309,353 @@ const Timesheets = () => {
                 />
             </div>
 
-            {/* Toolbar */}
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search by employee name or project..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
-                    />
-                </div>
-                <div className="flex gap-2 w-full md:w-auto relative">
-                    {/* Date Range */}
-                    <div className="relative">
+            {/* Dashboard Sub-Header / Tabs */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                {!isWorker && (
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full md:w-auto">
                         <button
-                            onClick={() => { setShowDatePicker(p => !p); setShowStatusFilter(false); }}
-                            className={`flex-1 md:flex-none px-5 py-3 border rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${dateFrom || dateTo ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
-                                }`}
+                            onClick={() => setActiveTab('logs')}
+                            className={`flex-1 md:flex-none px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'logs' ? 'bg-white text-blue-600 shadow-md border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                         >
-                            <Calendar size={18} /> Date Range
-                            {(dateFrom || dateTo) && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+                            Time Logs
                         </button>
-                        {showDatePicker && (
-                            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-64 space-y-3">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">From</label>
-                                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">To</label>
-                                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
-                                </div>
-                                <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-                                    className="w-full text-xs font-bold text-slate-400 hover:text-red-500 transition-colors text-center">
-                                    Clear Dates
-                                </button>
-                            </div>
-                        )}
+                        <button
+                            onClick={() => setActiveTab('corrections')}
+                            className={`flex-1 md:flex-none px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all relative ${activeTab === 'corrections' ? 'bg-white text-orange-600 shadow-md border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Corrections
+                            {corrections.filter(c => c.status === 'pending').length > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500 text-[8px] text-white items-center justify-center font-black">
+                                        {corrections.filter(c => c.status === 'pending').length}
+                                    </span>
+                                </span>
+                            )}
+                        </button>
                     </div>
+                )}
 
-                    {/* Filter Status */}
-                    <div className="relative">
-                        <button
-                            onClick={() => { setShowStatusFilter(p => !p); setShowDatePicker(false); }}
-                            className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${statusFilter !== 'all' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
-                                }`}
-                        >
-                            <Filter size={18} /> Filter Status
-                            {statusFilter !== 'all' && <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-black uppercase">{statusFilter}</span>}
-                        </button>
-                        {showStatusFilter && (
-                            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden w-44">
-                                {['all', 'pending', 'approved', 'rejected'].map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => { setStatusFilter(s); setShowStatusFilter(false); }}
-                                        className={`w-full text-left px-4 py-3 text-sm font-bold capitalize transition-colors ${statusFilter === s ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'
-                                            }`}
-                                    >
-                                        {s === 'all' ? '✦ All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}
-                                    </button>
-                                ))}
+                {activeTab === 'logs' && (
+                    <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center flex-1 w-full">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search by employee name or project..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
+                            />
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto relative">
+                            {/* Date Range */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => { setShowDatePicker(p => !p); setShowStatusFilter(false); }}
+                                    className={`flex-1 md:flex-none px-5 py-3 border rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${dateFrom || dateTo ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                        }`}
+                                >
+                                    <Calendar size={18} /> Date Range
+                                    {(dateFrom || dateTo) && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+                                </button>
+                                {showDatePicker && (
+                                    <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-64 space-y-3">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">From</label>
+                                            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">To</label>
+                                            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
+                                        </div>
+                                        <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+                                            className="w-full text-xs font-bold text-slate-400 hover:text-red-500 transition-colors text-center">
+                                            Clear Dates
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
+
+                            {/* Filter Status */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => { setShowStatusFilter(p => !p); setShowDatePicker(false); }}
+                                    className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${statusFilter !== 'all' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+                                        }`}
+                                >
+                                    <Filter size={18} /> Filter Status
+                                    {statusFilter !== 'all' && <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-black uppercase">{statusFilter}</span>}
+                                </button>
+                                {showStatusFilter && (
+                                    <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden w-44">
+                                        {['all', 'pending', 'approved', 'rejected'].map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => { setStatusFilter(s); setShowStatusFilter(false); }}
+                                                className={`w-full text-left px-4 py-3 text-sm font-bold capitalize transition-colors ${statusFilter === s ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'
+                                                    }`}
+                                            >
+                                                {s === 'all' ? '✦ All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* Main Table Content */}
-            <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Employee</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Project / Site</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Shift Details</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">GPS Status</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="7" className="px-8 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin"></div>
-                                            <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Synchronizing Timelogs...</p>
-                                        </div>
-                                    </td>
+            {/* Main Content Area */}
+            {activeTab === 'logs' ? (
+                <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Employee</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Project / Site</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Shift Details</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">GPS Status</th>
+                                    <th className="px-8 py-5 text-[10px) font-black uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="px-8 py-5 text-[10px) font-black uppercase tracking-widest text-slate-400 text-right">Action</th>
                                 </tr>
-                            ) : filteredEntries.length > 0 ? (
-                                filteredEntries.map((entry) => {
-                                    const clockInDate = new Date(entry.clockIn);
-                                    const clockOutDate = entry.clockOut ? new Date(entry.clockOut) : null;
-                                    const duration = clockOutDate
-                                        ? ((clockOutDate - clockInDate) / (1000 * 60 * 60)).toFixed(1) + 'h'
-                                        : 'In Progress';
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="7" className="px-8 py-20 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-10 h-10 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin"></div>
+                                                <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Synchronizing Timelogs...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filteredEntries.length > 0 ? (
+                                    filteredEntries.map((entry) => {
+                                        const clockInDate = new Date(entry.clockIn);
+                                        const clockOutDate = entry.clockOut ? new Date(entry.clockOut) : null;
+                                        const duration = clockOutDate
+                                            ? ((clockOutDate - clockInDate) / (1000 * 60 * 60)).toFixed(1) + 'h'
+                                            : 'In Progress';
 
-                                    return (
-                                        <tr key={entry._id} className="hover:bg-slate-50/50 transition-colors group">
+                                        return (
+                                            <tr key={entry._id} className="hover:bg-slate-50/50 transition-colors group">
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 border border-slate-200/50 shadow-sm group-hover:scale-110 transition-transform">
+                                                            {entry.userId?.fullName?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-slate-900 leading-tight">{entry.userId?.fullName}</p>
+                                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+                                                                {entry.userId?.role?.replace('COMPANY_', '')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-700">{entry.projectId?.name || 'Manual Log'}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tight">
+                                                            <Hash size={10} /> {entry.projectId?._id.slice(-6).toUpperCase() || '---'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[11px] font-black text-slate-900">
+                                                            {clockInDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="text-[10px] font-bold text-emerald-500">{clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="text-slate-300">→</span>
+                                                            <span className={`text-[10px] font-bold ${clockOutDate ? 'text-slate-400' : 'text-blue-600 italic animate-pulse font-black'}`}>
+                                                                {clockOutDate ? clockOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ACTIVE'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`px-3 py-1.5 rounded-xl font-black text-xs border shadow-sm ${clockOutDate ? 'bg-white text-slate-900 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-100 animate-pulse'}`}>
+                                                        {duration}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5 text-center">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                const lat = entry.gpsIn?.latitude;
+                                                                const lng = entry.gpsIn?.longitude;
+                                                                if (lat && lng) {
+                                                                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                                }
+                                                            }}
+                                                            disabled={!entry.gpsIn?.latitude}
+                                                            title={entry.gpsIn?.latitude ? 'View on Google Maps' : 'No GPS recorded'}
+                                                            className="hover:scale-110 transition-transform disabled:cursor-default"
+                                                        >
+                                                            {entry.gpsIn?.latitude ? (
+                                                                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all">
+                                                                    <MapPin size={17} />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200">
+                                                                    <MapPin size={17} />
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                        {gpsAddresses[entry._id] ? (
+                                                            <span className="text-[9px] font-bold text-slate-400 max-w-[100px] text-center leading-tight truncate" title={gpsAddresses[entry._id]}>
+                                                                {gpsAddresses[entry._id]}
+                                                            </span>
+                                                        ) : entry.gpsIn?.latitude ? (
+                                                            <span className="text-[9px] text-slate-300 italic">Loading...</span>
+                                                        ) : (
+                                                            <span className="text-[9px] text-slate-300">No GPS</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm border
+                                                        ${entry.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                            entry.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                'bg-orange-50 text-orange-700 border-orange-100'}`}>
+                                                        {entry.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <button
+                                                        onClick={() => openDetails(entry)}
+                                                        className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
+                                                    >
+                                                        <ChevronRight size={20} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan="7" className="px-8 py-32 text-center text-slate-300">
+                                            <div className="flex flex-col items-center gap-4">
+                                                <Clock size={48} className="opacity-20" />
+                                                <p className="font-bold uppercase tracking-widest text-[11px]">No matching timelogs available</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Worker</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Current Log</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Requested Changes</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Reason</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {isCorrectionLoading ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-8 py-20 text-center text-slate-400">Loading requests...</td>
+                                    </tr>
+                                ) : corrections.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-8 py-20 text-center text-slate-400">No correction requests found.</td>
+                                    </tr>
+                                ) : (
+                                    corrections.map(req => (
+                                        <tr key={req._id}>
                                             <td className="px-8 py-5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 border border-slate-200/50 shadow-sm group-hover:scale-110 transition-transform">
-                                                        {entry.userId?.fullName?.charAt(0)}
+                                                    <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center font-black text-orange-600">
+                                                        {req.userId?.fullName?.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-slate-900 leading-tight">{entry.userId?.fullName}</p>
-                                                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
-                                                            {entry.userId?.role?.replace('COMPANY_', '')}
-                                                        </p>
+                                                        <p className="font-black text-slate-800 tracking-tight">{req.userId?.fullName}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{req.userId?.role}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-700">{entry.projectId?.name || 'Manual Log'}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tight">
-                                                        <Hash size={10} /> {entry.projectId?._id.slice(-6).toUpperCase() || '---'}
-                                                    </span>
+                                                <div className="text-[10px] space-y-1">
+                                                    <p className="font-bold text-slate-400 uppercase tracking-widest">Original Log</p>
+                                                    <p className="text-slate-600 font-bold">
+                                                        {new Date(req.timeLogId?.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {req.timeLogId?.clockOut ? new Date(req.timeLogId.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ACTIVE'}
+                                                    </p>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[11px] font-black text-slate-900">
-                                                        {clockInDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className="text-[10px] font-bold text-emerald-500">{clockInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                        <span className="text-slate-300">→</span>
-                                                        <span className={`text-[10px] font-bold ${clockOutDate ? 'text-slate-400' : 'text-blue-600 italic animate-pulse font-black'}`}>
-                                                            {clockOutDate ? clockOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ACTIVE'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <span className={`px-3 py-1.5 rounded-xl font-black text-xs border shadow-sm ${clockOutDate ? 'bg-white text-slate-900 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-100 animate-pulse'}`}>
-                                                    {duration}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-5 text-center">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <button
-                                                        onClick={() => {
-                                                            const lat = entry.gpsIn?.latitude;
-                                                            const lng = entry.gpsIn?.longitude;
-                                                            if (lat && lng) {
-                                                                window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
-                                                            }
-                                                        }}
-                                                        disabled={!entry.gpsIn?.latitude}
-                                                        title={entry.gpsIn?.latitude ? 'View on Google Maps' : 'No GPS recorded'}
-                                                        className="hover:scale-110 transition-transform disabled:cursor-default"
-                                                    >
-                                                        {entry.gpsIn?.latitude ? (
-                                                            <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all">
-                                                                <MapPin size={17} />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200">
-                                                                <MapPin size={17} />
-                                                            </div>
-                                                        )}
-                                                    </button>
-                                                    {gpsAddresses[entry._id] ? (
-                                                        <span className="text-[9px] font-bold text-slate-400 max-w-[100px] text-center leading-tight truncate" title={gpsAddresses[entry._id]}>
-                                                            {gpsAddresses[entry._id]}
-                                                        </span>
-                                                    ) : entry.gpsIn?.latitude ? (
-                                                        <span className="text-[9px] text-slate-300 italic">Loading...</span>
-                                                    ) : (
-                                                        <span className="text-[9px] text-slate-300">No GPS</span>
+                                                <div className="bg-orange-50/50 p-2.5 rounded-xl border border-orange-100 flex items-center gap-4">
+                                                    {req.requestedChanges?.clockIn && (
+                                                        <div>
+                                                            <p className="text-[8px] font-black text-orange-400 uppercase tracking-widest mb-0.5">Start</p>
+                                                            <p className="text-xs font-black text-orange-600">{new Date(req.requestedChanges.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        </div>
+                                                    )}
+                                                    {req.requestedChanges?.clockIn && req.requestedChanges?.clockOut && (
+                                                        <div className="h-6 w-px bg-orange-200"></div>
+                                                    )}
+                                                    {req.requestedChanges?.clockOut && (
+                                                        <div>
+                                                            <p className="text-[8px] font-black text-orange-400 uppercase tracking-widest mb-0.5">End</p>
+                                                            <p className="text-xs font-black text-orange-600">{new Date(req.requestedChanges.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-8 py-5">
-                                                <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm border
-                                                    ${entry.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                        entry.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                            'bg-orange-50 text-orange-700 border-orange-100'}`}>
-                                                    {entry.status}
+                                                <p className="text-xs text-slate-600 max-w-[200px] leading-relaxed italic">"{req.requestedChanges?.reason}"</p>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${req.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                    req.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                        'bg-red-50 text-red-600 border-red-100'
+                                                    }`}>
+                                                    {req.status}
                                                 </span>
                                             </td>
                                             <td className="px-8 py-5 text-right">
-                                                <button
-                                                    onClick={() => openDetails(entry)}
-                                                    className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
-                                                >
-                                                    <ChevronRight size={20} />
-                                                </button>
+                                                {req.status === 'pending' && (
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => handleRejectCorrection(req._id)}
+                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Reject Correction"
+                                                        >
+                                                            <XCircle size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleApproveCorrection(req._id)}
+                                                            className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                            title="Approve & Update Log"
+                                                        >
+                                                            <CheckCircle size={18} />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
-                                    );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="px-8 py-32 text-center text-slate-300">
-                                        <div className="flex flex-col items-center gap-4">
-                                            <Clock size={48} className="opacity-20" />
-                                            <p className="font-bold uppercase tracking-widest text-[11px]">No matching timelogs available</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Review Modal */}
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Review Timesheet Record">

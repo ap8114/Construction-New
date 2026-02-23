@@ -10,35 +10,53 @@ const WorkerPunch = () => {
     const navigate = useNavigate();
     const [isClockedIn, setIsClockedIn] = useState(false);
     const [timer, setTimer] = useState(0);
-    const [activeJob, setActiveJob] = useState('North Tower Construction');
-    const [siteLocation, setSiteLocation] = useState('Parkview, Block C');
-
+    const [activeJob, setActiveJob] = useState(null);
+    const [siteLocation, setSiteLocation] = useState('Not Clocked In');
     const [loading, setLoading] = useState(true);
     const [currentTimeLog, setCurrentTimeLog] = useState(null);
     const socketRef = useRef();
+    const [assignedProjects, setAssignedProjects] = useState([]);
+    const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [history, setHistory] = useState([]);
 
     // Fetch active log on mount
     useEffect(() => {
-        const fetchActiveLog = async () => {
+        const fetchData = async () => {
             try {
+                // Fetch stats (which includes assigned projects)
+                const statsRes = await api.get('/reports/stats');
+                if (statsRes.data.workerMetrics) {
+                    setAssignedProjects(statsRes.data.workerMetrics.assignedProjects || []);
+                    setIsClockedIn(statsRes.data.workerMetrics.isClockedIn);
+                    setTimer(statsRes.data.workerMetrics.timer || 0);
+
+                    if (statsRes.data.workerMetrics.assignedProjects?.length === 1) {
+                        setSelectedProjectId(statsRes.data.workerMetrics.assignedProjects[0]._id);
+                    }
+                }
+
                 const res = await api.get('/timelogs');
-                const active = res.data.find(log => log.userId?._id === user?._id && !log.clockOut);
+                // Filter logs for this user
+                const userLogs = res.data.filter(log => log.userId?._id === user?._id);
+                setHistory(userLogs.slice(0, 5)); // Show last 5 logs
+
+                const active = userLogs.find(log => !log.clockOut);
                 if (active) {
                     setCurrentTimeLog(active);
-                    setIsClockedIn(true);
-                    // Calculate initial timer value
-                    const startTime = new Date(active.clockIn).getTime();
-                    const now = new Date().getTime();
-                    setTimer(Math.floor((now - startTime) / 1000));
+                    setActiveJob(active.projectId?.name || 'Assigned Site');
+                    setSiteLocation(active.projectId?.location?.address || 'Site Recorded');
+                } else {
+                    setActiveJob(null);
+                    setSiteLocation('Not Clocked In');
                 }
             } catch (error) {
-                console.error('Error fetching active log:', error);
+                console.error('Error fetching punch data:', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchActiveLog();
+        fetchData();
 
         // Connect socket for status broadcasting
         const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
@@ -52,17 +70,15 @@ const WorkerPunch = () => {
 
     useEffect(() => {
         let interval;
-        if (isClockedIn && currentTimeLog) {
+        if (isClockedIn) {
             interval = setInterval(() => {
-                const startTime = new Date(currentTimeLog.clockIn).getTime();
-                const now = new Date().getTime();
-                setTimer(Math.floor((now - startTime) / 1000));
+                setTimer((prev) => prev + 1);
             }, 1000);
         } else {
             clearInterval(interval);
         }
         return () => clearInterval(interval);
-    }, [isClockedIn, currentTimeLog]);
+    }, [isClockedIn]);
 
     const formatTime = (seconds) => {
         const h = Math.floor(seconds / 3600);
@@ -73,6 +89,11 @@ const WorkerPunch = () => {
 
     const handleToggle = async () => {
         try {
+            if (!isClockedIn && !selectedProjectId && assignedProjects.length > 0) {
+                alert('Please select a project to clock into.');
+                return;
+            }
+
             setLoading(true);
             const getPosition = () => new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve(null);
@@ -87,13 +108,18 @@ const WorkerPunch = () => {
                 // Clock In
                 const coords = await getPosition();
                 const res = await api.post('/timelogs/clock-in', {
-                    projectId: '65d1a5e5e4b0c5d1a5e5e4b0',
+                    projectId: selectedProjectId || assignedProjects[0]?._id,
                     latitude: coords?.latitude,
                     longitude: coords?.longitude,
                     deviceInfo: navigator.userAgent
                 });
                 setCurrentTimeLog(res.data);
+                const proj = assignedProjects.find(p => p._id === (selectedProjectId || assignedProjects[0]?._id));
+                setActiveJob(proj?.name || 'Active Site');
+                setSiteLocation(proj?.location?.address || 'Assigned Site');
                 setIsClockedIn(true);
+                // Prepend to history
+                setHistory(prev => [res.data, ...prev].slice(0, 5));
             } else {
                 // Clock Out
                 const coords = await getPosition();
@@ -104,20 +130,20 @@ const WorkerPunch = () => {
                 setIsClockedIn(false);
                 setCurrentTimeLog(null);
                 setTimer(0);
+                setActiveJob(null);
+                setSiteLocation('Not Clocked In');
+                // Re-fetch to update the out time in history
+                const res = await api.get('/timelogs');
+                const userLogs = res.data.filter(log => log.userId?._id === user?._id);
+                setHistory(userLogs.slice(0, 5));
             }
         } catch (error) {
             console.error('Error toggling clock:', error);
-            alert('Failed to update attendance status');
+            alert(error.response?.data?.message || 'Failed to update attendance status');
         } finally {
             setLoading(false);
         }
     };
-
-    const recentLogs = [
-        { date: 'Today', in: '07:00 AM', out: '---', duration: 'Active', job: 'North Tower' },
-        { date: 'Yesterday', in: '07:15 AM', out: '04:30 PM', duration: '9h 15m', job: 'North Tower' },
-        { date: 'Feb 16, 2026', in: '08:00 AM', out: '05:00 PM', duration: '9h 00m', job: 'Parkview Condos' },
-    ];
 
     return (
         <div className="max-w-2xl mx-auto space-y-8 pb-12 animate-fade-in">
@@ -142,8 +168,23 @@ const WorkerPunch = () => {
                         <h2 className="text-7xl font-black text-slate-900 tracking-tighter tabular-nums">
                             {isClockedIn ? formatTime(timer) : '00:00:00'}
                         </h2>
+                        {!isClockedIn && assignedProjects.length > 0 && (
+                            <div className="mt-6 mb-4 max-w-xs mx-auto">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Working Site</label>
+                                <select
+                                    value={selectedProjectId}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="">-- Choose Project --</option>
+                                    {assignedProjects.map(p => (
+                                        <option key={p._id} value={p._id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="flex items-center justify-center gap-4 text-slate-400 font-bold">
-                            <span className="flex items-center gap-1.5"><MapPin size={16} /> {activeJob}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={16} /> {isClockedIn ? activeJob : 'No Active Site'}</span>
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
                             <span className="flex items-center gap-1.5 text-blue-600"><CheckCircle size={16} /> Verified Site</span>
                         </div>
@@ -215,23 +256,40 @@ const WorkerPunch = () => {
                     <h3 className="font-black text-slate-800 tracking-tight flex items-center gap-2 uppercase text-xs">
                         <History size={16} className="text-slate-400" /> Recent History
                     </h3>
-                    <button className="text-[10px] font-black text-blue-600 uppercase">View All</button>
+                    <button className="text-[10px] font-black text-blue-600 uppercase" onClick={() => navigate('/company-admin/timesheets')}>View All</button>
                 </div>
                 <div className="divide-y divide-slate-50">
-                    {recentLogs.map((log, i) => (
-                        <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
-                            <div className="space-y-1">
-                                <p className="text-sm font-black text-slate-900">{log.date}</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{log.job}</p>
+                    {history.length > 0 ? history.map((log, i) => {
+                        const cIn = new Date(log.clockIn);
+                        const cOut = log.clockOut ? new Date(log.clockOut) : null;
+                        const diff = cOut ? (cOut - cIn) / 1000 : 0;
+                        const duration = cOut ? `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m` : 'Active';
+
+                        return (
+                            <div key={log._id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black text-slate-900">
+                                        {cIn.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                        {log.projectId?.name || 'Assigned Site'}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-black text-slate-900">
+                                        {cIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {cOut ? cOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---'}
+                                    </p>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest ${!cOut ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`}>
+                                        {duration}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-xs font-black text-slate-900">{log.in} - {log.out}</p>
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${log.duration === 'Active' ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`}>
-                                    {log.duration}
-                                </p>
-                            </div>
+                        );
+                    }) : (
+                        <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">
+                            No history yet
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
         </div>

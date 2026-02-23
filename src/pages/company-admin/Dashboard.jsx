@@ -122,6 +122,8 @@ const CompanyAdminDashboard = () => {
   const [timer, setTimer] = useState(0);
   const socketRef = useRef();
 
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -138,6 +140,11 @@ const CompanyAdminDashboard = () => {
         setWorkerMetrics(data.workerMetrics);
         setIsClockedIn(data.workerMetrics.isClockedIn);
         setTimer(data.workerMetrics.timer || 0);
+
+        // Auto-select project if only one exists and not selected yet
+        if (data.workerMetrics.assignedProjects?.length === 1 && !selectedProjectId) {
+          setSelectedProjectId(data.workerMetrics.assignedProjects[0]._id);
+        }
       }
       if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
 
@@ -185,6 +192,11 @@ const CompanyAdminDashboard = () => {
 
   const handleToggle = async () => {
     try {
+      if (!isClockedIn && !selectedProjectId && workerMetrics.assignedProjects?.length > 0) {
+        alert('Please select a project to clock into.');
+        return;
+      }
+
       setLoading(true);
       const getPosition = () => new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -198,7 +210,7 @@ const CompanyAdminDashboard = () => {
       if (!isClockedIn) {
         const coords = await getPosition();
         await api.post('/timelogs/clock-in', {
-          projectId: '65d1a5e5e4b0c5d1a5e5e4b0', // Fallback
+          projectId: selectedProjectId || workerMetrics.assignedProjects?.[0]?._id,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
           deviceInfo: navigator.userAgent
@@ -217,7 +229,7 @@ const CompanyAdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error toggling clock:', error);
-      alert('Failed to update attendance status');
+      alert(error.response?.data?.message || 'Failed to update attendance status');
     } finally {
       setLoading(false);
     }
@@ -270,8 +282,23 @@ const CompanyAdminDashboard = () => {
               <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter">
                 {isClockedIn ? formatTime(timer) : '00:00:00'}
               </h2>
+              {!isClockedIn && workerMetrics.assignedProjects?.length > 0 && (
+                <div className="mt-4">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Site for Clock In</label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 w-full max-w-sm"
+                  >
+                    <option value="">-- Choose Project --</option>
+                    {workerMetrics.assignedProjects.map(p => (
+                      <option key={p._id} value={p._id}>{p.name} ({p.jobName})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <p className="text-slate-500 font-bold flex items-center gap-2 justify-center md:justify-start">
-                <MapPin size={16} className="text-slate-400" /> {workerMetrics.currentJob}
+                <MapPin size={16} className="text-slate-400" /> {isClockedIn ? workerMetrics.currentJob : 'Not Active'}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
