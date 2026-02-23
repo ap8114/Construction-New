@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Wrench, Plus, Search, Filter, AlertTriangle, CheckCircle,
     Clock, MoreHorizontal, Trash2, Edit, Eye, Download,
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
     Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap,
-    Hammer, Box, RotateCcw, Link2, AlertCircle
+    Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon
 } from 'lucide-react';
-import api from '../../utils/api';
+import api, { getServerUrl } from '../../utils/api';
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, sub, icon: Icon, color, trend }) => (
@@ -62,8 +62,16 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn }) => {
     return (
         <div className={`bg-white rounded-[28px] shadow-sm border ${isJobCompleted ? 'border-red-200 bg-red-50/10' : 'border-slate-200/60'} overflow-hidden hover:shadow-xl hover:shadow-slate-100 transition-all duration-300 group`}>
             {/* Card Header */}
-            <div className={`relative h-32 flex items-center justify-center ${isSmallTool ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}>
-                <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{emoji}</span>
+            <div className={`relative h-32 flex items-center justify-center overflow-hidden ${!item.imageUrl ? (isSmallTool ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-slate-800 to-slate-900') : ''}`}>
+                {item.imageUrl ? (
+                    <img
+                        src={getServerUrl(item.imageUrl)}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                ) : (
+                    <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{emoji}</span>
+                )}
                 {isJobCompleted && (
                     <div className="absolute top-4 left-4 flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest animate-pulse shadow-lg">
                         <AlertCircle size={12} /> Job Finished
@@ -142,7 +150,8 @@ const EMPTY_FORM = {
     type: 'Excavator',
     status: 'operational',
     serialNumber: '',
-    notes: ''
+    notes: '',
+    imageUrl: ''
 };
 
 const Equipment = () => {
@@ -157,6 +166,10 @@ const Equipment = () => {
     const [assignTarget, setAssignTarget] = useState(null);
     const [selectedJobId, setSelectedJobId] = useState('');
     const [form, setForm] = useState(EMPTY_FORM);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState('');
+    const [imageUploading, setImageUploading] = useState(false);
+    const fileInputRef = useRef(null);
 
     const fetchData = async () => {
         try {
@@ -180,16 +193,38 @@ const Equipment = () => {
 
     const handleSave = async () => {
         try {
+            let savedItem;
             if (editingItem) {
                 const res = await api.patch(`/equipment/${editingItem._id}`, form);
-                setEquipment(prev => prev.map(e => e._id === editingItem._id ? res.data : e));
+                savedItem = res.data;
+                setEquipment(prev => prev.map(e => e._id === editingItem._id ? savedItem : e));
             } else {
                 const res = await api.post('/equipment', form);
-                setEquipment(prev => [...prev, res.data]);
+                savedItem = res.data;
+                setEquipment(prev => [...prev, savedItem]);
             }
+
+            // Upload image if a file was selected
+            if (imageFile && savedItem?._id) {
+                setImageUploading(true);
+                const fd = new FormData();
+                fd.append('image', imageFile);
+                const imgRes = await api.post(`/equipment/${savedItem._id}/upload-image`, fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                // Update the item with the returned imageUrl
+                setEquipment(prev => prev.map(e =>
+                    e._id === savedItem._id ? { ...e, imageUrl: imgRes.data.imageUrl } : e
+                ));
+            }
+
             setIsModalOpen(false);
+            setImageFile(null);
+            setImagePreview('');
         } catch (err) {
             console.error(err);
+        } finally {
+            setImageUploading(false);
         }
     };
 
@@ -220,8 +255,27 @@ const Equipment = () => {
         } catch (err) { }
     };
 
-    const openCreate = () => { setEditingItem(null); setForm(EMPTY_FORM); setIsModalOpen(true); };
-    const openEdit = item => { setEditingItem(item); setForm({ ...item, assignedJob: item.assignedJob?._id }); setIsModalOpen(true); };
+    const openCreate = () => {
+        setEditingItem(null);
+        setForm(EMPTY_FORM);
+        setImageFile(null);
+        setImagePreview('');
+        setIsModalOpen(true);
+    };
+    const openEdit = item => {
+        setEditingItem(item);
+        setForm({ ...item, assignedJob: item.assignedJob?._id });
+        setImageFile(null);
+        setImagePreview(item.imageUrl ? getServerUrl(item.imageUrl) : '');
+        setIsModalOpen(true);
+    };
+
+    const handleImageFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+    };
     const openAssign = item => { setAssignTarget(item); setIsAssignModalOpen(true); };
 
     const filtered = equipment.filter(e => {
@@ -354,6 +408,41 @@ const Equipment = () => {
                         </div>
 
                         <div className="p-8 space-y-5">
+                            {/* Image Upload Field */}
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Camera size={13} /> Equipment Photo
+                                </label>
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full h-40 rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/30 flex flex-col items-center justify-center cursor-pointer transition-all group overflow-hidden relative"
+                                >
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <>
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover:bg-blue-100 flex items-center justify-center transition-colors mb-2">
+                                                <ImageIcon size={22} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                            </div>
+                                            <p className="text-xs font-black text-slate-400 group-hover:text-blue-500 uppercase tracking-widest">Click to upload photo</p>
+                                            <p className="text-[10px] text-slate-300 font-bold mt-1">JPG, PNG up to 5MB</p>
+                                        </>
+                                    )}
+                                    {imagePreview && (
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <p className="text-white text-xs font-black uppercase tracking-widest">Change Photo</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageFileChange}
+                                    className="hidden"
+                                />
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Asset Name</label>
                                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
@@ -401,9 +490,13 @@ const Equipment = () => {
                                     className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
                                     Cancel
                                 </button>
-                                <button onClick={handleSave} disabled={!form.name}
-                                    className={`flex-1 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-xl flex items-center justify-center gap-2 ${form.name ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
-                                    <Save size={16} /> {editingItem ? 'Save Changes' : 'Add Item'}
+                                <button onClick={handleSave} disabled={!form.name || imageUploading}
+                                    className={`flex-1 px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-xl flex items-center justify-center gap-2 ${form.name && !imageUploading ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
+                                    {imageUploading ? (
+                                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Uploading...</>
+                                    ) : (
+                                        <><Save size={16} /> {editingItem ? 'Save Changes' : 'Add Item'}</>
+                                    )}
                                 </button>
                             </div>
                         </div>
