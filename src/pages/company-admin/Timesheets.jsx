@@ -15,6 +15,12 @@ const Timesheets = () => {
     const [loading, setLoading] = useState(true);
     const [selectedEntry, setSelectedEntry] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [gpsAddresses, setGpsAddresses] = useState({});
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showStatusFilter, setShowStatusFilter] = useState(false);
     const socketRef = useRef();
     const { user } = useAuth();
     const isWorker = user?.role === 'WORKER' || user?.role === 'SUBCONTRACTOR';
@@ -23,14 +29,41 @@ const Timesheets = () => {
         try {
             setLoading(true);
             const response = await api.get('/timelogs');
-            // If worker, only show their own logs
             const data = isWorker ? response.data.filter(e => e.userId?._id === user._id) : response.data;
             setEntries(data);
+            // Fetch addresses for entries with GPS
+            fetchGpsAddresses(data);
         } catch (error) {
             console.error('Error fetching time logs:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchGpsAddresses = async (data) => {
+        const addressMap = {};
+        const withGps = data.filter(e => e.gpsIn?.latitude && e.gpsIn?.longitude);
+        await Promise.all(withGps.map(async (entry) => {
+            try {
+                const { latitude: lat, longitude: lng } = entry.gpsIn;
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+                    { headers: { 'Accept-Language': 'en' } }
+                );
+                const json = await res.json();
+                const addr = json.address;
+                const short = [
+                    addr?.road || addr?.neighbourhood,
+                    addr?.city || addr?.town || addr?.village || addr?.county,
+                    addr?.country
+                ].filter(Boolean).join(', ');
+                addressMap[entry._id] = short || json.display_name?.split(',').slice(0, 2).join(',') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            } catch {
+                const { latitude: lat, longitude: lng } = entry.gpsIn;
+                addressMap[entry._id] = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            }
+        }));
+        setGpsAddresses(addressMap);
     };
 
     useEffect(() => {
@@ -51,10 +84,23 @@ const Timesheets = () => {
         };
     }, []);
 
-    const filteredEntries = entries.filter(entry =>
-        entry.userId?.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.projectId?.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredEntries = entries.filter(entry => {
+        const nameMatch = entry.userId?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
+        const projectMatch = entry.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        const searchMatch = nameMatch || projectMatch;
+
+        let dateMatch = true;
+        if (dateFrom) dateMatch = dateMatch && new Date(entry.clockIn) >= new Date(dateFrom);
+        if (dateTo) {
+            const toEnd = new Date(dateTo);
+            toEnd.setHours(23, 59, 59, 999);
+            dateMatch = dateMatch && new Date(entry.clockIn) <= toEnd;
+        }
+
+        const statusMatch = statusFilter === 'all' || entry.status === statusFilter;
+
+        return searchMatch && dateMatch && statusMatch;
+    });
 
     const handleApprove = async (id) => {
         try {
@@ -88,25 +134,29 @@ const Timesheets = () => {
     };
 
     const handleExport = () => {
+        const wrap = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
         const csv = [
-            ['Employee', 'Project', 'Date', 'Time In', 'Time Out', 'Duration', 'Status', 'GPS Status'].join(','),
+            ['Employee', 'Project', 'Date', 'Time In', 'Time Out', 'Duration (h)', 'Status', 'GPS Recorded', 'GPS Address'].map(wrap).join(','),
             ...filteredEntries.map(e => {
                 const clockIn = new Date(e.clockIn);
                 const clockOut = e.clockOut ? new Date(e.clockOut) : null;
-                const duration = clockOut ? ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(1) : 'In Progress';
+                const duration = clockOut ? ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(2) : 'In Progress';
+                const hasGps = !!(e.gpsIn?.latitude && e.gpsIn?.longitude);
+                const address = gpsAddresses[e._id] || (hasGps ? `${e.gpsIn.latitude.toFixed(5)}, ${e.gpsIn.longitude.toFixed(5)}` : 'No GPS');
                 return [
                     e.userId?.fullName || '',
                     e.projectId?.name || 'Manual Entry',
-                    clockIn.toLocaleDateString(),
-                    clockIn.toLocaleTimeString(),
-                    clockOut ? clockOut.toLocaleTimeString() : '---',
+                    clockIn.toLocaleDateString('en-GB'),
+                    clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    clockOut ? clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '---',
                     duration,
                     e.status,
-                    e.geofenceStatus === 'inside' ? 'Verified' : 'Flagged'
-                ].join(',');
+                    hasGps ? 'Yes' : 'No',
+                    address
+                ].map(wrap).join(',');
             })
         ].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -132,7 +182,7 @@ const Timesheets = () => {
         }, 0).toFixed(1),
         pending: entries.filter(e => e.status === 'pending').length,
         approved: entries.filter(e => e.status === 'approved').length,
-        gpsFlags: entries.filter(e => e.geofenceStatus !== 'inside').length
+        gpsTracked: entries.filter(e => e.gpsIn?.latitude && e.gpsIn?.longitude).length
     };
 
     return (
@@ -176,7 +226,13 @@ const Timesheets = () => {
                 <StatCard title={isWorker ? "My Total Hours" : "Total Hours"} value={`${stats.totalHours}h`} subtext="this period" icon={TrendingUp} color="blue" />
                 <StatCard title={isWorker ? "Pending Approval" : "Pending Review"} value={stats.pending} subtext="requires action" icon={FileText} color="orange" />
                 <StatCard title="Approved" value={stats.approved} subtext="finalized logs" icon={CheckCircle} color="emerald" />
-                <StatCard title={isWorker ? "On-Clock Status" : "GPS Flags"} value={isWorker ? (entries.some(e => !e.clockOut) ? 'Active' : 'Offline') : stats.gpsFlags} subtext={isWorker ? "Current shift" : "site mismatches"} icon={isWorker ? Clock : MapPin} color={isWorker ? "emerald" : "red"} />
+                <StatCard
+                    title={isWorker ? "On-Clock Status" : "GPS Tracked"}
+                    value={isWorker ? (entries.some(e => !e.clockOut) ? 'Active' : 'Offline') : stats.gpsTracked}
+                    subtext={isWorker ? "Current shift" : `of ${entries.length} entries`}
+                    icon={isWorker ? Clock : MapPin}
+                    color={isWorker ? "emerald" : "blue"}
+                />
             </div>
 
             {/* Toolbar */}
@@ -191,13 +247,62 @@ const Timesheets = () => {
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
                     />
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <button className="flex-1 md:flex-none px-6 py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                        <Calendar size={18} /> Date Range
-                    </button>
-                    <button className="flex-1 md:flex-none px-6 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                        <Filter size={18} /> Filter Status
-                    </button>
+                <div className="flex gap-2 w-full md:w-auto relative">
+                    {/* Date Range */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setShowDatePicker(p => !p); setShowStatusFilter(false); }}
+                            className={`flex-1 md:flex-none px-5 py-3 border rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${dateFrom || dateTo ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                }`}
+                        >
+                            <Calendar size={18} /> Date Range
+                            {(dateFrom || dateTo) && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
+                        </button>
+                        {showDatePicker && (
+                            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-64 space-y-3">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">From</label>
+                                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">To</label>
+                                    <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400" />
+                                </div>
+                                <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+                                    className="w-full text-xs font-bold text-slate-400 hover:text-red-500 transition-colors text-center">
+                                    Clear Dates
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Filter Status */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setShowStatusFilter(p => !p); setShowDatePicker(false); }}
+                            className={`flex-1 md:flex-none px-5 py-3 rounded-2xl font-bold text-sm flex items-center gap-2 transition-all ${statusFilter !== 'all' ? 'bg-slate-700 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+                                }`}
+                        >
+                            <Filter size={18} /> Filter Status
+                            {statusFilter !== 'all' && <span className="px-1.5 py-0.5 bg-white/20 rounded text-[10px] font-black uppercase">{statusFilter}</span>}
+                        </button>
+                        {showStatusFilter && (
+                            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden w-44">
+                                {['all', 'pending', 'approved', 'rejected'].map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => { setStatusFilter(s); setShowStatusFilter(false); }}
+                                        className={`w-full text-left px-4 py-3 text-sm font-bold capitalize transition-colors ${statusFilter === s ? 'bg-slate-900 text-white' : 'hover:bg-slate-50 text-slate-700'
+                                            }`}
+                                    >
+                                        {s === 'all' ? '✦ All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -277,15 +382,37 @@ const Timesheets = () => {
                                                 </span>
                                             </td>
                                             <td className="px-8 py-5 text-center">
-                                                <div className="flex justify-center">
-                                                    {entry.geofenceStatus === 'inside' ? (
-                                                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm" title="Verified Site Location">
-                                                            <ShieldCheck size={16} />
-                                                        </div>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            const lat = entry.gpsIn?.latitude;
+                                                            const lng = entry.gpsIn?.longitude;
+                                                            if (lat && lng) {
+                                                                window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                            }
+                                                        }}
+                                                        disabled={!entry.gpsIn?.latitude}
+                                                        title={entry.gpsIn?.latitude ? 'View on Google Maps' : 'No GPS recorded'}
+                                                        className="hover:scale-110 transition-transform disabled:cursor-default"
+                                                    >
+                                                        {entry.gpsIn?.latitude ? (
+                                                            <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all">
+                                                                <MapPin size={17} />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200">
+                                                                <MapPin size={17} />
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                    {gpsAddresses[entry._id] ? (
+                                                        <span className="text-[9px] font-bold text-slate-400 max-w-[100px] text-center leading-tight truncate" title={gpsAddresses[entry._id]}>
+                                                            {gpsAddresses[entry._id]}
+                                                        </span>
+                                                    ) : entry.gpsIn?.latitude ? (
+                                                        <span className="text-[9px] text-slate-300 italic">Loading...</span>
                                                     ) : (
-                                                        <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shadow-sm animate-bounce" title="Outside Site Geofence!">
-                                                            <MapPin size={16} />
-                                                        </div>
+                                                        <span className="text-[9px] text-slate-300">No GPS</span>
                                                     )}
                                                 </div>
                                             </td>

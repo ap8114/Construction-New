@@ -4,7 +4,7 @@ import {
     Clock, MoreHorizontal, Trash2, Edit, Eye, Download,
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
     Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap,
-    Hammer, Box, RotateCcw, Link2, AlertCircle
+    Hammer, Box, RotateCcw, Link2, AlertCircle, Briefcase
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -105,11 +105,19 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn }) => {
                                 </button>
                             </div>
                             <div className={`p-3 rounded-xl border ${isJobCompleted ? 'bg-red-50 border-red-100' : 'bg-blue-50/50 border-blue-100'}`}>
-                                <div className="flex items-center gap-2">
-                                    <MapPin size={12} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
-                                    <span className={`text-xs font-black truncate ${isJobCompleted ? 'text-red-700' : 'text-blue-700'}`}>
-                                        {item.assignedJob?.name}
-                                    </span>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 opacity-60">
+                                        <Briefcase size={10} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
+                                        <span className={`text-[9px] font-black uppercase tracking-widest truncate ${isJobCompleted ? 'text-red-700' : 'text-blue-700'}`}>
+                                            {item.assignedJob?.projectId?.name || 'Unknown Project'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <MapPin size={12} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
+                                        <span className={`text-xs font-black truncate ${isJobCompleted ? 'text-red-700' : 'text-blue-700'}`}>
+                                            {item.assignedJob?.name}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

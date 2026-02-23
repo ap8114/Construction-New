@@ -54,15 +54,18 @@ const QuickActionButton = ({ label, icon: Icon, color, bg, onClick }) => (
   </button>
 );
 
-const AlertItem = ({ type, count, label, color }) => (
-  <div className={`flex items-center justify-between p-3.5 rounded-xl ${color} cursor-pointer group hover:scale-[1.02] transition-all border border-transparent hover:border-white/50`}>
+const AlertItem = ({ count, label, color, onClick }) => (
+  <div
+    onClick={onClick}
+    className={`flex items-center justify-between p-3.5 rounded-xl ${color} cursor-pointer group hover:scale-[1.02] hover:shadow-md transition-all border border-transparent hover:border-white/50 active:scale-[0.98]`}
+  >
     <div className="flex items-center gap-3">
       <div className="w-6 h-6 rounded flex items-center justify-center bg-white/20 text-white text-[10px] font-black">
         {count}
       </div>
       <span className="text-xs font-bold uppercase tracking-tight">{label}</span>
     </div>
-    <ChevronDown size={14} className="-rotate-90 opacity-40 group-hover:opacity-100 transition-opacity" />
+    <ArrowRight size={14} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
   </div>
 );
 
@@ -105,6 +108,7 @@ const CompanyAdminDashboard = () => {
   const [trendData, setTrendData] = useState([]);
   const [crewActivity, setCrewActivity] = useState([]);
   const [recentDailyLogs, setRecentDailyLogs] = useState([]);
+  const [topProject, setTopProject] = useState(null);
 
   // Worker Specific State
   const [workerMetrics, setWorkerMetrics] = useState({
@@ -128,6 +132,7 @@ const CompanyAdminDashboard = () => {
       if (data.trendData) setTrendData(data.trendData);
       if (data.crewActivity) setCrewActivity(data.crewActivity);
       if (data.recentDailyLogs) setRecentDailyLogs(data.recentDailyLogs);
+      if (data.topProject) setTopProject(data.topProject);
 
       if (data.workerMetrics) {
         setWorkerMetrics(data.workerMetrics);
@@ -480,13 +485,28 @@ const CompanyAdminDashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-1 text-xs font-black text-slate-500">
-                            <CheckCircle size={14} className="text-emerald-500" /> GPS
-                          </div>
+                          <button
+                            onClick={() => {
+                              if (member.lat && member.lng) {
+                                window.open(`https://www.google.com/maps?q=${member.lat},${member.lng}`, '_blank');
+                              } else {
+                                window.open(`https://www.google.com/maps/search/?api=1&query=my+location`, '_blank');
+                              }
+                            }}
+                            title={member.lat ? `View location: ${member.lat.toFixed(4)}, ${member.lng.toFixed(4)}` : 'No GPS recorded'}
+                            className="group flex items-center gap-1.5 text-xs font-black text-emerald-600 hover:text-emerald-700 transition-all"
+                          >
+                            <div className="relative">
+                              <MapPin size={15} className="text-emerald-500 group-hover:scale-125 transition-transform" />
+                              {member.lat && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-pulse border border-white" />}
+                            </div>
+                            <span className="hidden sm:inline">{member.lat ? 'View' : 'N/A'}</span>
+                          </button>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="w-12 h-8 bg-slate-100 rounded border border-slate-200 overflow-hidden text-[8px] flex items-center justify-center text-slate-400">
-                            LIVE
+                          <div className={`w-12 h-8 rounded border overflow-hidden text-[8px] flex items-center justify-center font-black ${member.status === 'On Site' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-400'
+                            }`}>
+                            {member.status === 'On Site' ? '● LIVE' : 'OUT'}
                           </div>
                         </td>
                       </tr>
@@ -523,10 +543,22 @@ const CompanyAdminDashboard = () => {
                         <Clock size={14} className="text-blue-500" />
                         <span>In: {member.time}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle size={14} className="text-emerald-500" />
-                        <span>GPS Verified</span>
-                      </div>
+                      <button
+                        onClick={() => {
+                          if (member.lat && member.lng) {
+                            window.open(`https://www.google.com/maps?q=${member.lat},${member.lng}`, '_blank');
+                          } else {
+                            window.open(`https://www.google.com/maps/search/?api=1&query=my+location`, '_blank');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 transition-colors"
+                      >
+                        <div className="relative">
+                          <MapPin size={13} className="text-emerald-500" />
+                          {member.lat && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />}
+                        </div>
+                        <span>{member.lat ? 'View on Map' : 'No GPS'}</span>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -546,12 +578,12 @@ const CompanyAdminDashboard = () => {
                 </div>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-xl bg-slate-200 overflow-hidden border border-slate-300">
-                    <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=200" className="w-full h-full object-cover" />
+                    <img src={topProject?.image || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=200"} className="w-full h-full object-cover" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900 tracking-tight">North Tower</h4>
-                    <p className="text-xs font-bold text-slate-400">Mon 10, 2022</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 mt-0.5">Lead: Jom</p>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-black text-slate-900 tracking-tight truncate">{topProject?.name || "No Active Project"}</h4>
+                    <p className="text-xs font-bold text-slate-400">Total: {topProject?.hours || 0}h logged</p>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">Lead: {topProject?.manager || "N/A"}</p>
                   </div>
                 </div>
                 <div className="h-40 w-full mt-4">
@@ -600,15 +632,46 @@ const CompanyAdminDashboard = () => {
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
               <h3 className="text-lg font-black text-slate-800 mb-6 tracking-tight">Attention & Alerts</h3>
               <div className="space-y-3">
-                <AlertItem label="Missing Timesheets" count={2} color="bg-red-500/90 text-white" />
-                {metrics.equipmentAlerts > 0 && (
-                  <div onClick={() => navigate('/company-admin/equipment')}>
-                    <AlertItem label="Pending Equipment Returns" count={metrics.equipmentAlerts} color="bg-red-600 animate-pulse text-white shadow-lg shadow-red-200" />
-                  </div>
+                {metrics.overdueTasks > 0 && (
+                  <AlertItem
+                    label="Overdue Tasks"
+                    count={metrics.overdueTasks}
+                    color="bg-red-500/90 text-white"
+                    onClick={() => navigate('/company-admin/tasks')}
+                  />
                 )}
-                <AlertItem label="Equipment Hour Not Submitted" count={1} color="bg-orange-400/90 text-white" />
-                {(isOwner || isPM) && <AlertItem label="Pending Approvals" count={metrics.pendingApprovals} color="bg-blue-500/90 text-white" />}
-                <AlertItem label="Offline Sync Pending" count={4} color="bg-slate-400/90 text-white" />
+                {metrics.equipmentAlerts > 0 && (
+                  <AlertItem
+                    label="Equipment Pending Return"
+                    count={metrics.equipmentAlerts}
+                    color="bg-orange-500 text-white"
+                    onClick={() => navigate('/company-admin/equipment')}
+                  />
+                )}
+                {metrics.overdueRFIs > 0 && (
+                  <AlertItem
+                    label="Overdue RFIs"
+                    count={metrics.overdueRFIs}
+                    color="bg-red-600 animate-pulse text-white shadow-lg"
+                    onClick={() => navigate('/company-admin/rfi')}
+                  />
+                )}
+                {(isOwner || isPM) && metrics.pendingApprovals > 0 && (
+                  <AlertItem
+                    label="Approval Requests"
+                    count={metrics.pendingApprovals}
+                    color="bg-blue-600 text-white"
+                    onClick={() => navigate('/company-admin/timesheets')}
+                  />
+                )}
+                {metrics.offlineSyncs > 0 && (
+                  <AlertItem
+                    label="Offline Syncs Pending"
+                    count={metrics.offlineSyncs}
+                    color="bg-slate-500 text-white"
+                    onClick={() => navigate('/company-admin/timesheets')}
+                  />
+                )}
               </div>
             </div>
           )}

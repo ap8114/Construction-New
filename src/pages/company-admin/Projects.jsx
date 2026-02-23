@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Plus, Search, Calendar, MapPin, Edit, Trash2,
   CheckCircle, Upload, ChevronRight, LayoutGrid, List, Globe, Filter,
-  DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw, FileText
+  DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw, FileText, ChevronDown
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
