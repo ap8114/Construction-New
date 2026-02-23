@@ -23,7 +23,7 @@ const Invoices = () => {
 
     // Form State
     const [items, setItems] = useState([{ id: 1, description: '', quantity: 1, unitPrice: 0 }]);
-    const [formData, setFormData] = useState({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '' });
+    const [formData, setFormData] = useState({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid' });
 
     const fetchData = async () => {
         try {
@@ -62,7 +62,7 @@ const Invoices = () => {
 
     const openCreateModal = () => {
         const nextNumber = generateNextInvoiceNumber();
-        setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: nextNumber });
+        setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: nextNumber, status: 'unpaid' });
         setIsModalOpen(true);
     };
 
@@ -97,13 +97,12 @@ const Invoices = () => {
                     unitPrice,
                     total: quantity * unitPrice
                 })),
-                totalAmount: total,
-                status: 'unpaid'
+                totalAmount: total
             };
             await api.post('/invoices', payload);
             await fetchData();
             setIsModalOpen(false);
-            setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '' });
+            setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid' });
             setItems([{ id: 1, description: '', quantity: 1, unitPrice: 0 }]);
         } catch (error) {
             console.error('Error creating invoice:', error);
@@ -479,6 +478,21 @@ const Invoices = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
                             />
                         </div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                        <select
+                            value={formData.status}
+                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
+                        >
+                            <option value="unpaid">Unpaid</option>
+                            <option value="partially_paid">Partially Paid</option>
+                            <option value="paid">Paid</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
                     </div>
 
                     <div className="border-t border-slate-200 pt-4">

@@ -103,6 +103,7 @@ const Login = () => {
                     { role: 'PM', email: 'pm@kaal.ca' },
                     { role: 'Foreman', email: 'foreman@kaal.ca' },
                     { role: 'Worker', email: 'worker@kaal.ca' },
+                    { role: 'Subcontractor', email: 'subcontractor@kaal.ca' },
                   ].map(u => (
                     <div key={u.role} className="p-2 bg-white/5 rounded-lg border border-white/5 text-[10px]">
                       <p className="text-slate-300 font-bold mb-1">{u.role}</p>
@@ -115,12 +116,22 @@ const Login = () => {
               </div>
 
               {/* Subcontractor Section */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <h4 className="text-slate-200 font-bold text-sm">🔧 Subcontractor</h4>
                 <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 space-y-1">
                   <p className="text-xs text-slate-400 flex justify-between"><span>Email:</span> <code className="text-orange-300">subcontractor@kaal.ca</code></p>
                   <p className="text-xs text-slate-400 flex justify-between"><span>Pass:</span> <code className="text-orange-300">123456</code></p>
                   <button onClick={() => fillCredentials('subcontractor@kaal.ca')} className="mt-2 text-[10px] bg-orange-500/20 text-orange-300 px-2 py-1 rounded hover:bg-orange-500/30 transition">Auto-fill</button>
+                </div>
+              </div> */}
+
+              {/* Client Section */}
+              <div className="space-y-2">
+                <h4 className="text-slate-200 font-bold text-sm">🏢 Client</h4>
+                <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 space-y-1">
+                  <p className="text-xs text-slate-400 flex justify-between"><span>Email:</span> <code className="text-purple-300">client@kaal.ca</code></p>
+                  <p className="text-xs text-slate-400 flex justify-between"><span>Pass:</span> <code className="text-purple-300">123456</code></p>
+                  <button onClick={() => fillCredentials('client@kaal.ca')} className="mt-2 text-[10px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded hover:bg-purple-500/30 transition">Auto-fill</button>
                 </div>
               </div>
             </div>
