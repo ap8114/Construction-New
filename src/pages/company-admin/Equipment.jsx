@@ -8,6 +8,9 @@ import {
     History, FileText, Printer
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logo from '../../assets/images/Logo.png';
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, sub, icon: Icon, color, trend }) => (
@@ -122,7 +125,8 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <MapPin size={12} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
+                                        <Briefcase size={12} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
+                                        <span className={`text-[9px] font-black uppercase tracking-widest text-opacity-60 ${isJobCompleted ? 'text-red-400' : 'text-blue-400'}`}>Job:</span>
                                         <span className={`text-xs font-black truncate ${isJobCompleted ? 'text-red-700' : 'text-blue-700'}`}>
                                             {item.assignedJob?.name}
                                         </span>
@@ -320,66 +324,108 @@ const Equipment = () => {
 
     const downloadHistoryPDF = () => {
         if (!historyItem) return;
-        const company = 'KAAL Construction';
-        const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-        const rows = historyData.map((h, i) => `
-            <tr style="background:${i % 2 === 0 ? '#f8fafc' : '#ffffff'}">
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.projectName || '—'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.jobName || '—'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : '<span style="color:#f59e0b;font-weight:700">Active</span>'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) + ' days' : '—'}</td>
-                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.notes || '—'}</td>
-            </tr>`);
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
 
-        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <style>
-            *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
-            body{background:#fff;color:#1e293b;padding:40px}
-            .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:3px solid #1e3a5f}
-            .logo{font-size:26px;font-weight:900;color:#1e3a5f;letter-spacing:-1px}
-            .logo span{color:#3b82f6}
-            .doc-title{text-align:right}
-            .doc-title h1{font-size:22px;font-weight:900;color:#1e293b}
-            .doc-title p{font-size:12px;color:#94a3b8;font-weight:600;margin-top:4px}
-            .meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px}
-            .meta-box{background:#f8fafc;padding:16px 20px;border-radius:12px;border-left:4px solid #3b82f6}
-            .meta-box label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;display:block;margin-bottom:4px}
-            .meta-box value{font-size:15px;font-weight:900;color:#1e293b;display:block}
-            .section-title{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:#94a3b8;margin-bottom:12px}
-            table{width:100%;border-collapse:collapse;font-size:12px}
-            th{background:#1e3a5f;color:#fff;padding:11px 14px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px}
-            .footer{margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;font-weight:600}
-            @media print{body{padding:20px}}
-        </style></head><body>
-        <div class="header">
-            <div class="logo">KAAL <span>Construction</span></div>
-            <div class="doc-title"><h1>Equipment History Report</h1><p>Generated on ${now}</p></div>
-        </div>
-        <div class="meta-grid">
-            <div class="meta-box"><label>Equipment Name</label><value>${historyItem.name}</value></div>
-            <div class="meta-box"><label>Type / Category</label><value>${historyItem.type} · ${historyItem.category}</value></div>
-            <div class="meta-box"><label>Serial Number</label><value>${historyItem.serialNumber || 'N/A'}</value></div>
-        </div>
-        <p class="section-title">Assignment History (${historyData.length} records)</p>
-        <table>
-            <thead><tr>
-                <th>#</th><th>Project</th><th>Job</th><th>Assigned Date</th><th>Returned Date</th><th>Duration</th><th>Notes</th>
-            </tr></thead>
-            <tbody>${rows.join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">No history records found</td></tr>'}</tbody>
-        </table>
-        <div class="footer">
-            <span>Total Records: ${historyData.length}</span>
-            <span>KAAL Construction Management System</span>
-            <span>Confidential Document</span>
-        </div>
-        </body></html>`;
+            // 1. Header Section
+            // Company Logo
+            const img = new Image();
+            img.src = logo;
+            doc.addImage(img, 'PNG', 20, 15, 20, 20);
 
-        const w = window.open('', '_blank');
-        w.document.write(html);
-        w.document.close();
-        setTimeout(() => { w.print(); }, 500);
+            // Company Info (Left)
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            doc.text('Kaal Construction Ltd', 20, 42);
+
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text('Equipment History Report', pageWidth - 20, 25, { align: 'right' });
+
+            const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100);
+            doc.text(`Generated on ${now}`, pageWidth - 20, 32, { align: 'right' });
+
+            doc.setDrawColor(30, 58, 95);
+            doc.setLineWidth(1);
+            doc.line(20, 50, pageWidth - 20, 50);
+
+            // 2. Equipment Details Info
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(148, 163, 184);
+            doc.text('EQUIPMENT DETAILS', 20, 60);
+
+            const metaY = 68;
+            autoTable(doc, {
+                startY: metaY,
+                body: [
+                    ['Asset Name:', historyItem.name, 'Type:', historyItem.type],
+                    ['Category:', historyItem.category, 'Serial Number:', historyItem.serialNumber || 'N/A']
+                ],
+                theme: 'plain',
+                styles: { fontSize: 10, cellPadding: 2 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 30 },
+                    1: { fontStyle: 'bold', textColor: [15, 23, 42], cellWidth: 60 },
+                    2: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 30 },
+                    3: { fontStyle: 'bold', textColor: [15, 23, 42] }
+                }
+            });
+
+            // 3. Table Section
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(148, 163, 184);
+            doc.text(`ASSIGNMENT RECORDS (${historyData.length})`, 20, finalY);
+
+            const tableColumn = ["#", "PROJECT", "JOB", "ASSIGNED DATE", "RETURNED DATE", "DURATION", "NOTES"];
+            const tableRows = historyData.map((h, i) => {
+                const days = h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) : null;
+                return [
+                    i + 1,
+                    h.projectName || '—',
+                    h.jobName || '—',
+                    h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—',
+                    h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : 'Active',
+                    days !== null ? `${days} days` : '—',
+                    h.notes || '—'
+                ];
+            });
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [tableColumn],
+                body: tableRows,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [30, 58, 95],
+                    textColor: [255, 255, 255],
+                    fontSize: 8,
+                    fontStyle: 'bold'
+                },
+                styles: { fontSize: 9, cellPadding: 4 },
+                alternateRowStyles: { fillColor: [248, 250, 252] }
+            });
+
+            // 4. Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(9);
+            doc.setTextColor(148, 163, 184);
+            doc.text('KAAL Construction Management System - Confidential Document', pageWidth / 2, pageHeight - 15, { align: 'center' });
+            doc.text(`Page 1 of 1`, pageWidth - 20, pageHeight - 15, { align: 'right' });
+
+            doc.save(`History_${historyItem.name.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            alert('Failed to generate PDF.');
+        }
     };
 
     const filtered = equipment.filter(e => {
@@ -820,70 +866,108 @@ const Equipment = () => {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => {
-                                            // PDF download
-                                            const filtered = allHistory.filter(h => {
-                                                const d = new Date(h.assignedDate);
-                                                const fromOk = !allHistoryDateFrom || d >= new Date(allHistoryDateFrom);
-                                                const toEnd = allHistoryDateTo ? new Date(allHistoryDateTo) : null;
-                                                if (toEnd) toEnd.setHours(23, 59, 59, 999);
-                                                const toOk = !toEnd || d <= toEnd;
-                                                const q = allHistorySearch.toLowerCase();
-                                                const searchOk = !q || h.equipmentName?.toLowerCase().includes(q) || h.projectName?.toLowerCase().includes(q) || h.jobName?.toLowerCase().includes(q);
-                                                return fromOk && toOk && searchOk;
-                                            });
-                                            const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-                                            const rows = filtered.map((h, i) => {
-                                                const days = h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) : null;
-                                                return `<tr style="background:${i % 2 === 0 ? '#f8fafc' : '#fff'}">
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.equipmentName || '—'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.equipmentType || '—'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.projectName || '—'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.jobName || '—'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : '<span style="color:#f59e0b;font-weight:700">Active</span>'}</td>
-                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${days !== null ? days + ' day(s)' : '—'}</td>
-                                                </tr>`;
-                                            });
-                                            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-                                            <style>
-                                                *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
-                                                body{background:#fff;color:#1e293b;padding:36px}
-                                                .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:3px solid #1e3a5f}
-                                                .logo{font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:-1px}
-                                                .logo span{color:#3b82f6}
-                                                .doc-title h1{font-size:20px;font-weight:900;color:#1e293b;text-align:right}
-                                                .doc-title p{font-size:11px;color:#94a3b8;font-weight:600;margin-top:4px;text-align:right}
-                                                .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
-                                                .stat{background:#f8fafc;padding:14px 18px;border-radius:10px;border-left:4px solid #3b82f6}
-                                                .stat label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;display:block;margin-bottom:3px}
-                                                .stat value{font-size:20px;font-weight:900;color:#1e293b}
-                                                .section{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:#94a3b8;margin-bottom:10px}
-                                                table{width:100%;border-collapse:collapse;font-size:11px}
-                                                th{background:#1e3a5f;color:#fff;padding:10px 12px;text-align:left;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:1px}
-                                                .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;font-weight:600}
-                                                @media print{body{padding:16px}}
-                                            </style></head><body>
-                                            <div class="header">
-                                                <div class="logo">KAAL <span>Construction</span></div>
-                                                <div class="doc-title"><h1>Equipment History Report</h1><p>Generated: ${now}${allHistoryDateFrom || allHistoryDateTo ? ' · Filtered: ' + (allHistoryDateFrom || 'Start') + ' to ' + (allHistoryDateTo || 'Today') : ''}</p></div>
-                                            </div>
-                                            <div class="stats">
-                                                <div class="stat"><label>Total Records</label><value>${filtered.length}</value></div>
-                                                <div class="stat"><label>Unique Equipment</label><value>${new Set(filtered.map(h => h.equipmentId)).size}</value></div>
-                                                <div class="stat"><label>Completed</label><value>${filtered.filter(h => h.returnedDate).length}</value></div>
-                                                <div class="stat"><label>Active / On-Site</label><value>${filtered.filter(h => !h.returnedDate).length}</value></div>
-                                            </div>
-                                            <p class="section">Assignment Records</p>
-                                            <table>
-                                                <thead><tr><th>#</th><th>Equipment</th><th>Type</th><th>Project</th><th>Job</th><th>Assigned</th><th>Returned</th><th>Duration</th></tr></thead>
-                                                <tbody>${rows.join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">No records for selected filter</td></tr>'}</tbody>
-                                            </table>
-                                            <div class="footer"><span>Total: ${filtered.length} records</span><span>KAAL Construction Management System</span><span>Confidential</span></div>
-                                            </body></html>`;
-                                            const w = window.open('', '_blank');
-                                            w.document.write(html); w.document.close();
-                                            setTimeout(() => w.print(), 500);
+                                            try {
+                                                const doc = new jsPDF('landscape');
+                                                const pageWidth = doc.internal.pageSize.width;
+
+                                                // 1. Header Section
+                                                // Company Logo
+                                                const img = new Image();
+                                                img.src = logo;
+                                                doc.addImage(img, 'PNG', 20, 10, 15, 15);
+
+                                                // Company Info (Left)
+                                                doc.setFontSize(12);
+                                                doc.setFont('helvetica', 'bold');
+                                                doc.setTextColor(30, 41, 59);
+                                                doc.text('Kaal Construction Ltd', 20, 32);
+
+                                                doc.setFontSize(20);
+                                                doc.setFont('helvetica', 'bold');
+                                                doc.setTextColor(15, 23, 42);
+                                                doc.text('Full Equipment Assignment History', pageWidth - 20, 20, { align: 'right' });
+
+                                                const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+                                                doc.setFontSize(10);
+                                                doc.setFont('helvetica', 'normal');
+                                                doc.setTextColor(100);
+                                                let subTitle = `Generated on ${now}`;
+                                                if (allHistoryDateFrom || allHistoryDateTo) {
+                                                    subTitle += ` · Filtered: ${allHistoryDateFrom || 'Start'} to ${allHistoryDateTo || 'Today'}`;
+                                                }
+                                                doc.text(subTitle, pageWidth - 20, 27, { align: 'right' });
+
+                                                doc.setDrawColor(30, 58, 95);
+                                                doc.setLineWidth(0.5);
+                                                doc.line(20, 38, pageWidth - 20, 38);
+
+                                                // 2. Stats Section
+                                                const filteredRecords = allHistory.filter(h => {
+                                                    const d = new Date(h.assignedDate);
+                                                    const fromOk = !allHistoryDateFrom || d >= new Date(allHistoryDateFrom);
+                                                    const toEnd = allHistoryDateTo ? new Date(allHistoryDateTo) : null;
+                                                    if (toEnd) toEnd.setHours(23, 59, 59, 999);
+                                                    const toOk = !toEnd || d <= toEnd;
+                                                    const q = allHistorySearch.toLowerCase();
+                                                    const searchOk = !q || h.equipmentName?.toLowerCase().includes(q) || h.projectName?.toLowerCase().includes(q) || h.jobName?.toLowerCase().includes(q);
+                                                    return fromOk && toOk && searchOk;
+                                                });
+
+                                                const stats = [
+                                                    { label: 'Total Records', value: filteredRecords.length },
+                                                    { label: 'Unique Equipment', value: new Set(filteredRecords.map(h => h.equipmentId)).size },
+                                                    { label: 'Completed', value: filteredRecords.filter(h => h.returnedDate).length },
+                                                    { label: 'Active', value: filteredRecords.filter(h => !h.returnedDate).length }
+                                                ];
+
+                                                let startX = 20;
+                                                stats.forEach(s => {
+                                                    doc.setFontSize(8);
+                                                    doc.setFont('helvetica', 'bold');
+                                                    doc.setTextColor(148, 163, 184);
+                                                    doc.text(s.label.toUpperCase(), startX, 48);
+                                                    doc.setFontSize(14);
+                                                    doc.setTextColor(15, 23, 42);
+                                                    doc.text(String(s.value), startX, 55);
+                                                    startX += 50;
+                                                });
+
+                                                // 3. Table Section
+                                                const tableColumn = ["#", "EQUIPMENT", "TYPE", "PROJECT", "JOB", "ASSIGNED", "RETURNED", "DURATION"];
+                                                const tableRows = filteredRecords.map((h, i) => {
+                                                    const days = h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) : null;
+                                                    return [
+                                                        i + 1,
+                                                        h.equipmentName || '—',
+                                                        h.equipmentType || '—',
+                                                        h.projectName || '—',
+                                                        h.jobName || '—',
+                                                        h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—',
+                                                        h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : 'Active',
+                                                        days !== null ? `${days} days` : '—'
+                                                    ];
+                                                });
+
+                                                autoTable(doc, {
+                                                    startY: 65,
+                                                    head: [tableColumn],
+                                                    body: tableRows,
+                                                    theme: 'grid',
+                                                    headStyles: {
+                                                        fillColor: [30, 58, 95],
+                                                        textColor: [255, 255, 255],
+                                                        fontSize: 8,
+                                                        fontStyle: 'bold'
+                                                    },
+                                                    styles: { fontSize: 8, cellPadding: 3 },
+                                                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                                                });
+
+                                                doc.save(`Full_Equipment_History_${new Date().toISOString().split('T')[0]}.pdf`);
+                                            } catch (error) {
+                                                console.error('PDF Generation Error:', error);
+                                                alert('Failed to generate PDF.');
+                                            }
                                         }}
                                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-tight transition-all shadow-lg"
                                     >

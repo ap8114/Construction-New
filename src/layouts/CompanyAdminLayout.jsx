@@ -5,8 +5,10 @@ import {
   LayoutDashboard, Briefcase, Clock, FileText,
   Wrench, ClipboardList, BarChart2, DollarSign,
   Users, Settings, LogOut, Menu, X, Bell, MessageSquare,
-  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion
+  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle
 } from 'lucide-react';
+import api from '../utils/api';
+import sidebarlogo from './../assets/images/sidebarlogo.png';
 
 const CompanyAdminLayout = () => {
   const { user, logout, updateUserData } = useAuth();
@@ -15,21 +17,39 @@ const CompanyAdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isJobSelectorOpen, setIsJobSelectorOpen] = useState(false);
-  const [isCompanySelectorOpen, setIsCompanySelectorOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const jobSelectorRef = useRef(null);
-  const companySelectorRef = useRef(null);
+  const notificationRef = useRef(null);
 
-  const handleCompanySwitch = (companyName) => {
-    updateUserData({ company: { name: companyName } });
-    setIsCompanySelectorOpen(false);
+  const [projectsList, setProjectsList] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
   };
 
-  // Close sidebar on route change for mobile
   useEffect(() => {
-    setIsSidebarOpen(false);
-    setIsProfileMenuOpen(false);
-  }, [location.pathname]);
+    const fetchProjects = async () => {
+      try {
+        const res = await api.get('/projects');
+        setProjectsList(res.data);
+      } catch (error) {
+        console.error('Error fetching projects for selector:', error);
+      }
+    };
+    if (user) {
+      fetchProjects();
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Handle clicks outside for dropdowns
   useEffect(() => {
@@ -40,8 +60,8 @@ const CompanyAdminLayout = () => {
       if (jobSelectorRef.current && !jobSelectorRef.current.contains(event.target)) {
         setIsJobSelectorOpen(false);
       }
-      if (companySelectorRef.current && !companySelectorRef.current.contains(event.target)) {
-        setIsCompanySelectorOpen(false);
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -55,12 +75,13 @@ const CompanyAdminLayout = () => {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
-    { icon: Briefcase, label: 'Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
+    { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
     // { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
     { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
     { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
     { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
     { icon: FileText, label: 'Daily Logs', path: '/company-admin/daily-logs', permission: 'VIEW_DAILY_LOGS' },
+    { icon: AlertCircle, label: 'Issues', path: '/company-admin/issues', permission: 'VIEW_ISSUES' },
     { icon: PenTool, label: 'Drawings', path: '/company-admin/drawings', permission: 'VIEW_DRAWINGS' },
     { icon: Camera, label: 'Photos', path: '/company-admin/photos', permission: 'VIEW_PHOTOS' },
     { icon: MapPin, label: 'GPS Tracking', path: '/company-admin/gps', permission: 'VIEW_GPS' },
@@ -104,11 +125,17 @@ const CompanyAdminLayout = () => {
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg transform rotate-3">
-            <span className="text-xl font-black text-white italic">K</span>
+        <div className="p-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
+          <img
+            src={sidebarlogo}
+            alt="KAAL Logo"
+            className="h-12 w-auto opacity-100"
+          />
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
+              {user?.role?.replace(/_/g, ' ') || 'Company Admin'}
+            </p>
           </div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase">KAAL</h1>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
@@ -184,53 +211,115 @@ const CompanyAdminLayout = () => {
                 className="flex items-center gap-3 bg-[#f8fafc] border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:border-slate-300 transition-all w-64"
               >
                 <Search size={16} className="text-slate-400" />
-                <span className="flex-1 text-left truncate">All Jobs</span>
+                <span className="flex-1 text-left truncate">Quick Select Job</span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${isJobSelectorOpen ? 'rotate-180' : ''}`} />
               </button>
               {isJobSelectorOpen && (
-                <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in">
-                  <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Job Sites</div>
-                  <button className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium">North Tower</button>
-                  <button className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium">Parkview Condos</button>
-                  <button className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium">Ridgeway Centre</button>
+                <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-64 overflow-y-auto custom-scrollbar">
+                  <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Active Projects</div>
+                  {projectsList.length > 0 ? (
+                    projectsList.map((project) => (
+                      <button
+                        key={project._id}
+                        onClick={() => {
+                          navigate(`/company-admin/projects/${project._id}`);
+                          setIsJobSelectorOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shrink-0"></div>
+                        <span className="truncate">{project.name}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-xs text-slate-400 font-bold italic">No projects found</div>
+                  )}
+                  <div className="p-2 mt-1">
+                    <button
+                      onClick={() => { navigate('/company-admin/projects'); setIsJobSelectorOpen(false); }}
+                      className="w-full py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-[10px] font-black uppercase text-slate-500 tracking-wider transition-all"
+                    >
+                      View All Projects
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2 md:gap-6">
-            {/* Company Selector */}
-            <div className="relative group" ref={companySelectorRef}>
+            {/* Company Branding (Static) */}
+            <div className="text-right hidden md:block">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Organization</span>
+              <div className="text-sm font-black text-slate-900 leading-none">
+                {user?.company?.name || 'KAAL Construction'}
+              </div>
+            </div>
+
+            <div className="h-8 w-[1px] bg-slate-200 hidden md:block"></div>
+
+            {/* Notifications */}
+            <div className="relative" ref={notificationRef}>
               <button
-                onClick={() => setIsCompanySelectorOpen(!isCompanySelectorOpen)}
-                className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition"
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="p-2 hover:bg-slate-50 rounded-lg transition relative group"
               >
-                <div className="text-right hidden md:block">
-                  <div className="text-sm font-bold text-slate-900 leading-none">
-                    {user?.company?.name || 'Kaal Construction Ltd'}
-                  </div>
-                </div>
-                <div className="relative">
-                  <Bell size={20} className="text-slate-400" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">2</span>
-                </div>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCompanySelectorOpen ? 'rotate-180' : ''}`} />
+                <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-blue-600' : 'text-slate-400'} />
+                {notifications.some(n => !n.isRead) && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
               </button>
-              {isCompanySelectorOpen && (
-                <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in">
-                  <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Switch Company</div>
-                  <button
-                    onClick={() => handleCompanySwitch('Kaal Construction Ltd')}
-                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-semibold flex items-center gap-2 ${user?.company?.name === 'Kaal Construction Ltd' ? 'text-blue-600 bg-blue-50/50' : ''}`}
-                  >
-                    <Building2 size={16} /> Kaal Construction Ltd
-                  </button>
-                  <button
-                    onClick={() => handleCompanySwitch('Skyline Builders')}
-                    className={`w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-semibold flex items-center gap-2 ${user?.company?.name === 'Skyline Builders' ? 'text-blue-600 bg-blue-50/50' : ''}`}
-                  >
-                    <Building2 size={16} /> Skyline Builders
-                  </button>
+
+              {isNotificationOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-[400px] flex flex-col">
+                  <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Notifications</span>
+                    {notifications.some(n => !n.isRead) && (
+                      <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">New</span>
+                    )}
+                  </div>
+                  <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    {notifications.length > 0 ? (
+                      notifications.map((notif) => (
+                        <button
+                          key={notif._id}
+                          onClick={async () => {
+                            if (!notif.isRead) await api.patch(`/notifications/${notif._id}/read`);
+                            if (notif.link) navigate(notif.link);
+                            setIsNotificationOpen(false);
+                            fetchNotifications();
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none flex gap-3 ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center 
+                            ${notif.type === 'financial' ? 'bg-emerald-50 text-emerald-600' :
+                              notif.type === 'task' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-600'}`}>
+                            {notif.type === 'financial' ? <DollarSign size={16} /> : <Bell size={16} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-slate-800 truncate">{notif.title}</p>
+                            <p className="text-xs text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{notif.message}</p>
+                            <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tight">
+                              {new Date(notif.createdAt).toLocaleDateString()} · {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!notif.isRead && <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-10 flex flex-col items-center justify-center text-center">
+                        <Bell className="text-slate-200 mb-3" size={40} />
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-tight">No active alerts</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2 border-t border-slate-50">
+                    <button className="w-full py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors">
+                      Clear All Notifications
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

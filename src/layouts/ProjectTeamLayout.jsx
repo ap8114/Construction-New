@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import Logo from '../assets/images/Logo.png';
+import sidebarlogo from '../assets/images/sidebarlogo.png';
 import {
   Building2, Home, ClipboardList, Camera,
   MessageSquare, User, Settings, LogOut, Menu, X,
@@ -86,13 +87,19 @@ const ProjectTeamLayout = () => {
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
-          <div>
-            <img src={Logo} alt="KAAL Constructions" className="h-12 w-auto opacity-90 mb-1" />
-            <p className="text-xs text-slate-400 mt-1 capitalize">{user?.role?.replace('_', ' ') || 'Project Team'}</p>
+        <div className="p-8 flex flex-col items-center justify-center border-b border-slate-700/50 space-y-3 bg-slate-800/20">
+          <img
+            src={sidebarlogo}
+            alt="KAAL Logo"
+            className="h-12 w-auto opacity-100"
+          />
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
+              {user?.role?.replace(/_/g, ' ') || 'Project Team'}
+            </p>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
-            <X size={24} />
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden absolute top-4 right-4 text-slate-400 hover:text-white">
+            <X size={20} />
           </button>
         </div>
 

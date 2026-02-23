@@ -148,6 +148,20 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSu
         </select>
       </div>
     </div>
+    <div className="space-y-2">
+      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Issue Category</label>
+      <select
+        value={data.category}
+        onChange={e => setData({ ...data, category: e.target.value })}
+        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none"
+      >
+        <option value="general">General Issue</option>
+        <option value="safety">Safety / Incident</option>
+        <option value="quality">Quality / Defect</option>
+        <option value="equipment">Equipment Related</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div className="space-y-2">
@@ -208,7 +222,7 @@ const Issues = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [formData, setFormData] = useState({
-    title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: ''
+    title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general'
   });
 
   const fetchData = async () => {
@@ -304,7 +318,7 @@ const Issues = () => {
           </p>
         </div>
         <button
-          onClick={() => { setFormData({ title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '' }); setIsReportOpen(true); }}
+          onClick={() => { setFormData({ title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general' }); setIsReportOpen(true); }}
           className="bg-red-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 hover:bg-red-700 transition shadow-xl shadow-red-200 font-black text-sm uppercase tracking-tight"
         >
           <Plus size={18} /> Log Critical Snag

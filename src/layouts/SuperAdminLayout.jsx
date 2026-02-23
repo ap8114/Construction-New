@@ -1,7 +1,9 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
+import api from '../utils/api';
 import Logo from '../assets/images/Logo.png';
+import sidebarlogo from '../assets/images/sidebarlogo.png';
 import {
   Shield, LayoutDashboard, Building, Users,
   CreditCard, Settings, Ticket, LogOut, Menu, X,
@@ -72,12 +74,13 @@ const SuperAdminLayout = () => {
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg transform rotate-3">
-            <span className="text-xl font-black text-white italic">K</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-black tracking-tighter uppercase leading-none">KAAL</h1>
+        <div className="p-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
+          <img
+            src={sidebarlogo}
+            alt="KAAL Logo"
+            className="h-12 w-auto opacity-100"
+          />
+          <div className="text-center">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Super Admin</p>
           </div>
         </div>

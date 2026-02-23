@@ -185,6 +185,33 @@ const Timesheets = () => {
         gpsTracked: entries.filter(e => e.gpsIn?.latitude && e.gpsIn?.longitude).length
     };
 
+    const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+    const [correctionData, setCorrectionData] = useState({ timeLogId: '', reason: '', clockIn: '', clockOut: '' });
+    const [isSubmittingCorrection, setIsSubmittingCorrection] = useState(false);
+
+    const handleCorrectionSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setIsSubmittingCorrection(true);
+            await api.post('/corrections', {
+                timeLogId: correctionData.timeLogId,
+                requestedChanges: {
+                    clockIn: correctionData.clockIn || undefined,
+                    clockOut: correctionData.clockOut || undefined,
+                    reason: correctionData.reason
+                }
+            });
+            alert('Correction request submitted successfuly.');
+            setIsCorrectionModalOpen(false);
+            setCorrectionData({ timeLogId: '', reason: '', clockIn: '', clockOut: '' });
+        } catch (error) {
+            console.error('Error submitting correction:', error);
+            alert('Failed to submit correction request.');
+        } finally {
+            setIsSubmittingCorrection(false);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -212,7 +239,7 @@ const Timesheets = () => {
                         </button>
                     ) : (
                         <button
-                            onClick={() => alert('Correction Request feature coming soon! Please contact your project manager.')}
+                            onClick={() => setIsCorrectionModalOpen(true)}
                             className="bg-orange-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-orange-600 transition shadow-lg shadow-orange-200 font-black text-sm uppercase tracking-tight"
                         >
                             <RefreshCw size={18} /> Request Correction
@@ -575,6 +602,101 @@ const Timesheets = () => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* Correction Request Modal */}
+            <Modal
+                isOpen={isCorrectionModalOpen}
+                onClose={() => setIsCorrectionModalOpen(false)}
+                title="Submit Correction Request"
+            >
+                <form onSubmit={handleCorrectionSubmit} className="space-y-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Timesheet Record</label>
+                            <select
+                                required
+                                value={correctionData.timeLogId}
+                                onChange={(e) => {
+                                    const log = entries.find(item => item._id === e.target.value);
+                                    setCorrectionData({
+                                        ...correctionData,
+                                        timeLogId: e.target.value,
+                                        clockIn: log?.clockIn ? new Date(log.clockIn).toISOString().slice(0, 16) : '',
+                                        clockOut: log?.clockOut ? new Date(log.clockOut).toISOString().slice(0, 16) : ''
+                                    });
+                                }}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                            >
+                                <option value="">-- Choose a record to correct --</option>
+                                {entries.filter(e => e.status !== 'approved').map(log => (
+                                    <option key={log._id} value={log._id}>
+                                        {new Date(log.clockIn).toLocaleDateString()} - {log.projectId?.name || 'Manual Log'}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Correct Clock In</label>
+                                <input
+                                    type="datetime-local"
+                                    value={correctionData.clockIn}
+                                    onChange={(e) => setCorrectionData({ ...correctionData, clockIn: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Correct Clock Out</label>
+                                <input
+                                    type="datetime-local"
+                                    value={correctionData.clockOut}
+                                    onChange={(e) => setCorrectionData({ ...correctionData, clockOut: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Reason for Correction</label>
+                            <textarea
+                                required
+                                rows="3"
+                                placeholder="Why does this record need correction? (e.g. Forgot to clock out, GPS error)"
+                                value={correctionData.reason}
+                                onChange={(e) => setCorrectionData({ ...correctionData, reason: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsCorrectionModalOpen(false)}
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all border border-slate-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmittingCorrection || !correctionData.timeLogId}
+                            className="flex-[2] bg-blue-600 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isSubmittingCorrection ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw size={16} /> Submit Request
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </form>
             </Modal>
         </div>
     );
