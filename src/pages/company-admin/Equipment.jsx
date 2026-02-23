@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Wrench, Plus, Search, Filter, AlertTriangle, CheckCircle,
     Clock, MoreHorizontal, Trash2, Edit, Eye, Download,
@@ -561,8 +562,8 @@ const Equipment = () => {
             )}
 
             {/* Add/Edit Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            {isModalOpen && createPortal(
+                <div onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(0,0,0,0.65)' }}>
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white">
                             <div className="flex items-center justify-between">
@@ -672,11 +673,11 @@ const Equipment = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                , document.body)}
 
             {/* Assign Modal */}
-            {isAssignModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            {isAssignModalOpen && createPortal(
+                <div onClick={(e) => { if (e.target === e.currentTarget) setIsAssignModalOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(0,0,0,0.65)' }}>
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md overflow-hidden">
                         <div className="bg-slate-900 p-8 text-white text-center">
                             <div className="w-16 h-16 rounded-3xl bg-blue-600 flex items-center justify-center shadow-lg mx-auto mb-4 border-4 border-slate-800"><Link2 size={24} /></div>
@@ -709,11 +710,11 @@ const Equipment = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                , document.body)}
 
             {/* ─── Equipment History Modal ─────────────────────────────── */}
-            {historyItem && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            {historyItem && createPortal(
+                <div onClick={(e) => { if (e.target === e.currentTarget) setHistoryItem(null); }} style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(0,0,0,0.65)' }}>
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
                         {/* Header */}
                         <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white flex-shrink-0">
@@ -844,11 +845,11 @@ const Equipment = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                , document.body)}
 
             {/* ─── Company-Wide Full History Modal ─────────────────────────── */}
-            {showAllHistory && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            {showAllHistory && createPortal(
+                <div onClick={(e) => { if (e.target === e.currentTarget) setShowAllHistory(false); }} style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(0,0,0,0.65)' }}>
                     <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
 
                         {/* Header */}
@@ -1112,7 +1113,7 @@ const Equipment = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                , document.body)}
         </div>
     );
 };
