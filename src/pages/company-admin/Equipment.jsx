@@ -4,7 +4,8 @@ import {
     Clock, MoreHorizontal, Trash2, Edit, Eye, Download,
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
     Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap,
-    Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon
+    Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon, Briefcase,
+    History, FileText, Printer
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 
@@ -49,7 +50,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // ─── Equipment Card (Grid View) ───────────────────────────────────────────────
-const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn }) => {
+const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHistory }) => {
     const isJobCompleted = item.assignedJob?.status === 'completed';
     const isSmallTool = item.category === 'Small Tools';
 
@@ -146,6 +147,14 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn }) => {
                     <span>Last Used</span>
                     <span className="text-slate-900">{item.assignedDate ? new Date(item.assignedDate).toLocaleDateString() : 'N/A'}</span>
                 </div>
+
+                {/* View History Button */}
+                <button
+                    onClick={() => onViewHistory(item)}
+                    className="mt-3 w-full py-2 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-500 hover:text-blue-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
+                >
+                    <History size={12} /> View History
+                </button>
             </div>
         </div>
     );
@@ -178,6 +187,16 @@ const Equipment = () => {
     const [imagePreview, setImagePreview] = useState('');
     const [imageUploading, setImageUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const [historyItem, setHistoryItem] = useState(null);
+    const [historyData, setHistoryData] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    // Overall full history
+    const [showAllHistory, setShowAllHistory] = useState(false);
+    const [allHistory, setAllHistory] = useState([]);
+    const [allHistoryLoading, setAllHistoryLoading] = useState(false);
+    const [allHistoryDateFrom, setAllHistoryDateFrom] = useState('');
+    const [allHistoryDateTo, setAllHistoryDateTo] = useState('');
+    const [allHistorySearch, setAllHistorySearch] = useState('');
 
     const fetchData = async () => {
         try {
@@ -286,6 +305,83 @@ const Equipment = () => {
     };
     const openAssign = item => { setAssignTarget(item); setIsAssignModalOpen(true); };
 
+    const openHistory = async (item) => {
+        setHistoryItem(item);
+        setHistoryLoading(true);
+        try {
+            const res = await api.get(`/equipment/${item._id}/history`);
+            setHistoryData(res.data.history || []);
+        } catch (e) {
+            setHistoryData([]);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const downloadHistoryPDF = () => {
+        if (!historyItem) return;
+        const company = 'KAAL Construction';
+        const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+        const rows = historyData.map((h, i) => `
+            <tr style="background:${i % 2 === 0 ? '#f8fafc' : '#ffffff'}">
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.projectName || '—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.jobName || '—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : '<span style="color:#f59e0b;font-weight:700">Active</span>'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) + ' days' : '—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0">${h.notes || '—'}</td>
+            </tr>`);
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <style>
+            *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+            body{background:#fff;color:#1e293b;padding:40px}
+            .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:3px solid #1e3a5f}
+            .logo{font-size:26px;font-weight:900;color:#1e3a5f;letter-spacing:-1px}
+            .logo span{color:#3b82f6}
+            .doc-title{text-align:right}
+            .doc-title h1{font-size:22px;font-weight:900;color:#1e293b}
+            .doc-title p{font-size:12px;color:#94a3b8;font-weight:600;margin-top:4px}
+            .meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px}
+            .meta-box{background:#f8fafc;padding:16px 20px;border-radius:12px;border-left:4px solid #3b82f6}
+            .meta-box label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;display:block;margin-bottom:4px}
+            .meta-box value{font-size:15px;font-weight:900;color:#1e293b;display:block}
+            .section-title{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:#94a3b8;margin-bottom:12px}
+            table{width:100%;border-collapse:collapse;font-size:12px}
+            th{background:#1e3a5f;color:#fff;padding:11px 14px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px}
+            .footer{margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;font-weight:600}
+            @media print{body{padding:20px}}
+        </style></head><body>
+        <div class="header">
+            <div class="logo">KAAL <span>Construction</span></div>
+            <div class="doc-title"><h1>Equipment History Report</h1><p>Generated on ${now}</p></div>
+        </div>
+        <div class="meta-grid">
+            <div class="meta-box"><label>Equipment Name</label><value>${historyItem.name}</value></div>
+            <div class="meta-box"><label>Type / Category</label><value>${historyItem.type} · ${historyItem.category}</value></div>
+            <div class="meta-box"><label>Serial Number</label><value>${historyItem.serialNumber || 'N/A'}</value></div>
+        </div>
+        <p class="section-title">Assignment History (${historyData.length} records)</p>
+        <table>
+            <thead><tr>
+                <th>#</th><th>Project</th><th>Job</th><th>Assigned Date</th><th>Returned Date</th><th>Duration</th><th>Notes</th>
+            </tr></thead>
+            <tbody>${rows.join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8">No history records found</td></tr>'}</tbody>
+        </table>
+        <div class="footer">
+            <span>Total Records: ${historyData.length}</span>
+            <span>KAAL Construction Management System</span>
+            <span>Confidential Document</span>
+        </div>
+        </body></html>`;
+
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => { w.print(); }, 500);
+    };
+
     const filtered = equipment.filter(e => {
         const matchSearch = e.name?.toLowerCase().includes(search.toLowerCase()) ||
             e.type?.toLowerCase().includes(search.toLowerCase());
@@ -316,10 +412,29 @@ const Equipment = () => {
                         <Wrench size={14} className="text-blue-600" /> Equipment tracking and job assignments
                     </p>
                 </div>
-                <button onClick={openCreate}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight">
-                    <Plus size={18} /> Add New Item
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={async () => {
+                            setShowAllHistory(true);
+                            setAllHistoryLoading(true);
+                            setAllHistoryDateFrom('');
+                            setAllHistoryDateTo('');
+                            setAllHistorySearch('');
+                            try {
+                                const res = await api.get('/equipment/all-history');
+                                setAllHistory(res.data || []);
+                            } catch { setAllHistory([]); }
+                            finally { setAllHistoryLoading(false); }
+                        }}
+                        className="px-6 py-3 border-2 border-slate-200 bg-white text-slate-700 rounded-xl flex items-center gap-2 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50 transition-all font-black text-sm uppercase tracking-tight shadow-sm"
+                    >
+                        <History size={18} /> Full History
+                    </button>
+                    <button onClick={openCreate}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight">
+                        <Plus size={18} /> Add New Item
+                    </button>
+                </div>
             </div>
 
             {/* Notification Banner for Pending Returns */}
@@ -393,6 +508,7 @@ const Equipment = () => {
                             onDelete={handleDelete}
                             onAssign={openAssign}
                             onReturn={handleReturn}
+                            onViewHistory={openHistory}
                         />
                     ))}
                 </div>
@@ -544,6 +660,371 @@ const Equipment = () => {
                                     Cancel
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Equipment History Modal ─────────────────────────────── */}
+            {historyItem && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg">
+                                        <History size={22} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black tracking-tight">{historyItem.name} — Assignment History</h2>
+                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">
+                                            {historyItem.type} · {historyItem.category} · #{historyItem.serialNumber || 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={downloadHistoryPDF}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-tight transition-all shadow-lg"
+                                    >
+                                        <Printer size={15} /> Download PDF
+                                    </button>
+                                    <button onClick={() => setHistoryItem(null)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Summary Strip */}
+                        <div className="flex gap-4 px-8 py-4 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                            <div className="flex items-center gap-2 text-sm font-black text-slate-600">
+                                <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xs">{historyData.length}</span>
+                                Total Assignments
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-black text-slate-600">
+                                <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                    {historyData.filter(h => h.returnedDate).length}
+                                </span>
+                                Completed
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-black text-slate-600">
+                                <span className="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xs">
+                                    {historyData.filter(h => !h.returnedDate).length}
+                                </span>
+                                Active / Pending Return
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-y-auto flex-1">
+                            {historyLoading ? (
+                                <div className="flex flex-col items-center justify-center h-48 gap-3">
+                                    <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading History...</p>
+                                </div>
+                            ) : historyData.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-300">
+                                    <History size={40} className="opacity-30" />
+                                    <p className="text-xs font-black uppercase tracking-widest">No assignment history yet</p>
+                                    <p className="text-[10px] text-slate-400">History is recorded when equipment is assigned to a job</p>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-sm">
+                                    <thead className="sticky top-0">
+                                        <tr className="bg-slate-50 border-b border-slate-100">
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">#</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Project</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Job</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Date</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Returned Date</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {historyData.map((h, i) => {
+                                            const days = h.returnedDate && h.assignedDate
+                                                ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000)
+                                                : null;
+                                            return (
+                                                <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                                                    <td className="px-6 py-4 text-xs font-black text-slate-400">{historyData.length - i}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-black text-slate-900 text-sm">{h.projectName || '—'}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm font-bold text-slate-600">{h.jobName || '—'}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-900">
+                                                                {h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm font-bold text-slate-700">
+                                                            {h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm font-bold text-slate-600">
+                                                            {days !== null ? `${days} day${days !== 1 ? 's' : ''}` : '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {h.returnedDate ? (
+                                                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] font-black uppercase tracking-wider">Returned</span>
+                                                        ) : (
+                                                            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full text-[10px] font-black uppercase tracking-wider animate-pulse">Active</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100 flex justify-end flex-shrink-0">
+                            <button onClick={() => setHistoryItem(null)}
+                                className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Company-Wide Full History Modal ─────────────────────────── */}
+            {showAllHistory && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
+
+                        {/* Header */}
+                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg">
+                                        <History size={22} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black tracking-tight">Full Equipment Assignment History</h2>
+                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">All equipment · All projects · Complete log</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            // PDF download
+                                            const filtered = allHistory.filter(h => {
+                                                const d = new Date(h.assignedDate);
+                                                const fromOk = !allHistoryDateFrom || d >= new Date(allHistoryDateFrom);
+                                                const toEnd = allHistoryDateTo ? new Date(allHistoryDateTo) : null;
+                                                if (toEnd) toEnd.setHours(23, 59, 59, 999);
+                                                const toOk = !toEnd || d <= toEnd;
+                                                const q = allHistorySearch.toLowerCase();
+                                                const searchOk = !q || h.equipmentName?.toLowerCase().includes(q) || h.projectName?.toLowerCase().includes(q) || h.jobName?.toLowerCase().includes(q);
+                                                return fromOk && toOk && searchOk;
+                                            });
+                                            const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+                                            const rows = filtered.map((h, i) => {
+                                                const days = h.returnedDate && h.assignedDate ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) : null;
+                                                return `<tr style="background:${i % 2 === 0 ? '#f8fafc' : '#fff'}">
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.equipmentName || '—'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.equipmentType || '—'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0;font-weight:700">${h.projectName || '—'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.jobName || '—'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB') : '—'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB') : '<span style="color:#f59e0b;font-weight:700">Active</span>'}</td>
+                                                    <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">${days !== null ? days + ' day(s)' : '—'}</td>
+                                                </tr>`;
+                                            });
+                                            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+                                            <style>
+                                                *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+                                                body{background:#fff;color:#1e293b;padding:36px}
+                                                .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:3px solid #1e3a5f}
+                                                .logo{font-size:24px;font-weight:900;color:#1e3a5f;letter-spacing:-1px}
+                                                .logo span{color:#3b82f6}
+                                                .doc-title h1{font-size:20px;font-weight:900;color:#1e293b;text-align:right}
+                                                .doc-title p{font-size:11px;color:#94a3b8;font-weight:600;margin-top:4px;text-align:right}
+                                                .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+                                                .stat{background:#f8fafc;padding:14px 18px;border-radius:10px;border-left:4px solid #3b82f6}
+                                                .stat label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;display:block;margin-bottom:3px}
+                                                .stat value{font-size:20px;font-weight:900;color:#1e293b}
+                                                .section{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:3px;color:#94a3b8;margin-bottom:10px}
+                                                table{width:100%;border-collapse:collapse;font-size:11px}
+                                                th{background:#1e3a5f;color:#fff;padding:10px 12px;text-align:left;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:1px}
+                                                .footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;font-weight:600}
+                                                @media print{body{padding:16px}}
+                                            </style></head><body>
+                                            <div class="header">
+                                                <div class="logo">KAAL <span>Construction</span></div>
+                                                <div class="doc-title"><h1>Equipment History Report</h1><p>Generated: ${now}${allHistoryDateFrom || allHistoryDateTo ? ' · Filtered: ' + (allHistoryDateFrom || 'Start') + ' to ' + (allHistoryDateTo || 'Today') : ''}</p></div>
+                                            </div>
+                                            <div class="stats">
+                                                <div class="stat"><label>Total Records</label><value>${filtered.length}</value></div>
+                                                <div class="stat"><label>Unique Equipment</label><value>${new Set(filtered.map(h => h.equipmentId)).size}</value></div>
+                                                <div class="stat"><label>Completed</label><value>${filtered.filter(h => h.returnedDate).length}</value></div>
+                                                <div class="stat"><label>Active / On-Site</label><value>${filtered.filter(h => !h.returnedDate).length}</value></div>
+                                            </div>
+                                            <p class="section">Assignment Records</p>
+                                            <table>
+                                                <thead><tr><th>#</th><th>Equipment</th><th>Type</th><th>Project</th><th>Job</th><th>Assigned</th><th>Returned</th><th>Duration</th></tr></thead>
+                                                <tbody>${rows.join('') || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#94a3b8">No records for selected filter</td></tr>'}</tbody>
+                                            </table>
+                                            <div class="footer"><span>Total: ${filtered.length} records</span><span>KAAL Construction Management System</span><span>Confidential</span></div>
+                                            </body></html>`;
+                                            const w = window.open('', '_blank');
+                                            w.document.write(html); w.document.close();
+                                            setTimeout(() => w.print(), 500);
+                                        }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-tight transition-all shadow-lg"
+                                    >
+                                        <Printer size={15} /> Download PDF
+                                    </button>
+                                    <button onClick={() => setShowAllHistory(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex flex-col md:flex-row gap-3 px-8 py-4 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                            {/* Search */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search equipment, project, or job..."
+                                    value={allHistorySearch}
+                                    onChange={e => setAllHistorySearch(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
+                                />
+                            </div>
+                            {/* From */}
+                            <div className="flex items-center gap-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">From</label>
+                                <input type="date" value={allHistoryDateFrom} onChange={e => setAllHistoryDateFrom(e.target.value)}
+                                    className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400 bg-white" />
+                            </div>
+                            {/* To */}
+                            <div className="flex items-center gap-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">To</label>
+                                <input type="date" value={allHistoryDateTo} onChange={e => setAllHistoryDateTo(e.target.value)}
+                                    className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400 bg-white" />
+                            </div>
+                            {(allHistoryDateFrom || allHistoryDateTo || allHistorySearch) && (
+                                <button onClick={() => { setAllHistoryDateFrom(''); setAllHistoryDateTo(''); setAllHistorySearch(''); }}
+                                    className="px-4 py-2.5 text-xs font-black uppercase text-red-400 hover:text-red-600 transition-colors whitespace-nowrap">
+                                    Clear All
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Summary */}
+                        {(() => {
+                            const filt = allHistory.filter(h => {
+                                const d = new Date(h.assignedDate);
+                                const fromOk = !allHistoryDateFrom || d >= new Date(allHistoryDateFrom);
+                                const toEnd = allHistoryDateTo ? new Date(allHistoryDateTo) : null;
+                                if (toEnd) toEnd.setHours(23, 59, 59, 999);
+                                const toOk = !toEnd || d <= toEnd;
+                                const q = allHistorySearch.toLowerCase();
+                                const searchOk = !q || h.equipmentName?.toLowerCase().includes(q) || h.projectName?.toLowerCase().includes(q) || h.jobName?.toLowerCase().includes(q);
+                                return fromOk && toOk && searchOk;
+                            });
+                            return (
+                                <>
+                                    <div className="flex gap-5 px-8 py-3 bg-white border-b border-slate-100 flex-shrink-0">
+                                        {[
+                                            { label: 'Total Records', val: filt.length, color: 'bg-blue-100 text-blue-700' },
+                                            { label: 'Equipment', val: new Set(filt.map(h => h.equipmentId)).size, color: 'bg-slate-100 text-slate-700' },
+                                            { label: 'Returned', val: filt.filter(h => h.returnedDate).length, color: 'bg-emerald-100 text-emerald-700' },
+                                            { label: 'Active', val: filt.filter(h => !h.returnedDate).length, color: 'bg-amber-100 text-amber-700' },
+                                        ].map(s => (
+                                            <div key={s.label} className="flex items-center gap-2 text-sm font-black text-slate-600">
+                                                <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${s.color}`}>{s.val}</span>
+                                                {s.label}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Table */}
+                                    <div className="overflow-y-auto flex-1">
+                                        {allHistoryLoading ? (
+                                            <div className="flex flex-col items-center justify-center h-48 gap-3">
+                                                <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading history...</p>
+                                            </div>
+                                        ) : filt.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-300">
+                                                <History size={40} className="opacity-30" />
+                                                <p className="text-xs font-black uppercase tracking-widest">No records match your filter</p>
+                                            </div>
+                                        ) : (
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="sticky top-0 z-10">
+                                                    <tr className="bg-slate-50 border-b border-slate-100">
+                                                        {['#', 'Equipment', 'Type', 'Project', 'Job', 'Assigned Date', 'Returned Date', 'Duration', 'Status'].map(h => (
+                                                            <th key={h} className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {filt.map((h, i) => {
+                                                        const days = h.returnedDate && h.assignedDate
+                                                            ? Math.ceil((new Date(h.returnedDate) - new Date(h.assignedDate)) / 86400000) : null;
+                                                        return (
+                                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                                <td className="px-5 py-3.5 text-xs font-black text-slate-300">{i + 1}</td>
+                                                                <td className="px-5 py-3.5">
+                                                                    <div className="font-black text-slate-900 text-sm">{h.equipmentName}</div>
+                                                                    <div className="text-[10px] font-bold text-slate-400">#{h.serialNumber || 'N/A'}</div>
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-xs font-bold text-slate-500">{h.equipmentType || '—'}</td>
+                                                                <td className="px-5 py-3.5 font-black text-slate-900 text-sm">{h.projectName || '—'}</td>
+                                                                <td className="px-5 py-3.5 text-sm font-bold text-slate-600">{h.jobName || '—'}</td>
+                                                                <td className="px-5 py-3.5 text-sm font-bold text-slate-700">
+                                                                    {h.assignedDate ? new Date(h.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-sm font-bold text-slate-700">
+                                                                    {h.returnedDate ? new Date(h.returnedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-sm font-bold text-slate-500">
+                                                                    {days !== null ? `${days} day${days !== 1 ? 's' : ''}` : '—'}
+                                                                </td>
+                                                                <td className="px-5 py-3.5">
+                                                                    {h.returnedDate ? (
+                                                                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[9px] font-black uppercase tracking-wider">Returned</span>
+                                                                    ) : (
+                                                                        <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">Active</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </>
+                            );
+                        })()}
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100 flex justify-end flex-shrink-0">
+                            <button onClick={() => setShowAllHistory(false)}
+                                className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>
