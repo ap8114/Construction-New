@@ -70,8 +70,8 @@ const Profile = () => {
 
     const tabs = [
         { id: 'profile', label: 'Profile Settings', icon: UserCircle },
-        { id: 'work', label: 'Work History', icon: Briefcase },
-        { id: 'sync', label: 'Sync Status', icon: RefreshCw },
+        // { id: 'work', label: 'Work History', icon: Briefcase },
+        // { id: 'sync', label: 'Sync Status', icon: RefreshCw },
     ];
 
     return (
