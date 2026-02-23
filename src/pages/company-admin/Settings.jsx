@@ -202,6 +202,7 @@ const RoleSettings = () => {
     'FOREMAN': 'Site Foreman',
     'WORKER': 'Worker',
     'SUBCONTRACTOR': 'Subcontractor',
+    'CLIENT': 'Client',
     'COMPANY_OWNER': 'Company Owner'
   };
 
@@ -234,7 +235,7 @@ const RoleSettings = () => {
         permissionsMap[r.role] = r.permissions;
       });
       setAllPermissions(permissionsMap);
-      const ALLOWED_ROLES = ['PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR'];
+      const ALLOWED_ROLES = ['PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR', 'CLIENT'];
       setRoles(response.data.map(r => r.role).filter(r => ALLOWED_ROLES.includes(r)));
     } catch (error) {
       console.error('Error fetching roles:', error);
