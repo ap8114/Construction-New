@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Plus, Search, Calendar, MapPin, Edit, Trash2,
   CheckCircle, Upload, ChevronRight, LayoutGrid, List, Globe, Filter,
-  DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw
+  DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw, FileText
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
@@ -141,6 +141,27 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, projectMan
         </select>
       </div>
 
+      {/* Manual Progress Control */}
+      <div className="space-y-4 bg-slate-50 p-6 rounded-[24px] border border-slate-200/60">
+        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+          <TrendingUp size={14} className="text-blue-600" /> Select Project Progress
+        </label>
+        <div className="relative">
+          <select
+            value={data.progress || 0}
+            onChange={e => setData({ ...data, progress: parseInt(e.target.value) })}
+            className={inputCls + ' appearance-none pl-4 pr-10 hover:border-blue-500/50 cursor-pointer'}
+          >
+            {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+              <option key={val} value={val}>{val}% Completion</option>
+            ))}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <ChevronDown size={16} />
+          </div>
+        </div>
+      </div>
+
       <button onClick={onSubmit} disabled={!data.name}
         className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2 shadow-xl
           ${data.name ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
@@ -236,6 +257,16 @@ const Projects = () => {
       setIsEditOpen(false);
       fetchAll();
     } catch (err) { console.error(err); }
+  };
+
+  const handleQuickProgressUpdate = async (projectId, newProgress, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await api.patch(`/projects/${projectId}`, { progress: newProgress });
+      setProjects(prev => prev.map(p => p._id === projectId ? { ...p, progress: newProgress } : p));
+    } catch (err) {
+      console.error('Progress update error:', err);
+    }
   };
 
   const handleDelete = async (id, e) => {
@@ -485,7 +516,12 @@ const Projects = () => {
             </div>
           ) : filtered.map(project => (
             <div key={project._id}
-              onClick={() => navigate(`/company-admin/projects/${project._id}`)}
+              onClick={() => {
+                const path = user?.role === 'CLIENT'
+                  ? `/client-portal/drawings?projectId=${project._id}`
+                  : `/company-admin/projects/${project._id}`;
+                navigate(path);
+              }}
               className="group bg-white rounded-[40px] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500 overflow-hidden flex flex-col cursor-pointer">
 
               {/* Image */}
@@ -527,10 +563,25 @@ const Projects = () => {
 
               {/* Body */}
               <div className="p-6 space-y-4 flex-1">
-                {/* Progress */}
-                < div className="flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100" >
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 group/progress relative">
                   <div className="flex-1 space-y-1.5">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</p>
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</p>
+                      {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={project.progress || 0}
+                            onClick={e => e.stopPropagation()}
+                            onChange={(e) => handleQuickProgressUpdate(project._id, parseInt(e.target.value), e)}
+                            className="bg-white border border-slate-200 rounded text-[9px] font-black text-slate-600 px-1 py-0.5 outline-none hover:border-blue-500 transition-all cursor-pointer appearance-none"
+                          >
+                            {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+                              <option key={val} value={val}>{val}%</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 bg-slate-200 rounded-full overflow-hidden">
                         <div className="h-full bg-blue-600 rounded-full transition-all duration-700"
@@ -564,19 +615,35 @@ const Projects = () => {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-wrap items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
                   <button onClick={(e) => openEdit(project, e)}
-                    className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center gap-2">
-                    <Edit size={14} /> Edit
+                    className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
+                    title="Edit Project"
+                  >
+                    <Edit size={14} />
                   </button>
+
                   <button
-                    onClick={() => navigate(`/company-admin/projects/${project._id}`)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
-                    <Briefcase size={14} /> View Jobs
+                    onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${project._id}`)}
+                    className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all border border-slate-200 flex items-center justify-center gap-2"
+                  >
+                    <FileText size={14} className="text-blue-600" /> Drawings
                   </button>
+
+                  {user?.role !== 'CLIENT' && (
+                    <button
+                      onClick={() => navigate(`/company-admin/projects/${project._id}`)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                    >
+                      <Briefcase size={14} /> View Jobs
+                    </button>
+                  )}
+
                   <button onClick={(e) => handleDelete(project._id, e)}
-                    className="h-11 w-11 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100">
-                    <Trash2 size={16} />
+                    className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
+                    title="Delete Project"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -608,7 +675,12 @@ const Projects = () => {
                 </td></tr>
               ) : filtered.map(project => (
                 <tr key={project._id}
-                  onClick={() => navigate(`/company-admin/projects/${project._id}`)}
+                  onClick={() => {
+                    const path = user?.role === 'CLIENT'
+                      ? `/client-portal/drawings?projectId=${project._id}`
+                      : `/company-admin/projects/${project._id}`;
+                    navigate(path);
+                  }}
                   className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
                   <td className="px-8 py-5 font-black text-slate-900">{project.name}</td>
                   <td className="px-8 py-5 text-slate-500 font-bold text-xs max-w-[160px] truncate">
@@ -623,12 +695,26 @@ const Projects = () => {
                       {statusLabel(project.status)}
                     </span>
                   </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${project.progress || 0}%` }} />
+                  <td className="px-8 py-5" onClick={e => e.stopPropagation()}>
+                    <div className="flex flex-col gap-1.5 group/progress-td">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-600 rounded-full" style={{ width: `${project.progress || 0}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">{project.progress || 0}%</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-600">{project.progress || 0}%</span>
+                      {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                        <select
+                          value={project.progress || 0}
+                          onClick={e => e.stopPropagation()}
+                          onChange={(e) => handleQuickProgressUpdate(project._id, parseInt(e.target.value), e)}
+                          className="bg-white border border-slate-200 rounded text-[9px] font-black text-slate-500 px-1 py-0.5 outline-none hover:border-blue-500 transition-all cursor-pointer appearance-none"
+                        >
+                          {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+                            <option key={val} value={val}>{val}%</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </td>
                   {showBudget && (
@@ -639,12 +725,26 @@ const Projects = () => {
                   </td>
                   <td className="px-8 py-5 text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${project._id}`);
+                        }}
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
+                        title="View Drawings"
+                      >
+                        <FileText size={18} />
+                      </button>
                       <button onClick={(e) => openEdit(project, e)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all">
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
+                        title="Edit Project"
+                      >
                         <Edit size={18} />
                       </button>
                       <button onClick={(e) => handleDelete(project._id, e)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all">
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
+                        title="Delete Project"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </div>

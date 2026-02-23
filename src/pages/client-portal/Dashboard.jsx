@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Clock, CheckCircle, FileText, Download,
   TrendingUp, Calendar, AlertCircle,
   Image as ImageIcon, MoreHorizontal,
-  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader
+  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader, ExternalLink
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +30,7 @@ const ClientStatCard = ({ title, value, subtext, icon: Icon, color }) => (
 );
 
 const ClientPortalDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
@@ -153,6 +155,12 @@ const ClientPortalDashboard = () => {
                       <p className="text-2xl font-black text-slate-800">{primaryProject.progress}%</p>
                       <p className="text-xs text-slate-400 font-bold uppercase">{primaryProject.name} Progress</p>
                     </div>
+                    <button
+                      onClick={() => navigate(`/client-portal/drawings?projectId=${primaryProject._id}`)}
+                      className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-2 rounded-xl border border-blue-100 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      <ExternalLink size={12} /> View Drawings
+                    </button>
                   </div>
                   <div className="w-full bg-slate-100 rounded-2xl h-6 p-1">
                     <div
@@ -234,8 +242,16 @@ const ClientPortalDashboard = () => {
                 data.drawings.map((draw, i) => (
                   <div key={draw._id} className="flex items-center justify-between p-3 rounded-2xl border border-slate-50 hover:bg-slate-50 transition-all cursor-pointer group">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
-                        <FileText size={18} />
+                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                        {draw.versions?.[0]?.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                          <img
+                            src={getServerUrl(draw.versions[0].fileUrl)}
+                            alt={draw.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <FileText size={18} />
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-black text-slate-800 truncate max-w-[120px]">{draw.title}</p>
@@ -245,8 +261,15 @@ const ClientPortalDashboard = () => {
                       </div>
                     </div>
                     {draw.versions?.[0]?.fileUrl && (
-                      <a href={draw.versions[0].fileUrl} target="_blank" rel="noopener noreferrer">
-                        <Download size={16} className="text-slate-300 group-hover:text-blue-600 transition-colors" />
+                      <a
+                        href={getServerUrl(draw.versions[0].fileUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="p-2 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-100"
+                        title="Download Drawing"
+                      >
+                        <Download size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
                       </a>
                     )}
                   </div>

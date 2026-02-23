@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
-import api from '../../utils/api';
+import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader, File } from 'lucide-react';
+import api, { getServerUrl } from '../../utils/api';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -26,12 +27,16 @@ const Drawings = () => {
   const { user } = useAuth();
   const canManage = ['COMPANY_OWNER', 'PM'].includes(user?.role);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectFilter = searchParams.get('projectId');
+
   const [drawings, setDrawings] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('All Disciplines');
+  const [filterProject, setFilterProject] = useState(projectFilter || 'All Projects');
 
   // Modal States
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -66,8 +71,9 @@ const Drawings = () => {
   // Derived State (Filtering)
   const filteredDrawings = drawings.filter(drawing => {
     const matchesSearch = drawing.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterDiscipline === 'All Disciplines' || drawing.category === filterDiscipline.toLowerCase();
-    return matchesSearch && matchesFilter;
+    const matchesDiscipline = filterDiscipline === 'All Disciplines' || drawing.category === filterDiscipline.toLowerCase();
+    const matchesProject = filterProject === 'All Projects' || (typeof drawing.projectId === 'object' ? drawing.projectId?._id === filterProject : drawing.projectId === filterProject);
+    return matchesSearch && matchesDiscipline && matchesProject;
   });
 
   // Handlers
@@ -78,17 +84,30 @@ const Drawings = () => {
 
   const handleSaveUpload = async () => {
     try {
-      // For now, simulating file upload by just sending metadata
-      // In a real app, this would be a Multipart form or S3 upload
-      const payload = {
-        ...formData,
-        fileUrl: 'https://example.com/drawings/' + (formData.file?.name || 'drawing.pdf')
-      };
-      await api.post('/drawings', payload);
+      if (!formData.file || !formData.projectId) {
+        alert('Please select a project and a file');
+        return;
+      }
+
+      setLoading(true);
+      const data = new FormData();
+      data.append('projectId', formData.projectId);
+      data.append('title', formData.title);
+      data.append('drawingNumber', formData.drawingNumber);
+      data.append('category', formData.category);
+      data.append('file', formData.file);
+
+      await api.post('/drawings', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
       fetchData();
       setIsUploadOpen(false);
     } catch (error) {
       console.error('Error uploading drawing:', error);
+      alert('Failed to upload drawing. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,15 +132,20 @@ const Drawings = () => {
   };
 
   const handleDownload = (drawing) => {
-    if (drawing.fileUrl) {
+    const latestVersion = drawing.versions?.[drawing.versions.length - 1];
+    const fileUrl = latestVersion?.fileUrl;
+
+    if (fileUrl) {
+      const fullUrl = getServerUrl(fileUrl);
       const link = document.createElement('a');
-      link.href = drawing.fileUrl;
-      link.download = drawing.name;
+      link.href = fullUrl;
+      link.setAttribute('download', `${drawing.title}_v${drawing.currentVersion}${fileUrl.substring(fileUrl.lastIndexOf('.'))}`);
+      link.setAttribute('target', '_blank');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      alert(`Downloading ${drawing.name}... (Dummy Simulation)`);
+      alert(`No file available for this drawing.`);
     }
   };
 
@@ -154,6 +178,25 @@ const Drawings = () => {
               className="w-full pl-10 pr-4 py-2 bg-slate-50 rounded-lg text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             />
           </div>
+          <select
+            value={filterProject}
+            onChange={(e) => {
+              setFilterProject(e.target.value);
+              if (e.target.value === 'All Projects') {
+                searchParams.delete('projectId');
+              } else {
+                searchParams.set('projectId', e.target.value);
+              }
+              setSearchParams(searchParams);
+            }}
+            className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer"
+          >
+            <option>All Projects</option>
+            {projects.map(p => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+
           <select
             value={filterDiscipline}
             onChange={(e) => setFilterDiscipline(e.target.value)}
@@ -192,12 +235,20 @@ const Drawings = () => {
                   <tr key={drawing._id} className="border-b border-slate-50 hover:bg-slate-50 transition group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="bg-blue-50 p-2 rounded text-blue-600 group-hover:bg-blue-100 transition">
-                          <FileText size={20} />
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition border border-slate-100 shadow-sm">
+                          {drawing.versions?.[drawing.versions.length - 1]?.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                            <img
+                              src={getServerUrl(drawing.versions[drawing.versions.length - 1].fileUrl)}
+                              alt={drawing.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <FileText size={20} />
+                          )}
                         </div>
                         <div>
                           <span className="font-semibold text-slate-800 block">{drawing.title}</span>
-                          <span className="text-xs text-slate-400 uppercase">{drawing.category}</span>
+                          <span className="text-xs text-slate-400 uppercase tracking-tighter font-bold">{drawing.category} • {drawing.drawingNumber || 'No #'}</span>
                         </div>
                       </div>
                     </td>
@@ -214,15 +265,15 @@ const Drawings = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => handleView(drawing)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="View Details">
-                          <Eye size={18} />
-                        </button>
-                        <button onClick={() => handleDownload(drawing)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition" title="Download">
+                      <div className="flex justify-end gap-2 text-blue-600">
+                        <button onClick={() => handleDownload(drawing)} className="p-2 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100" title="Download Drawing">
                           <Download size={18} />
                         </button>
+                        <button onClick={() => handleView(drawing)} className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100" title="View Details">
+                          <Eye size={18} />
+                        </button>
                         {canManage && (
-                          <button onClick={() => handleDelete(drawing)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition" title="Delete">
+                          <button onClick={() => handleDelete(drawing)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Delete">
                             <Trash2 size={18} />
                           </button>
                         )}
@@ -356,12 +407,20 @@ const Drawings = () => {
         {selectedDrawing && (
           <div className="space-y-6">
             <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="bg-white p-3 rounded-lg shadow-sm text-blue-600">
-                <FileText size={32} />
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 flex items-center justify-center text-blue-600">
+                {selectedDrawing.versions?.[selectedDrawing.versions.length - 1]?.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                  <img
+                    src={getServerUrl(selectedDrawing.versions[selectedDrawing.versions.length - 1].fileUrl)}
+                    alt={selectedDrawing.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FileText size={32} />
+                )}
               </div>
               <div>
                 <h4 className="font-bold text-slate-800 text-lg">{selectedDrawing.title}</h4>
-                <p className="text-sm text-slate-500">{selectedDrawing.drawingNumber} • {selectedDrawing.category}</p>
+                <p className="text-sm text-slate-500 font-bold uppercase tracking-tight">{selectedDrawing.drawingNumber || 'N/A'} • {selectedDrawing.category}</p>
               </div>
             </div>
 
@@ -405,8 +464,8 @@ const Drawings = () => {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button onClick={() => handleDownload(selectedDrawing)} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium flex justify-center items-center gap-2">
-                <Download size={18} /> Download Current
+              <button onClick={() => handleDownload(selectedDrawing)} className="flex-1 bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
+                <Download size={18} /> Download Drawing
               </button>
               <button onClick={() => setIsViewOpen(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 transition font-medium">
                 Close

@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
-    Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users
+    Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -142,6 +142,15 @@ const ProjectDetails = () => {
         }
     };
 
+    const handleProjectProgressUpdate = async (newProgress) => {
+        try {
+            const res = await api.patch(`/projects/${projectId}`, { progress: newProgress });
+            setProject(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     // ── Filter ─────────────────────────────────────────────────────────────────
     const filteredJobs = jobs.filter(j => {
         // Role-based visibility check
@@ -259,15 +268,24 @@ const ProjectDetails = () => {
                             </div>
                         </div>
 
-                        {/* Create Job CTA - Hidden for Foreman/Worker */}
-                        {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                        <div className="flex gap-3">
                             <button
-                                onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/new`)}
-                                className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-900/50 flex items-center gap-3 border border-blue-500/50">
-                                <Plus size={20} />
-                                Create Job
+                                onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${projectId}`)}
+                                className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-3 border border-white/20">
+                                <FileText size={20} className="text-blue-400" />
+                                View Drawings
                             </button>
-                        )}
+
+                            {/* Create Job CTA - Hidden for Foreman/Worker/Client */}
+                            {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                                <button
+                                    onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/new`)}
+                                    className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-900/50 flex items-center gap-3 border border-blue-500/50">
+                                    <Plus size={20} />
+                                    Create Job
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Project meta row */}
@@ -275,15 +293,38 @@ const ProjectDetails = () => {
                         {[
                             { label: 'Start Date', value: project?.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar },
                             { label: 'End Date', value: project?.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar },
-                            { label: 'Total Jobs', value: jobStats.total, icon: Briefcase },
+                            { label: 'Progress', value: `${project?.progress || 0}%`, icon: TrendingUp, isProgress: true },
                             showBudget ? { label: 'Budget', value: `$${(Number(project?.budget) || 0).toLocaleString()}`, icon: DollarSign } : null,
                         ].filter(Boolean).map((item, i) => (
-                            <div key={i} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                            <div key={i} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl p-4 relative group/meta">
                                 <div className="flex items-center gap-2 mb-1">
                                     <item.icon size={13} className="text-blue-300" />
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
                                 </div>
                                 <p className="text-lg font-black text-white">{item.value}</p>
+
+                                {item.isProgress && ['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md opacity-0 group-hover/meta:opacity-100 transition-all flex flex-col justify-center px-4 rounded-2xl">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Update Progress</span>
+                                            <span className="text-xs font-black text-white">{project?.progress || 0}%</span>
+                                        </div>
+                                        <div className="relative">
+                                            <select
+                                                value={project.progress || 0}
+                                                onChange={(e) => handleProjectProgressUpdate(parseInt(e.target.value))}
+                                                className="w-full bg-white/10 border border-white/20 rounded-lg py-2 px-3 text-xs font-black text-white outline-none focus:border-blue-500 transition-all cursor-pointer appearance-none"
+                                            >
+                                                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+                                                    <option key={val} value={val} className="bg-slate-800">{val}% Complete</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
+                                                <ChevronDown size={12} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
