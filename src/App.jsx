@@ -69,6 +69,7 @@ import ClientPhotos from './pages/client-portal/Photos';
 import ClientApprovals from './pages/client-portal/Approvals';
 import ClientInvoices from './pages/client-portal/Invoices';
 import ClientMessages from './pages/client-portal/Messages';
+import ClientDailyLogs from './pages/client-portal/DailyLogs';
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -192,6 +193,7 @@ function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="photos" element={<ClientPhotos />} />
         <Route path="drawings" element={<Drawings />} />
+        <Route path="daily-logs" element={<ClientDailyLogs />} />
         <Route path="approvals" element={<ClientApprovals />} />
         <Route path="invoices" element={<ClientInvoices />} />
         <Route path="messages" element={<ClientMessages />} />

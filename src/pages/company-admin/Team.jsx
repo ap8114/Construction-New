@@ -223,6 +223,7 @@ const TEAM_ROLE_OPTIONS = [
   { value: 'PM', label: 'Project Manager' },
   { value: 'FOREMAN', label: 'Site Foreman' },
   { value: 'WORKER', label: 'Worker' },
+  { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
 ];
 
 const CLIENT_ROLE_OPTIONS = [
@@ -444,6 +445,7 @@ const Team = () => {
               <option value="PM">Project Manager</option>
               <option value="FOREMAN">Site Foreman</option>
               <option value="WORKER">Worker</option>
+              <option value="SUBCONTRACTOR">Subcontractor</option>
             </select>
           )}
         </div>

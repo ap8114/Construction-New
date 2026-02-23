@@ -5,7 +5,7 @@ import Logo from '../assets/images/Logo.png';
 import {
   PieChart, Clock, Image, FileCheck, DollarSign,
   MessageCircle, LogOut, Menu, X, Bell, User,
-  Building2, LayoutDashboard, FileText
+  Building2, LayoutDashboard, FileText, ClipboardList, Briefcase
 } from 'lucide-react';
 
 const ClientPortalLayout = () => {
@@ -40,16 +40,19 @@ const ClientPortalLayout = () => {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/client-portal', permission: 'VIEW_DASHBOARD' },
-    { icon: Building2, label: 'Project Overview', path: '/client-portal/projects', permission: 'VIEW_PROJECTS' },
+    { icon: Briefcase, label: 'Jobs', path: '/client-portal/projects', permission: 'VIEW_PROJECTS' },
     { icon: Image, label: 'Photos', path: '/client-portal/photos', permission: 'VIEW_PHOTOS' },
     { icon: FileText, label: 'Drawings', path: '/client-portal/drawings', permission: 'VIEW_DRAWINGS' },
+    { icon: ClipboardList, label: 'Daily Logs', path: '/client-portal/daily-logs', permission: 'VIEW_DAILY_LOGS' },
     { icon: DollarSign, label: 'Invoices', path: '/client-portal/invoices', permission: 'VIEW_INVOICES' },
     { icon: MessageCircle, label: 'Chat', path: '/client-portal/messages', permission: 'VIEW_CHAT' },
-    { icon: User, label: 'My Profile', path: '/client-portal/profile', permission: 'VIEW_PROFILE' }, // Custom for profile
+    { icon: User, label: 'My Profile', path: '/client-portal/profile', permission: 'VIEW_PROFILE' },
   ];
 
   const filteredNavItems = navItems.filter(item => {
     if (user?.role === 'COMPANY_OWNER') return true;
+    // Always show My Profile
+    if (item.permission === 'VIEW_PROFILE') return true;
     return user?.permissions?.includes(item.permission);
   });
 
