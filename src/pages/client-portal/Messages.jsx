@@ -183,11 +183,7 @@ const Messages = () => {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-slate-400">
-            <button className="p-2 hover:bg-slate-50 rounded-full transition"><Phone size={18} /></button>
-            <button className="p-2 hover:bg-slate-50 rounded-full transition"><Search size={18} /></button>
-            <button className="p-2 hover:bg-slate-50 rounded-full transition"><MoreVertical size={18} /></button>
-          </div>
+        
         </div>
 
         {/* Messages Feed */}

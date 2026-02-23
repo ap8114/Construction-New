@@ -4,6 +4,7 @@ import { ChevronLeft, Printer, Mail, Download, DollarSign, FileText } from 'luci
 import api from '../../utils/api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logo from '../../assets/images/Logo.png';
 
 const InvoiceDetail = () => {
     const { id } = useParams();
@@ -64,35 +65,44 @@ const InvoiceDetail = () => {
             const pageWidth = doc.internal.pageSize.width;
 
             // 1. Header Section
-            doc.setFillColor(240, 240, 240);
-            doc.roundedRect(20, 15, 15, 15, 3, 3, 'F');
+            // Company Logo
+            const img = new Image();
+            img.src = logo;
+            doc.addImage(img, 'PNG', 20, 15, 25, 25);
 
+            // Company Info (Left)
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(30, 41, 59);
-            doc.text('Kaal Construction Ltd', 20, 40);
+            doc.text('Kaal Construction Ltd', 20, 48);
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(100);
-            doc.text('company@gmail.com', 20, 46);
-            doc.text('1234567890', 20, 51);
-            doc.text('123 Business St', 20, 56);
+            doc.text('company@gmail.com', 20, 54);
+            doc.text('1234567890', 20, 59);
+            doc.text('123 Business St', 20, 64);
 
+            // Invoice Title & Info (Right)
             doc.setFontSize(28);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(15, 23, 42);
             doc.text('INVOICE', pageWidth - 20, 25, { align: 'right' });
 
+            doc.setFontSize(10);
+            const statusColor = invoice.status === 'paid' ? [16, 185, 129] : [239, 68, 68]; // Emerald-500 : Red-500
+            doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.text(invoice.status?.toUpperCase() || 'UNPAID', pageWidth - 20, 32, { align: 'right' });
+
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(100);
-            doc.text(`Number: #${invoice.invoiceNumber}`, pageWidth - 20, 35, { align: 'right' });
-            doc.text(`Issue: ${new Date(invoice.createdAt).toLocaleDateString()}`, pageWidth - 20, 40, { align: 'right' });
-            doc.text(`Due Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 45, { align: 'right' });
+            doc.text(`Number: #${invoice.invoiceNumber}`, pageWidth - 20, 40, { align: 'right' });
+            doc.text(`Issue: ${new Date(invoice.createdAt).toLocaleDateString()}`, pageWidth - 20, 45, { align: 'right' });
+            doc.text(`Due Date: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 50, { align: 'right' });
 
             doc.setDrawColor(241, 245, 249);
-            doc.line(20, 70, pageWidth - 20, 70);
+            doc.line(20, 75, pageWidth - 20, 75);
 
             // 2. Billing Section
             doc.setFontSize(8);
@@ -125,10 +135,10 @@ const InvoiceDetail = () => {
                 startY: 110,
                 head: [tableColumn],
                 body: tableRows,
-                theme: 'plain',
+                theme: 'grid',
                 headStyles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [148, 163, 184],
+                    fillColor: [30, 41, 59], // Slate-800
+                    textColor: [255, 255, 255],
                     fontSize: 8,
                     fontStyle: 'bold',
                     halign: (index) => index > 0 ? 'center' : 'left'
@@ -139,7 +149,12 @@ const InvoiceDetail = () => {
                     2: { halign: 'right', fontStyle: 'bold' },
                     3: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
                 },
-                styles: { fontSize: 9, cellPadding: 6 }
+                styles: {
+                    fontSize: 9,
+                    cellPadding: 6,
+                    lineColor: [226, 232, 240], // Slate-200
+                    lineWidth: 0.1
+                },
             });
 
             // 4. Summary Section

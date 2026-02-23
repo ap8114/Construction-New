@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Download, CheckCircle, Clock, AlertTriangle, Loader } from 'lucide-react';
 import api from '../../utils/api';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logo from '../../assets/images/Logo.png';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -23,43 +24,147 @@ const Invoices = () => {
     fetchInvoices();
   }, []);
 
-  const handleDownload = (invoice) => {
-    const doc = new jsPDF();
+  const handleDownload = (inv) => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
 
-    doc.setFontSize(20);
-    doc.text('INVOICE', 105, 20, { align: 'center' });
+      // 1. Header Section
+      // Company Logo
+      const img = new Image();
+      img.src = logo;
+      doc.addImage(img, 'PNG', 20, 15, 25, 25);
 
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Number: ${invoice.invoiceNumber || invoice._id}`, 20, 40);
-    doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 20, 45);
+      // Company Info (Left)
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('Kaal Construction Ltd', 20, 48);
 
-    doc.setTextColor(0);
-    doc.setFontSize(12);
-    doc.text('Kaal Construction Ltd', 20, 60);
-    doc.text('Project: ' + (invoice.projectId?.name || '---'), 20, 65);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text('company@gmail.com', 20, 54);
+      doc.text('1234567890', 20, 59);
+      doc.text('123 Business St', 20, 64);
 
-    const tableColumn = ["Description", "Quantity", "Rate", "Total"];
-    const tableRows = (invoice.items || []).map(item => [
-      item.description,
-      item.quantity,
-      `$${(item.unitPrice || 0).toLocaleString()}`,
-      `$${(item.total || 0).toLocaleString()}`
-    ]);
+      // Invoice Title & Info (Right)
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('INVOICE', pageWidth - 20, 25, { align: 'right' });
 
-    doc.autoTable({
-      startY: 80,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: { fillColor: [51, 65, 85] }
-    });
+      doc.setFontSize(10);
+      const statusColor = inv.status === 'paid' ? [16, 185, 129] : [239, 68, 68]; // Emerald-500 : Red-500
+      doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+      doc.text(inv.status?.toUpperCase() || 'UNPAID', pageWidth - 20, 32, { align: 'right' });
 
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(12);
-    doc.text(`Total Amount: $${(invoice.totalAmount || 0).toLocaleString()}`, 190, finalY, { align: 'right' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100);
+      doc.text(`Number: #${inv.invoiceNumber}`, pageWidth - 20, 40, { align: 'right' });
+      doc.text(`Issue: ${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 45, { align: 'right' });
+      doc.text(`Due Date: ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 50, { align: 'right' });
 
-    doc.save(`Invoice_${invoice.invoiceNumber || 'Detail'}.pdf`);
+      doc.setDrawColor(241, 245, 249);
+      doc.line(20, 75, pageWidth - 20, 75);
+
+      // 2. Billing Section
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(148, 163, 184);
+      doc.text('BILL TO:', 20, 85);
+      doc.text('SHIP TO:', pageWidth - 20, 85, { align: 'right' });
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(inv.clientId?.fullName || 'Client', 20, 93);
+      doc.text(inv.projectId?.address || 'address23', pageWidth - 20, 93, { align: 'right' });
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(inv.clientId?.address || 'indore', 20, 99);
+
+      // 3. Table Section
+      const tableColumn = ["ITEM / DESCRIPTION", "QTY", "RATE", "TOTAL"];
+      const tableRows = (inv.items || []).map(item => [
+        { content: `${item.description || 'text'}\nProfessional Grade Construction Material`, styles: { fontStyle: 'bold' } },
+        item.quantity || 1,
+        `£${(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        `£${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+      ]);
+
+      autoTable(doc, {
+        startY: 110,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [30, 41, 59], // Slate-800
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: 'bold',
+          halign: (index) => index > 0 ? 'center' : 'left'
+        },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'center', fontStyle: 'bold' },
+          2: { halign: 'right', fontStyle: 'bold' },
+          3: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
+        },
+        styles: {
+          fontSize: 9,
+          cellPadding: 6,
+          lineColor: [226, 232, 240], // Slate-200
+          lineWidth: 0.1
+        },
+      });
+
+      // 4. Summary Section
+      const finalY = doc.lastAutoTable.finalY + 15;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Sub Total', pageWidth - 60, finalY);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`£${(inv.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
+
+      doc.setTextColor(148, 163, 184);
+      doc.text('Tax', pageWidth - 60, finalY + 8);
+      doc.setTextColor(15, 23, 42);
+      doc.text('£0.00', pageWidth - 20, finalY + 8, { align: 'right' });
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(pageWidth - 65, finalY + 14, pageWidth - 20, finalY + 14);
+
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text('TOTAL', pageWidth - 60, finalY + 25);
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235); // Blue-600
+      doc.text(`£${(inv.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY + 25, { align: 'right' });
+
+      // 5. Footer Notes
+      const footerY = 240;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Notes', 20, footerY);
+
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      const notes = "This accounting software is designed to assist users in managing financial data such as invoices, expenses, payments, reports, and tax-related records. All information and reports generated by the system depend on the data entered by the user, and users should verify details before final submission. The software may receive updates, improvements, or feature changes to enhance performance, accuracy, and security. Regular data backups are recommended to avoid potential data loss.";
+      const splitNotes = doc.splitTextToSize(notes, pageWidth - 40);
+      doc.text(splitNotes, 20, footerY + 8);
+
+      doc.save(`Invoice_${inv.invoiceNumber}.pdf`);
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      alert('Failed to generate PDF. Please check the console for details.');
+    }
   };
 
   if (loading) {
@@ -115,8 +220,8 @@ const Invoices = () => {
                 <td className="px-6 py-4 text-right">
                   <button
                     onClick={() => handleDownload(invoice)}
-                    className="text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 p-2 rounded-lg"
-                    title="Download Invoice"
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    title="Download PDF"
                   >
                     <Download size={16} />
                   </button>
