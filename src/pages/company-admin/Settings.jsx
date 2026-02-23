@@ -209,6 +209,7 @@ const RoleSettings = () => {
   const permissionLabels = {
     'VIEW_DASHBOARD': 'Dashboard',
     'VIEW_PROJECTS': 'Jobs',
+    'CLOCK_IN_OUT': 'My Clock',
     'CLOCK_IN_CREW': 'Clock In Crew',
     'VIEW_TIMESHEETS': 'Timesheets',
     'VIEW_DAILY_LOGS': 'Daily Logs',
