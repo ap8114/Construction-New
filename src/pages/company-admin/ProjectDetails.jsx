@@ -429,11 +429,19 @@ const ProjectDetails = () => {
                                 {/* Header */}
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                                        <div
+                                            className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 cursor-pointer hover:bg-blue-100 transition-colors"
+                                            onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}`)}
+                                        >
                                             <Briefcase size={18} className="text-blue-600" />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="font-black text-slate-900 truncate">{job.name}</h3>
+                                            <h3
+                                                className="font-black text-slate-900 truncate cursor-pointer hover:text-blue-600 transition-colors"
+                                                onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}`)}
+                                            >
+                                                {job.name}
+                                            </h3>
                                             {job.location && (
                                                 <div className="flex items-center gap-1 mt-0.5 text-slate-400">
                                                     <MapPin size={11} />
@@ -456,6 +464,19 @@ const ProjectDetails = () => {
                                                 <option value="completed">Completed</option>
                                             </select>
                                         )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <span>Progress</span>
+                                        <span className="text-blue-600">{job.progress || 0}%</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-blue-600 transition-all duration-500"
+                                            style={{ width: `${job.progress || 0}%` }}
+                                        />
                                     </div>
                                 </div>
 
@@ -620,8 +641,16 @@ const ProjectDetails = () => {
                                 {/* Actions */}
                                 <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                                     <button
-                                        onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/deficiencies`)}
+                                        onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}`)}
                                         className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1.5"
+                                        title="View Job Details"
+                                    >
+                                        <LayoutGrid size={16} />
+                                        <span className="text-[10px] font-black uppercase">Dashboard</span>
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/deficiencies`)}
+                                        className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all flex items-center gap-1.5"
                                         title="Deficiencies List"
                                     >
                                         <AlertTriangle size={16} />

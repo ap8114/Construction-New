@@ -3,7 +3,7 @@ import {
   MessageSquare, X, Check, ArrowRight, Activity, FileText,
   DollarSign, MapPin, Camera, AlertCircle, RefreshCw, Search,
   ChevronDown, Bell, Wrench, ClipboardList, Clock, Briefcase,
-  MoreHorizontal, Smartphone, ExternalLink
+  MoreHorizontal, Smartphone, ExternalLink, Trash2
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
+import CancellationModal from '../../components/jobs/CancellationModal';
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true }) => (
   <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
@@ -118,7 +119,11 @@ const CompanyAdminDashboard = () => {
     weeklyDone: '0h done'
   });
   const [myRecentActivity, setMyRecentActivity] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
+  const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
+  const [taskToCancel, setTaskToCancel] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [timer, setTimer] = useState(0);
   const socketRef = useRef();
 
@@ -147,6 +152,12 @@ const CompanyAdminDashboard = () => {
         }
       }
       if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
+
+      // Fetch worker tasks if applicable
+      if (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(user?.role)) {
+        const tasksRes = await api.get('/job-tasks/worker');
+        setMyTasks(tasksRes.data || []);
+      }
 
       // Fetch equipment alerts separately as it's a new feature
       const equipRes = await api.get('/equipment');
@@ -240,6 +251,38 @@ const CompanyAdminDashboard = () => {
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleCancelTask = async (reason) => {
+    try {
+      setSubmitting(true);
+      await api.patch(`/job-tasks/${taskToCancel}`, {
+        status: 'cancelled',
+        cancellationReason: reason
+      });
+      setIsCancellationModalOpen(false);
+      setTaskToCancel(null);
+      fetchDashboardData(); // Refresh tasks
+    } catch (error) {
+      console.error('Error cancelling task:', error);
+      alert('Failed to cancel task. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to remove this cancelled task from your list?')) return;
+    try {
+      setLoading(true);
+      await api.delete(`/job-tasks/${taskId}`);
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isOwner = user?.role === 'COMPANY_OWNER';
@@ -426,6 +469,114 @@ const CompanyAdminDashboard = () => {
                     <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* My Tasks Section - For Workers & Subcontractors */}
+          {(isWorker || isSubcontractor || isForeman) && (
+            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight">Assigned Tasks</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{myTasks.filter(t => t.status !== 'completed').length} Pending Tasks</p>
+                  </div>
+                </div>
+                {myTasks.length > 0 && (
+                  <button
+                    onClick={() => navigate('/company-admin/projects')}
+                    className="text-xs font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+                  >
+                    View Jobs
+                  </button>
+                )}
+              </div>
+              <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto no-scrollbar">
+                {myTasks.map((task) => (
+                  <div key={task._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <button
+                        onClick={async () => {
+                          const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+                          await api.patch(`/job-tasks/${task._id}`, { status: nextStatus });
+                          fetchDashboardData();
+                        }}
+                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0
+                            ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' :
+                            task.status === 'cancelled' ? 'bg-red-500 border-red-500 text-white' :
+                              'border-slate-200 text-transparent hover:border-emerald-500'}`}
+                      >
+                        {task.status === 'cancelled' ? <X size={12} strokeWidth={4} /> : <Check size={12} strokeWidth={4} />}
+                      </button>
+                      <div className="min-w-0">
+                        <p className={`font-black text-slate-900 text-sm tracking-tight truncate 
+                          ${task.status === 'completed' ? 'text-slate-400 line-through' :
+                            task.status === 'cancelled' ? 'text-red-500' : ''}`}>
+                          {task.title}
+                        </p>
+                        {task.status === 'cancelled' && task.cancellationReason && (
+                          <p className="text-[10px] text-red-400 font-bold italic mt-0.5 max-w-[200px] truncate">
+                            Cancelled: {task.cancellationReason}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                            <Briefcase size={10} /> {task.jobId?.name || 'Unknown Job'}
+                          </span>
+                          {task.dueDate && (
+                            <span className={`text-[10px] font-bold flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-500' : 'text-slate-400'}`}>
+                              <Calendar size={10} /> {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border
+                        ${task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
+                          task.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                            'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                        {task.priority}
+                      </span>
+                      {task.status !== 'completed' && task.status !== 'cancelled' ? (
+                        <button
+                          onClick={() => {
+                            setTaskToCancel(task._id);
+                            setIsCancellationModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Cancel Task"
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : task.status === 'cancelled' ? (
+                        <button
+                          onClick={() => handleDeleteTask(task._id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete Cancelled Task"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => navigate(`/company-admin/projects/${task.jobId?.projectId?._id}/jobs/${task.jobId?._id}`)}
+                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <ExternalLink size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {myTasks.length === 0 && (
+                  <div className="p-12 text-center flex flex-col items-center gap-3">
+                    <CheckCircle size={32} className="text-slate-200" />
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest italic">All caught up! No tasks assigned.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -721,6 +872,17 @@ const CompanyAdminDashboard = () => {
           )}
         </div>
       </div>
+      {isCancellationModalOpen && (
+        <CancellationModal
+          isOpen={isCancellationModalOpen}
+          onClose={() => {
+            setIsCancellationModalOpen(false);
+            setTaskToCancel(null);
+          }}
+          onConfirm={handleCancelTask}
+          loading={submitting}
+        />
+      )}
     </div >
   );
 };

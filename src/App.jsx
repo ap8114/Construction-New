@@ -49,6 +49,7 @@ import Equipment from './pages/company-admin/Equipment';
 import WorkerPunch from './pages/company-admin/WorkerPunch';
 import CrewClock from './pages/company-admin/CrewClock';
 import Deficiencies from './pages/jobs/Deficiencies';
+import JobDetails from './pages/jobs/JobDetails';
 
 // RFI Module
 import RFIDashboard from './pages/company-admin/RFIDashboard';
@@ -126,7 +127,8 @@ function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetails />} />
         <Route path="projects/:id/jobs/new" element={<CreateJob />} />
-        <Route path="projects/:projectId/jobs/:jobId/deficiencies" element={<Deficiencies />} />
+        <Route path="projects/:id/jobs/:jobId/deficiencies" element={<Deficiencies />} />
+        <Route path="projects/:projectId/jobs/:jobId" element={<JobDetails />} />
         <Route path="team" element={<Team />} />
 
         <Route path="schedule" element={<Schedule />} />
