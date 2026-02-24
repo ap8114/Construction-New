@@ -151,9 +151,15 @@ const ClientPortalDashboard = () => {
               {data.projects.length > 0 && (
                 <div className="mb-12">
                   <div className="flex justify-between items-end mb-4">
-                    <div>
-                      <p className="text-2xl font-black text-slate-800">{primaryProject.progress}%</p>
-                      <p className="text-xs text-slate-400 font-bold uppercase">{primaryProject.name} Progress</p>
+                    <div
+                      className="cursor-pointer group"
+                      onClick={() => navigate(`/client-portal/progress/${primaryProject._id}`)}
+                    >
+                      <p className="text-2xl font-black text-slate-800 group-hover:text-blue-600 transition-colors">{primaryProject.progress}%</p>
+                      <p className="text-xs text-slate-400 font-bold uppercase group-hover:text-slate-600">
+                        {primaryProject.name} Progress
+                        <ArrowUpRight size={12} className="inline ml-1" />
+                      </p>
                     </div>
                     <button
                       onClick={() => navigate(`/client-portal/drawings?projectId=${primaryProject._id}`)}

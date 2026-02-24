@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, AlertTriangle, Save, Loader, Hammer,
-    ShieldAlert, Layers, User, Calendar, Image as ImageIcon
+    ShieldAlert, Layers, User, Calendar, Image as ImageIcon,
+    Clock
 } from 'lucide-react';
 import Modal from '../Modal';
 
@@ -32,7 +33,9 @@ const DeficiencyModal = ({
                 priority: initialData.priority || 'medium',
                 assignedTo: initialData.assignedTo?._id || initialData.assignedTo || '',
                 status: initialData.status || 'open',
-                dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : ''
+                dueDate: initialData.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '',
+                images: initialData.images || [],
+                newImages: []
             });
         } else {
             setFormData({
@@ -42,7 +45,9 @@ const DeficiencyModal = ({
                 priority: 'medium',
                 assignedTo: '',
                 status: 'open',
-                dueDate: ''
+                dueDate: '',
+                images: [],
+                newImages: []
             });
         }
     }, [initialData, isOpen]);
@@ -178,6 +183,69 @@ const DeficiencyModal = ({
                         className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all h-32 resize-none text-sm"
                         placeholder="Provide technical details for the fix..."
                     />
+                </div>
+
+                <div className="space-y-3">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        Photos & Attachments
+                    </label>
+                    <div className="grid grid-cols-4 lg:grid-cols-5 gap-3">
+                        {/* Existing/Selected Images Previews */}
+                        {(formData.images || []).map((img, idx) => (
+                            <div key={`existing-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group">
+                                <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({
+                                        ...formData,
+                                        images: formData.images.filter((_, i) => i !== idx)
+                                    })}
+                                    className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
+                        {formData.newImages?.map((file, idx) => (
+                            <div key={`new-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-blue-200 bg-blue-50 group">
+                                <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover opacity-60" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Clock size={16} className="text-blue-600 animate-pulse" />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({
+                                        ...formData,
+                                        newImages: formData.newImages.filter((_, i) => i !== idx)
+                                    })}
+                                    className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        ))}
+
+                        {/* Add Button */}
+                        <label className="relative aspect-square rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group">
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => {
+                                    if (e.target.files) {
+                                        const files = Array.from(e.target.files);
+                                        setFormData({
+                                            ...formData,
+                                            newImages: [...(formData.newImages || []), ...files]
+                                        });
+                                    }
+                                }}
+                                className="hidden"
+                            />
+                            <ImageIcon size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                            <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600 uppercase">Attach</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div className="pt-4">

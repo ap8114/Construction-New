@@ -518,7 +518,7 @@ const Projects = () => {
             <div key={project._id}
               onClick={() => {
                 const path = user?.role === 'CLIENT'
-                  ? `/client-portal/drawings?projectId=${project._id}`
+                  ? `/client-portal/progress/${project._id}`
                   : `/company-admin/projects/${project._id}`;
                 navigate(path);
               }}
@@ -616,12 +616,14 @@ const Projects = () => {
 
                 {/* Action buttons */}
                 <div className="flex flex-wrap items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
-                  <button onClick={(e) => openEdit(project, e)}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
-                    title="Edit Project"
-                  >
-                    <Edit size={14} />
-                  </button>
+                  {user?.role !== 'CLIENT' && (
+                    <button onClick={(e) => openEdit(project, e)}
+                      className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
+                      title="Edit Project"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  )}
 
                   <button
                     onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${project._id}`)}
@@ -629,6 +631,15 @@ const Projects = () => {
                   >
                     <FileText size={14} className="text-blue-600" /> Drawings
                   </button>
+
+                  {user?.role === 'CLIENT' && (
+                    <button
+                      onClick={() => navigate(`/client-portal/progress/${project._id}`)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                    >
+                      <TrendingUp size={14} /> Work Progress
+                    </button>
+                  )}
 
                   {user?.role !== 'CLIENT' && (
                     <button
@@ -639,12 +650,14 @@ const Projects = () => {
                     </button>
                   )}
 
-                  <button onClick={(e) => handleDelete(project._id, e)}
-                    className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
-                    title="Delete Project"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {user?.role !== 'CLIENT' && (
+                    <button onClick={(e) => handleDelete(project._id, e)}
+                      className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
+                      title="Delete Project"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div >
@@ -677,7 +690,7 @@ const Projects = () => {
                 <tr key={project._id}
                   onClick={() => {
                     const path = user?.role === 'CLIENT'
-                      ? `/client-portal/drawings?projectId=${project._id}`
+                      ? `/client-portal/progress/${project._id}`
                       : `/company-admin/projects/${project._id}`;
                     navigate(path);
                   }}

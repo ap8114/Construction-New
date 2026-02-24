@@ -4,7 +4,7 @@ import {
     AlertCircle, CheckCircle2, Clock, Filter, Plus, Search,
     MoreHorizontal, Edit, Trash2, ShieldAlert, Hammer,
     Layers, AlertTriangle, User, ArrowLeft, ChevronRight,
-    Info, Check, Calendar
+    Info, Check, Calendar, Image as ImageIcon
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -48,20 +48,32 @@ const Deficiencies = () => {
     const [selectedDeficiency, setSelectedDeficiency] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const canManage = ['COMPANY_OWNER', 'PM'].includes(user?.role);
-    const canUpdate = ['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role);
+    const canManage = ['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
+    const canUpdate = ['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
 
     const fetchData = async () => {
         try {
             setLoading(true);
             const [defRes, userRes, projRes, jobRes] = await Promise.all([
-                api.get(`/issues?jobId=${jobId}`),
-                api.get('/auth/users'),
-                api.get(`/projects/${projectId}`),
-                api.get(`/jobs/${jobId}`)
+                api.get(`/issues?jobId=${jobId}`).catch(err => {
+                    console.error('Deficiencies fetch failed:', err);
+                    return { data: [] };
+                }),
+                api.get('/auth/users').catch(err => {
+                    console.log('Auth users restricted for this role');
+                    return { data: [] };
+                }),
+                api.get(`/projects/${projectId}`).catch(err => {
+                    console.error('Project fetch failed:', err);
+                    return { data: null };
+                }),
+                api.get(`/jobs/${jobId}`).catch(err => {
+                    console.error('Job fetch failed:', err);
+                    return { data: null };
+                })
             ]);
-            setDeficiencies(defRes.data);
-            setUsers(userRes.data);
+            setDeficiencies(defRes.data || []);
+            setUsers(userRes.data || []);
             setProject(projRes.data);
             setJob(jobRes.data);
         } catch (err) {
@@ -78,12 +90,30 @@ const Deficiencies = () => {
     const handleSave = async (formData) => {
         try {
             setIsSubmitting(true);
-            const payload = { ...formData, projectId, jobId };
+
+            // Use FormData to handle file uploads
+            const data = new FormData();
+            Object.keys(formData).forEach(key => {
+                if (key === 'newImages') {
+                    formData.newImages.forEach(file => data.append('images', file));
+                } else if (key === 'images') {
+                    // Send existing images as currentImages for partial updates
+                    data.append('currentImages', JSON.stringify(formData.images));
+                } else {
+                    data.append(key, formData[key]);
+                }
+            });
+            data.append('projectId', projectId);
+            data.append('jobId', jobId);
 
             if (selectedDeficiency) {
-                await api.patch(`/issues/${selectedDeficiency._id}`, payload);
+                await api.patch(`/issues/${selectedDeficiency._id}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             } else {
-                await api.post('/issues', payload);
+                await api.post('/issues', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             }
 
             await fetchData();
@@ -91,6 +121,7 @@ const Deficiencies = () => {
             setSelectedDeficiency(null);
         } catch (err) {
             console.error('Error saving deficiency:', err);
+            alert('Failed to save deficiency. Please check file size and network.');
         } finally {
             setIsSubmitting(false);
         }
@@ -226,9 +257,23 @@ const Deficiencies = () => {
                                     return (
                                         <tr key={d._id} className="deficiency-row transition-colors group">
                                             <td className="px-6 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 group-hover:text-slate-700 transition-colors uppercase tracking-tight">{d.title}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400 mt-0.5 line-clamp-1">{d.description || 'No description provided'}</span>
+                                                <div className="flex items-center gap-4">
+                                                    {d.images && d.images.length > 0 ? (
+                                                        <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50">
+                                                            <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center text-slate-300">
+                                                            <ImageIcon size={18} />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-slate-900 group-hover:text-slate-700 transition-colors uppercase tracking-tight">{d.title}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400 mt-0.5 line-clamp-1">{d.description || 'No description provided'}</span>
+                                                        {d.images && d.images.length > 1 && (
+                                                            <span className="text-[8px] font-black text-blue-500 uppercase mt-1">+{d.images.length - 1} more photos</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5">
@@ -307,7 +352,28 @@ const Deficiencies = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 initialData={selectedDeficiency}
-                users={users}
+                users={(() => {
+                    // Start with company users
+                    let list = Array.isArray(users) ? [...users] : [];
+
+                    // Add current user if not present (crucial for workers reporting)
+                    if (user && !list.find(u => u._id === user._id)) {
+                        list.push(user);
+                    }
+
+                    // Add job-assigned workers if not already in list
+                    if (job?.assignedWorkers) {
+                        job.assignedWorkers.forEach(worker => {
+                            if (!list.find(u => u._id === worker._id)) {
+                                list.push(worker);
+                            }
+                        });
+                    }
+
+                    // Filter only for relevant roles (PM, Foreman, Worker)
+                    const assignableRoles = ['PM', 'FOREMAN', 'WORKER'];
+                    return list.filter(u => u && u.role && assignableRoles.includes(u.role));
+                })()}
                 isSubmitting={isSubmitting}
             />
         </div>

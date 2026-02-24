@@ -71,6 +71,7 @@ import ClientApprovals from './pages/client-portal/Approvals';
 import ClientInvoices from './pages/client-portal/Invoices';
 import ClientMessages from './pages/client-portal/Messages';
 import ClientDailyLogs from './pages/client-portal/DailyLogs';
+import ClientWorkProgress from './pages/client-portal/WorkProgress';
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -192,6 +193,7 @@ function App() {
         }
       >
         <Route index element={<ClientPortalDashboard />} />
+        <Route path="progress/:id" element={<ClientWorkProgress />} />
         <Route path="projects" element={<Projects />} />
         <Route path="photos" element={<ClientPhotos />} />
         <Route path="drawings" element={<Drawings />} />
