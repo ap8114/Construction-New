@@ -5,7 +5,7 @@ import {
     Search, Filter, MoreHorizontal, Camera, FileText,
     Users, MapPin, DollarSign, ChevronRight, Layout,
     Trash2, Edit, Save, X, ArrowLeft, TrendingUp,
-    AlertTriangle
+    AlertTriangle, ShoppingCart
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -25,21 +25,24 @@ const JobDetails = () => {
     const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [taskToCancel, setTaskToCancel] = useState(null);
+    const [jobPOs, setJobPOs] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
     const fetchJobDetails = async () => {
         try {
             setLoading(true);
-            const [jobRes, tasksRes, usersRes] = await Promise.all([
+            const [jobRes, tasksRes, usersRes, poRes] = await Promise.all([
                 api.get(`/jobs/${jobId}`),
                 api.get(`/job-tasks/job/${jobId}`),
-                api.get('/auth/users').catch(() => ({ data: [] }))
+                api.get('/auth/users').catch(() => ({ data: [] })),
+                api.get(`/purchase-orders?jobId=${jobId}`).catch(() => ({ data: [] }))
             ]);
             setJob(jobRes.data);
             setTasks(tasksRes.data);
             const users = usersRes.data || [];
             console.log('fetchJobDetails - Raw Users:', users);
             setCompanyUsers(users);
+            setJobPOs(poRes?.data || []);
         } catch (err) {
             console.error('Error fetching job details:', err);
         } finally {
@@ -95,6 +98,7 @@ const JobDetails = () => {
     const tabs = [
         // { id: 'overview', label: 'Overview', icon: Layout },
         { id: 'tasks', label: 'Tasks', icon: CheckCircle },
+        { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
         // { id: 'photos', label: 'Photos', icon: Camera },
         // { id: 'documents', label: 'Documents', icon: FileText },
         // { id: 'logs', label: 'Daily Logs', icon: Clock },
@@ -390,6 +394,86 @@ const JobDetails = () => {
                         <TrendingUp size={48} className="text-slate-200" />
                         <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Detail View Coming Soon</h3>
                         <p className="max-w-xs text-xs text-slate-400 font-bold leading-relaxed">The job overview will feature advanced analytics, budget tracking, and timeline visualizations in the next update.</p>
+                    </div>
+                )}
+                {activeTab === 'pos' && (
+                    <div className="p-0 animate-fade-in">
+                        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Job Purchase Orders</h3>
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Procurement specifically for this site job</p>
+                            </div>
+                            <button
+                                onClick={() => navigate(`/company-admin/purchase-orders/new?projectId=${projectId}&jobId=${jobId}`)}
+                                className="w-full md:w-auto bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-700 transition shadow-xl shadow-blue-200 border border-blue-500/50"
+                            >
+                                <Plus size={18} /> Raise PO Request
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-white border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">PO Number</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendor Details</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total Amount</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Created Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {jobPOs.length > 0 ? jobPOs.map(po => (
+                                        <tr
+                                            key={po._id}
+                                            onClick={() => navigate(`/company-admin/purchase-orders/${po._id}`)}
+                                            className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                                        >
+                                            <td className="px-8 py-5 font-black text-slate-900">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
+                                                        <FileText size={16} />
+                                                    </div>
+                                                    {po.poNumber}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] uppercase border border-blue-100">
+                                                        {(po.vendorName || po.vendorId?.name || 'V').charAt(0)}
+                                                    </div>
+                                                    <span className="font-bold text-slate-700">{po.vendorName || po.vendorId?.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 text-right font-black text-slate-900">
+                                                ${po.totalAmount?.toLocaleString()}
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <span className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border shadow-sm bg-slate-50 text-slate-600 border-slate-200`}>
+                                                    {po.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-5 text-slate-400 font-bold text-xs">
+                                                {new Date(po.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="px-8 py-24 text-center">
+                                                <div className="flex flex-col items-center gap-4 text-slate-300">
+                                                    <div className="w-20 h-20 bg-slate-50 rounded-[30px] flex items-center justify-center border border-slate-100">
+                                                        <ShoppingCart size={32} className="opacity-20" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="font-black uppercase tracking-widest text-xs">No project costs recorded</p>
+                                                        <p className="text-[10px] font-bold text-slate-400">Raise a PO to start tracking expenses for this job</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
                 {['photos', 'documents', 'logs'].includes(activeTab) && (

@@ -16,8 +16,10 @@ const PurchaseOrderForm = () => {
 
     const [loading, setLoading] = useState(false);
     const [projects, setProjects] = useState([]);
+    const [jobs, setJobs] = useState([]);
     const [formData, setFormData] = useState({
         projectId: '',
+        jobId: '',
         vendorName: '',
         vendorEmail: '',
         poDate: new Date().toISOString().split('T')[0],
@@ -45,6 +47,7 @@ const PurchaseOrderForm = () => {
                     setFormData({
                         ...po,
                         projectId: po.projectId?._id || po.projectId || '',
+                        jobId: po.jobId?._id || po.jobId || '',
                         vendorId: po.vendorId?._id || po.vendorId || '',
                         poDate: new Date(po.createdAt).toISOString().split('T')[0],
                         expectedDeliveryDate: po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toISOString().split('T')[0] : ''
@@ -58,6 +61,23 @@ const PurchaseOrderForm = () => {
         };
         fetchData();
     }, [id, isEdit]);
+
+    // Fetch jobs when projectId changes
+    useEffect(() => {
+        const fetchJobs = async () => {
+            if (formData.projectId) {
+                try {
+                    const res = await api.get(`/jobs?projectId=${formData.projectId}`);
+                    setJobs(res.data);
+                } catch (err) {
+                    console.error('Error fetching jobs:', err);
+                }
+            } else {
+                setJobs([]);
+            }
+        };
+        fetchJobs();
+    }, [formData.projectId]);
 
     // Auto-calculate totals whenever items change
     useEffect(() => {
@@ -155,6 +175,19 @@ const PurchaseOrderForm = () => {
                                 >
                                     <option value="">Select Project</option>
                                     {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Briefcase size={14} className="text-blue-600" /> Job (Optional)
+                                </label>
+                                <select
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all appearance-none"
+                                    value={formData.jobId}
+                                    onChange={e => setFormData({ ...formData, jobId: e.target.value })}
+                                >
+                                    <option value="">Select Job</option>
+                                    {jobs.map(j => <option key={j._id} value={j._id}>{j.name}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
