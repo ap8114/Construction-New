@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader, File } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
+import DrawingViewer from './DrawingViewer';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -42,8 +43,10 @@ const Drawings = () => {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isFullViewerOpen, setIsFullViewerOpen] = useState(false);
 
   const [selectedDrawing, setSelectedDrawing] = useState(null);
+  const [selectedVersion, setSelectedVersion] = useState(null);
   const [formData, setFormData] = useState({
     projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null
   });
@@ -112,8 +115,17 @@ const Drawings = () => {
   };
 
   const handleView = (drawing) => {
+    const latestVersion = drawing.versions?.[drawing.versions.length - 1];
+    const isPDF = latestVersion?.fileUrl?.toLowerCase().endsWith('.pdf');
+
     setSelectedDrawing(drawing);
-    setIsViewOpen(true);
+    setSelectedVersion(latestVersion);
+
+    if (isPDF) {
+      setIsFullViewerOpen(true);
+    } else {
+      setIsViewOpen(true);
+    }
   };
 
   const handleDelete = (drawing) => {
@@ -131,19 +143,32 @@ const Drawings = () => {
     }
   };
 
-  const handleDownload = (drawing) => {
+  const handleDownload = async (drawing) => {
     const latestVersion = drawing.versions?.[drawing.versions.length - 1];
     const fileUrl = latestVersion?.fileUrl;
 
     if (fileUrl) {
-      const fullUrl = getServerUrl(fileUrl);
-      const link = document.createElement('a');
-      link.href = fullUrl;
-      link.setAttribute('download', `${drawing.title}_v${drawing.currentVersion}${fileUrl.substring(fileUrl.lastIndexOf('.'))}`);
-      link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        setLoading(true);
+        const fullUrl = getServerUrl(fileUrl);
+        const response = await fetch(fullUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const extension = fileUrl.substring(fileUrl.lastIndexOf('.'));
+        link.setAttribute('download', `${drawing.title}_v${drawing.currentVersion}${extension}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Download error:', error);
+        // Fallback to old method if fetch fails
+        window.open(getServerUrl(fileUrl), '_blank');
+      } finally {
+        setLoading(false);
+      }
     } else {
       alert(`No file available for this drawing.`);
     }
@@ -499,6 +524,14 @@ const Drawings = () => {
         </div>
       </Modal>
 
+      {/* Full PDF Viewer & Annotation System */}
+      {isFullViewerOpen && selectedDrawing && selectedVersion && (
+        <DrawingViewer
+          drawing={selectedDrawing}
+          version={selectedVersion}
+          onClose={() => setIsFullViewerOpen(false)}
+        />
+      )}
     </div>
   );
 };
