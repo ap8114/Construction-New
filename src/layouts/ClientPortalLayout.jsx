@@ -96,6 +96,7 @@ const ClientPortalLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/client-portal', permission: 'VIEW_DASHBOARD' },
     { icon: Briefcase, label: 'Jobs', path: '/client-portal/projects', permission: 'VIEW_PROJECTS' },
+    { icon: FileCheck, label: 'RFI', path: '/client-portal/rfi', permission: 'VIEW_RFI' },
     { icon: Image, label: 'Photos', path: '/client-portal/photos', permission: 'VIEW_PHOTOS' },
     { icon: FileText, label: 'Drawings', path: '/client-portal/drawings', permission: 'VIEW_DRAWINGS' },
     { icon: ClipboardList, label: 'Daily Logs', path: '/client-portal/daily-logs', permission: 'VIEW_DAILY_LOGS' },

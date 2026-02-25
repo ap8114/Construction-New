@@ -2,12 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Loader, Send, FileQuestion } from 'lucide-react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 const CreateRFI = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+
+    const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
+
+    useEffect(() => {
+        if (user?.role === 'CLIENT') {
+            navigate(basePath === '/client-portal' ? '/client-portal/rfi' : '/company-admin/rfi');
+            return;
+        }
+    }, [user, navigate, basePath]);
+
     const [form, setForm] = useState({
         projectId: '',
         subject: '',
@@ -61,7 +73,7 @@ const CreateRFI = () => {
             if (!payload.location) delete payload.location;
 
             const res = await api.post('/rfis', payload);
-            navigate(`/company-admin/rfi/${res.data._id}`);
+            navigate(`${basePath}/rfi/${res.data._id}`);
         } catch (err) {
             alert(err.response?.data?.message || 'Failed to create RFI');
         } finally {
@@ -178,10 +190,10 @@ const CreateRFI = () => {
                                         type="button"
                                         onClick={() => setForm(f => ({ ...f, priority: p }))}
                                         className={`flex-1 py-2 rounded-xl text-xs font-bold capitalize border transition ${form.priority === p
-                                                ? p === 'high' ? 'bg-red-500 text-white border-red-500 shadow-md'
-                                                    : p === 'medium' ? 'bg-amber-500 text-white border-amber-500 shadow-md'
-                                                        : 'bg-slate-600 text-white border-slate-600 shadow-md'
-                                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                            ? p === 'high' ? 'bg-red-500 text-white border-red-500 shadow-md'
+                                                : p === 'medium' ? 'bg-amber-500 text-white border-amber-500 shadow-md'
+                                                    : 'bg-slate-600 text-white border-slate-600 shadow-md'
+                                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                             }`}
                                     >
                                         {p}

@@ -6,6 +6,7 @@ import {
     ChevronRight, Eye, AlertCircle
 } from 'lucide-react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 const statusColors = {
     open: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -25,8 +26,11 @@ const priorityColors = {
 
 const RFIDashboard = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
 
     useEffect(() => {
         const fetch = async () => {
@@ -59,12 +63,14 @@ const RFIDashboard = () => {
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter">RFI Dashboard</h1>
                     <p className="text-slate-500 text-sm mt-1 font-medium">Request for Information — Overview & Summary</p>
                 </div>
-                <button
-                    onClick={() => navigate('/company-admin/rfi/create')}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 text-sm"
-                >
-                    <Plus size={18} /> New RFI
-                </button>
+                {user?.role !== 'CLIENT' && (
+                    <button
+                        onClick={() => navigate(`${basePath}/rfi/create`)}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all hover:-translate-y-0.5 text-sm"
+                    >
+                        <Plus size={18} /> New RFI
+                    </button>
+                )}
             </div>
 
             {/* Stat Cards */}
@@ -80,7 +86,7 @@ const RFIDashboard = () => {
                     : statCards.map((card, i) => (
                         <div
                             key={i}
-                            onClick={() => navigate('/company-admin/rfi/list')}
+                            onClick={() => navigate(`${basePath}/rfi/list`)}
                             className={`bg-white rounded-2xl p-5 border ${card.light} cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 group`}
                         >
                             <div className={`w-10 h-10 rounded-xl ${card.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
@@ -99,7 +105,7 @@ const RFIDashboard = () => {
                 <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between p-5 border-b border-slate-100">
                         <h3 className="font-black text-slate-800 tracking-tight">Recent RFIs</h3>
-                        <button onClick={() => navigate('/company-admin/rfi/list')} className="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline">
+                        <button onClick={() => navigate(`${basePath}/rfi/list`)} className="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline">
                             View All <ChevronRight size={14} />
                         </button>
                     </div>
@@ -111,7 +117,7 @@ const RFIDashboard = () => {
                         ) : data?.recentRFIs?.map((rfi) => (
                             <div
                                 key={rfi._id}
-                                onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                 className="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition"
                             >
                                 <div className="flex-1 min-w-0">
@@ -146,7 +152,7 @@ const RFIDashboard = () => {
                         ) : data?.highPriorityRFIs?.map((rfi) => (
                             <div
                                 key={rfi._id}
-                                onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                 className="flex items-start gap-3 p-4 hover:bg-red-50/30 cursor-pointer transition"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -181,7 +187,7 @@ const RFIDashboard = () => {
                         ) : data?.overdueRFIs?.map((rfi) => (
                             <div
                                 key={rfi._id}
-                                onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                 className="flex items-start gap-3 p-4 hover:bg-orange-50/30 cursor-pointer transition"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -202,7 +208,7 @@ const RFIDashboard = () => {
 
             {/* CTA */}
             <div
-                onClick={() => navigate('/company-admin/rfi/list')}
+                onClick={() => navigate(`${basePath}/rfi/list`)}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-6 flex items-center justify-between cursor-pointer hover:shadow-xl hover:shadow-blue-200 transition-all hover:-translate-y-0.5"
             >
                 <div>

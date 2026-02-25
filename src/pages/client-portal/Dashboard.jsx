@@ -4,7 +4,7 @@ import {
   Clock, CheckCircle, FileText, Download,
   TrendingUp, Calendar, AlertCircle,
   Image as ImageIcon, MoreHorizontal,
-  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader, ExternalLink
+  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader, ExternalLink, FileQuestion
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -38,19 +38,21 @@ const ClientPortalDashboard = () => {
     invoices: [],
     photos: [],
     drawings: [],
-    logs: []
+    logs: [],
+    rfis: []
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [projRes, invRes, photoRes, drawRes, logRes] = await Promise.all([
+        const [projRes, invRes, photoRes, drawRes, logRes, rfiRes] = await Promise.all([
           api.get('/projects'),
           api.get('/invoices'),
           api.get('/photos'),
           api.get('/drawings'),
-          api.get('/dailylogs')
+          api.get('/dailylogs'),
+          api.get('/rfis')
         ]);
 
         setData({
@@ -58,7 +60,8 @@ const ClientPortalDashboard = () => {
           invoices: invRes.data,
           photos: photoRes.data.slice(0, 4), // Latest 4
           drawings: drawRes.data.slice(0, 3), // Latest 3
-          logs: logRes.data.slice(0, 4) // Latest 4
+          logs: logRes.data.slice(0, 4), // Latest 4
+          rfis: rfiRes.data
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -131,6 +134,13 @@ const ClientPortalDashboard = () => {
           subtext="Latest visual updates"
           icon={ImageIcon}
           color="bg-indigo-600 shadow-lg shadow-indigo-100"
+        />
+        <ClientStatCard
+          title="RFIs"
+          value={data.rfis.length}
+          subtext="Requests for Information"
+          icon={FileQuestion}
+          color="bg-violet-600 shadow-lg shadow-violet-100"
         />
       </div>
 

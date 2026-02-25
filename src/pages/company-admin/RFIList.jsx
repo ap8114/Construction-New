@@ -6,6 +6,7 @@ import {
     Loader, RefreshCw, CheckCircle2, FileQuestion
 } from 'lucide-react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 const statusColors = {
     open: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -22,11 +23,14 @@ const priorityColors = {
 
 const RFIList = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [rfis, setRfis] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({ projectId: '', status: '', priority: '' });
+
+    const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
 
     useEffect(() => {
         Promise.all([
@@ -70,17 +74,19 @@ const RFIList = () => {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => navigate('/company-admin/rfi')}
+                        onClick={() => navigate(`${basePath}/rfi`)}
                         className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold border border-slate-200 transition text-sm"
                     >
                         Dashboard
                     </button>
-                    <button
-                        onClick={() => navigate('/company-admin/rfi/create')}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition text-sm"
-                    >
-                        <Plus size={18} /> New RFI
-                    </button>
+                    {user?.role !== 'CLIENT' && (
+                        <button
+                            onClick={() => navigate(`${basePath}/rfi/create`)}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition text-sm"
+                        >
+                            <Plus size={18} /> New RFI
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -143,9 +149,11 @@ const RFIList = () => {
                     <div className="flex flex-col items-center justify-center p-16 text-slate-400 gap-3">
                         <FileQuestion size={40} className="text-slate-200" />
                         <p className="font-bold">No RFIs Found</p>
-                        <button onClick={() => navigate('/company-admin/rfi/create')} className="text-sm text-blue-600 hover:underline font-medium">
-                            + Create your first RFI
-                        </button>
+                        {user?.role !== 'CLIENT' && (
+                            <button onClick={() => navigate(`${basePath}/rfi/create`)} className="text-sm text-blue-600 hover:underline font-medium">
+                                + Create your first RFI
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -164,7 +172,7 @@ const RFIList = () => {
                                         <tr
                                             key={rfi._id}
                                             className="hover:bg-slate-50/70 transition-colors cursor-pointer"
-                                            onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                            onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                         >
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
@@ -201,13 +209,13 @@ const RFIList = () => {
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                     <button
-                                                        onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                                        onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                                         className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
                                                         title="View"
                                                     >
                                                         <Eye size={14} />
                                                     </button>
-                                                    {rfi.status !== 'closed' && (
+                                                    {rfi.status !== 'closed' && user?.role !== 'CLIENT' && (
                                                         <button
                                                             onClick={e => handleCloseRFI(rfi._id, e)}
                                                             className="p-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-red-50 hover:text-red-500 transition"
@@ -229,7 +237,7 @@ const RFIList = () => {
                             {filtered.map(rfi => (
                                 <div
                                     key={rfi._id}
-                                    onClick={() => navigate(`/company-admin/rfi/${rfi._id}`)}
+                                    onClick={() => navigate(`${basePath}/rfi/${rfi._id}`)}
                                     className="p-4 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-2">

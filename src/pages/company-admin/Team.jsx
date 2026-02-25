@@ -100,11 +100,16 @@ const UserForm = ({ data, setData, onSubmit, submitLabel, isEdit = false, roleOp
           <Shield size={18} className="absolute left-3 top-2.5 text-slate-400" />
           <select
             value={data.role}
-            onChange={e => setData({ ...data, role: e.target.value })}
+            onChange={e => {
+              const selectedRole = roleOptions.find(r => r.name === e.target.value) || { name: e.target.value };
+              setData({ ...data, role: selectedRole.name, roleId: selectedRole._id || data.roleId });
+            }}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 transition appearance-none"
           >
             {roleOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt._id || opt.value} value={opt.name || opt.value}>
+                {opt.description || opt.label || opt.name}
+              </option>
             ))}
           </select>
         </div>
@@ -196,6 +201,9 @@ const UserTable = ({ users, onView, onEdit, onDelete, emptyMessage }) => (
               </td>
               <td className="px-6 py-4 text-right">
                 <div className="flex justify-end gap-2">
+                  <button onClick={() => onManagePermissions(member)} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Permissions">
+                    <Lock size={18} />
+                  </button>
                   <button onClick={() => onView(member)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="View Details">
                     <Eye size={18} />
                   </button>
@@ -221,7 +229,7 @@ const UserTable = ({ users, onView, onEdit, onDelete, emptyMessage }) => (
 
 const TEAM_ROLE_OPTIONS = [
   { value: 'PM', label: 'Project Manager' },
-  { value: 'FOREMAN', label: 'Site Foreman' },
+  { value: 'FOREMAN', label: 'Forman' },
   { value: 'WORKER', label: 'Worker' },
   { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
 ];
@@ -258,7 +266,27 @@ const Team = () => {
   const [selectedMember, setSelectedMember] = useState(null);
   const [formData, setFormData] = useState(emptyForm('WORKER'));
 
+  // Permissions and Roles state
+  const [allRoles, setAllRoles] = useState([]);
+  const [allPermissions, setAllPermissions] = useState([]);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
+  const [userPermissions, setUserPermissions] = useState({ rolePermissions: [], overrides: [] });
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
+
   // ─── Data fetching ────────────────────────────────────────────────────────────
+  const fetchRolesAndPermissions = async () => {
+    try {
+      const [rolesRes, permsRes] = await Promise.all([
+        api.get('/roles'),
+        api.get('/roles/permissions')
+      ]);
+      setAllRoles(rolesRes.data);
+      setAllPermissions(permsRes.data);
+    } catch (error) {
+      console.error('Error fetching roles/permissions:', error);
+    }
+  };
+
   const fetchMembers = async () => {
     try {
       setMembersLoading(true);
@@ -286,7 +314,58 @@ const Team = () => {
   useEffect(() => {
     fetchMembers();
     fetchClients();
+    fetchRolesAndPermissions();
   }, []);
+
+  const handleManagePermissions = async (user) => {
+    setSelectedMember(user);
+    setIsPermissionsOpen(true);
+    setPermissionsLoading(true);
+    try {
+      const response = await api.get(`/roles/user/${user._id}`);
+      setUserPermissions(response.data);
+    } catch (error) {
+      console.error('Error fetching user permissions:', error);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const handleToggleOverride = (permKey, currentOverride) => {
+    const newOverrides = [...userPermissions.overrides];
+    const index = newOverrides.findIndex(o => o.key === permKey);
+
+    // If currentOverride is null, it means it's currently following Role
+    // We want to force it to be allowed or denied
+    if (index === -1) {
+      const isCurrentlyAllowedByRole = userPermissions.rolePermissions.includes(permKey);
+      newOverrides.push({ key: permKey, isAllowed: !isCurrentlyAllowedByRole });
+    } else {
+      // If it was already overridden, we can either flip it or remove override
+      // For simplicity, let's flip it
+      newOverrides[index].isAllowed = !newOverrides[index].isAllowed;
+    }
+    setUserPermissions({ ...userPermissions, overrides: newOverrides });
+  };
+
+  const handleResetOverride = (permKey) => {
+    const newOverrides = userPermissions.overrides.filter(o => o.key !== permKey);
+    setUserPermissions({ ...userPermissions, overrides: newOverrides });
+  };
+
+  const handleSavePermissions = async () => {
+    try {
+      setIsSubmitting(true);
+      await api.post(`/roles/user/${selectedMember._id}/overrides`, {
+        overrides: userPermissions.overrides
+      });
+      setIsPermissionsOpen(false);
+    } catch (error) {
+      alert('Failed to save permissions');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ─── Derived lists ─────────────────────────────────────────────────────────
   const isTeamTab = activeTab === 'team';
@@ -460,6 +539,7 @@ const Team = () => {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onManagePermissions={handleManagePermissions}
             emptyMessage={isTeamTab ? 'No team members found.' : 'No clients found.'}
           />
         )}
@@ -474,7 +554,7 @@ const Team = () => {
           setData={setFormData}
           onSubmit={handleSaveAdd}
           submitLabel={isSubmitting ? 'Saving...' : (isTeamTab ? 'Add Member' : 'Add Client')}
-          roleOptions={currentRoleOptions}
+          roleOptions={allRoles.length > 0 ? (isTeamTab ? allRoles.filter(r => ['PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(r.name)) : allRoles.filter(r => r.name === 'CLIENT')) : currentRoleOptions}
         />
       </Modal>
 
@@ -486,7 +566,7 @@ const Team = () => {
           onSubmit={handleSaveEdit}
           submitLabel={isSubmitting ? 'Saving...' : 'Save Changes'}
           isEdit={true}
-          roleOptions={currentRoleOptions}
+          roleOptions={allRoles.length > 0 ? (isTeamTab ? allRoles.filter(r => ['PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(r.name)) : allRoles.filter(r => r.name === 'CLIENT')) : currentRoleOptions}
         />
       </Modal>
 
@@ -518,6 +598,96 @@ const Team = () => {
               </button>
               <button onClick={() => handleDelete(selectedMember)} className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-lg hover:bg-red-50 transition font-medium flex justify-center items-center gap-2">
                 <Trash2 size={16} /> Remove
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Permissions Modal */}
+      <Modal isOpen={isPermissionsOpen} onClose={() => setIsPermissionsOpen(false)} title="Permission Matrix">
+        {permissionsLoading ? (
+          <div className="flex justify-center py-10">
+            <Loader className="animate-spin text-blue-500" size={24} />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="bg-slate-50 p-3 rounded-lg flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                {selectedMember?.fullName?.charAt(0)}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">{selectedMember?.fullName}</p>
+                <p className="text-xs text-slate-500">Role: {selectedMember?.role}</p>
+              </div>
+            </div>
+
+            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-4">
+              {Object.entries(
+                allPermissions.reduce((acc, p) => {
+                  if (!acc[p.module]) acc[p.module] = [];
+                  acc[p.module].push(p);
+                  return acc;
+                }, {})
+              ).map(([module, perms]) => (
+                <div key={module} className="border border-slate-100 rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 uppercase">
+                    {module}
+                  </div>
+                  <div className="p-3 space-y-2">
+                    {perms.map(p => {
+                      const override = userPermissions.overrides.find(o => o.key === p.key);
+                      const isAllowedByRole = userPermissions.rolePermissions.includes(p.key);
+                      const isFinalAllowed = override ? override.isAllowed : isAllowedByRole;
+                      const isOverridden = !!override;
+
+                      return (
+                        <div key={p.key} className="flex items-center justify-between group">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-700">{p.description || p.key}</span>
+                            {isOverridden && (
+                              <span className="text-[10px] text-orange-500 font-bold uppercase">
+                                Overridden
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isOverridden && (
+                              <button
+                                onClick={() => handleResetOverride(p.key)}
+                                className="text-[10px] text-slate-400 hover:text-slate-600 underline"
+                              >
+                                Reset
+                              </button>
+                            )}
+                            <div
+                              onClick={() => handleToggleOverride(p.key, override)}
+                              className={`w-10 h-5 rounded-full transition-colors cursor-pointer relative ${isFinalAllowed ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                            >
+                              <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isFinalAllowed ? 'left-6' : 'left-1'}`} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setIsPermissionsOpen(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePermissions}
+                disabled={isSubmitting}
+                className="px-6 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Permissions'}
               </button>
             </div>
           </div>

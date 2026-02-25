@@ -202,6 +202,10 @@ function App() {
         <Route path="approvals" element={<ClientApprovals />} />
         <Route path="invoices" element={<ClientInvoices />} />
         <Route path="messages" element={<Chat />} />
+        {/* Client RFI Routes */}
+        <Route path="rfi" element={<RFIDashboard />} />
+        <Route path="rfi/list" element={<RFIList />} />
+        <Route path="rfi/:id" element={<RFIDetail />} />
         <Route path="profile" element={<ProjectTeamProfile />} />
       </Route>
 
