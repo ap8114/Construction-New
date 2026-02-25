@@ -183,13 +183,12 @@ const Timesheets = () => {
     const handleExport = () => {
         const wrap = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
         const csv = [
-            ['Employee', 'Project', 'Date', 'Time In', 'Time Out', 'Duration (h)', 'Status', 'GPS Recorded', 'GPS Address'].map(wrap).join(','),
+            ['Employee', 'Project', 'Date', 'Time In', 'Time Out', 'Duration (h)', 'Status', 'Geofence Status', 'Location Verified', 'GPS In', 'GPS Out'].map(wrap).join(','),
             ...filteredEntries.map(e => {
                 const clockIn = new Date(e.clockIn);
                 const clockOut = e.clockOut ? new Date(e.clockOut) : null;
                 const duration = clockOut ? ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(2) : 'In Progress';
-                const hasGps = !!(e.gpsIn?.latitude && e.gpsIn?.longitude);
-                const address = gpsAddresses[e._id] || (hasGps ? `${e.gpsIn.latitude.toFixed(5)}, ${e.gpsIn.longitude.toFixed(5)}` : 'No GPS');
+                const geofence = e.isOutsideGeofence ? 'OUTSIDE' : (e.geofenceStatus === 'inside' ? 'INSIDE' : 'UNKNOWN');
                 return [
                     e.userId?.fullName || '',
                     e.projectId?.name || 'Manual Entry',
@@ -198,8 +197,10 @@ const Timesheets = () => {
                     clockOut ? clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '---',
                     duration,
                     e.status,
-                    hasGps ? 'Yes' : 'No',
-                    address
+                    geofence,
+                    e.isOutsideGeofence ? 'Flagged' : 'Verified',
+                    e.clockInLatitude ? `${e.clockInLatitude}, ${e.clockInLongitude}` : '',
+                    e.clockOutLatitude ? `${e.clockOutLatitude}, ${e.clockOutLongitude}` : ''
                 ].map(wrap).join(',');
             })
         ].join('\n');
@@ -420,8 +421,8 @@ const Timesheets = () => {
                                     <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Project / Site</th>
                                     <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Shift Details</th>
                                     <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Duration</th>
-                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">GPS Status</th>
-                                    <th className="px-8 py-5 text-[10px) font-black uppercase tracking-widest text-slate-400">Status</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Location Status</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                                     <th className="px-8 py-5 text-[10px) font-black uppercase tracking-widest text-slate-400 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -487,37 +488,37 @@ const Timesheets = () => {
                                                 </td>
                                                 <td className="px-8 py-5 text-center">
                                                     <div className="flex flex-col items-center gap-1">
-                                                        <button
-                                                            onClick={() => {
-                                                                const lat = entry.gpsIn?.latitude;
-                                                                const lng = entry.gpsIn?.longitude;
-                                                                if (lat && lng) {
-                                                                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
-                                                                }
-                                                            }}
-                                                            disabled={!entry.gpsIn?.latitude}
-                                                            title={entry.gpsIn?.latitude ? 'View on Google Maps' : 'No GPS recorded'}
-                                                            className="hover:scale-110 transition-transform disabled:cursor-default"
-                                                        >
-                                                            {entry.gpsIn?.latitude ? (
-                                                                <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all">
-                                                                    <MapPin size={17} />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center border border-slate-200">
-                                                                    <MapPin size={17} />
-                                                                </div>
+                                                        <div className="flex gap-1.5">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const lat = entry.clockInLatitude || entry.gpsIn?.latitude;
+                                                                    const lng = entry.clockInLongitude || entry.gpsIn?.longitude;
+                                                                    if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                                }}
+                                                                disabled={!(entry.clockInLatitude || entry.gpsIn?.latitude)}
+                                                                title="View Clock-In Location"
+                                                                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${entry.clockInLatitude || entry.gpsIn?.latitude ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
+                                                            >
+                                                                <MapPin size={14} />
+                                                            </button>
+                                                            {entry.clockOut && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const lat = entry.clockOutLatitude || entry.gpsOut?.latitude;
+                                                                        const lng = entry.clockOutLongitude || entry.gpsOut?.longitude;
+                                                                        if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                                    }}
+                                                                    disabled={!(entry.clockOutLatitude || entry.gpsOut?.latitude)}
+                                                                    title="View Clock-Out Location"
+                                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${entry.clockOutLatitude || entry.gpsOut?.latitude ? 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
+                                                                >
+                                                                    <MapPin size={14} />
+                                                                </button>
                                                             )}
-                                                        </button>
-                                                        {gpsAddresses[entry._id] ? (
-                                                            <span className="text-[9px] font-bold text-slate-400 max-w-[100px] text-center leading-tight truncate" title={gpsAddresses[entry._id]}>
-                                                                {gpsAddresses[entry._id]}
-                                                            </span>
-                                                        ) : entry.gpsIn?.latitude ? (
-                                                            <span className="text-[9px] text-slate-300 italic">Loading...</span>
-                                                        ) : (
-                                                            <span className="text-[9px] text-slate-300">No GPS</span>
-                                                        )}
+                                                        </div>
+                                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${entry.isOutsideGeofence ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                            {entry.isOutsideGeofence ? 'Outside' : 'Inside'}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5">
