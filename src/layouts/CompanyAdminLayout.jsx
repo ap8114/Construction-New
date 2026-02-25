@@ -76,7 +76,7 @@ const CompanyAdminLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
     { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
-    // { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
+    { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
     { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
     { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
     { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },

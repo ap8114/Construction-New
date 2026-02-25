@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
-    Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart
+    Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart,
+    CheckCircle, Flag, UserCheck, ClipboardList
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -78,6 +79,9 @@ const ProjectDetails = () => {
     const [projectPOs, setProjectPOs] = useState([]);
     const [updates, setUpdates] = useState([]);
     const [poLoading, setPoLoading] = useState(false);
+    const [projectTasks, setProjectTasks] = useState([]);
+    const [tasksLoading, setTasksLoading] = useState(false);
+    const [taskSearch, setTaskSearch] = useState('');
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -410,11 +414,22 @@ const ProjectDetails = () => {
                 {[
                     { id: 'overview', label: 'Overview', icon: LayoutGrid },
                     user?.role !== 'WORKER' && { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
+                    { id: 'tasks', label: 'Tasks', icon: ClipboardList },
                     { id: 'updates', label: 'Client Updates', icon: MessageSquare },
                 ].filter(Boolean).map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={async () => {
+                            setActiveTab(tab.id);
+                            if (tab.id === 'tasks' && projectTasks.length === 0) {
+                                setTasksLoading(true);
+                                try {
+                                    const r = await api.get(`/tasks/project/${projectId}`);
+                                    setProjectTasks(Array.isArray(r.data) ? r.data : []);
+                                } catch (e) { console.error(e); }
+                                finally { setTasksLoading(false); }
+                            }
+                        }}
                         className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                             : 'text-slate-500 hover:text-slate-800 hover:bg-white'
@@ -425,6 +440,11 @@ const ProjectDetails = () => {
                         {tab.id === 'pos' && projectPOs.length > 0 && (
                             <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'pos' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
                                 {projectPOs.length}
+                            </span>
+                        )}
+                        {tab.id === 'tasks' && projectTasks.length > 0 && (
+                            <span className={`px-1.5 py-0.5 rounded-md text-[8px] ${activeTab === 'tasks' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                {projectTasks.length}
                             </span>
                         )}
                     </button>
@@ -1149,6 +1169,140 @@ const ProjectDetails = () => {
                             </form>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* ── Tasks Tab ── */}
+            {activeTab === 'tasks' && (
+                <div className="space-y-5 animate-fade-in">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900">Project Tasks</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">All tasks linked to this project</p>
+                        </div>
+                        {['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                            <Link
+                                to="/company-admin/tasks"
+                                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-200"
+                            >
+                                <Plus size={16} /> New Task
+                            </Link>
+                        )}
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search tasks..."
+                            value={taskSearch}
+                            onChange={e => setTaskSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:border-blue-500"
+                        />
+                    </div>
+
+                    {tasksLoading ? (
+                        <div className="flex justify-center py-16">
+                            <div className="w-8 h-8 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <th className="px-6 py-4">Task Name</th>
+                                        <th className="px-6 py-4">Assigned To</th>
+                                        <th className="px-6 py-4">Role</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4">Priority</th>
+                                        <th className="px-6 py-4">Due Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {projectTasks
+                                        .filter(t => t.title?.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                                            t.assignedTo?.[0]?.fullName?.toLowerCase().includes(taskSearch.toLowerCase()))
+                                        .map(task => {
+                                            const now = new Date();
+                                            const due = task.dueDate ? new Date(task.dueDate) : null;
+                                            const isOverdue = due && due < now && task.status !== 'completed';
+                                            const isDueSoon = due && !isOverdue && (due - now) / (1000 * 60 * 60 * 24) <= 3 && task.status !== 'completed';
+                                            const roleColors = {
+                                                WORKER: 'bg-blue-50 text-blue-600 border-blue-100',
+                                                FOREMAN: 'bg-orange-50 text-orange-600 border-orange-100',
+                                                SUBCONTRACTOR: 'bg-purple-50 text-purple-600 border-purple-100',
+                                                PM: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                                ENGINEER: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+                                            };
+                                            const roleLabels = {
+                                                WORKER: 'Worker', FOREMAN: 'Foreman', SUBCONTRACTOR: 'Subcontractor', PM: 'PM', ENGINEER: 'Engineer'
+                                            };
+                                            return (
+                                                <tr key={task._id} className={`hover:bg-slate-50/50 transition-colors ${isOverdue ? 'bg-red-50/30' : isDueSoon ? 'bg-yellow-50/20' : ''}`}>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            {isOverdue && <div className="w-1 h-6 bg-red-500 rounded-full shrink-0" />}
+                                                            {isDueSoon && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
+                                                            {task.status === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
+                                                            <span className="font-black text-slate-900 text-sm">{task.title}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {task.assignedTo?.length > 0 ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
+                                                                    {task.assignedTo[0]?.fullName?.charAt(0)}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-700">{task.assignedTo[0]?.fullName}</span>
+                                                            </div>
+                                                        ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {task.assignedRoleType ? (
+                                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border ${roleColors[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                                {roleLabels[task.assignedRoleType] || task.assignedRoleType}
+                                                            </span>
+                                                        ) : <span className="text-slate-300 text-[10px]">—</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
+                                                            ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                    task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                        'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                            {task.status?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border
+                                                            ${task.priority === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                task.priority === 'Medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                    'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                            {task.priority}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-6 py-4 text-xs font-black ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-700' : 'text-slate-700'}`}>
+                                                        {due ? due.toLocaleDateString() : '—'}
+                                                        {isOverdue && <span className="ml-2 text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-black">OVERDUE</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    {projectTasks.filter(t => t.title?.toLowerCase().includes(taskSearch.toLowerCase())).length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-16 text-center">
+                                                <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                    <ClipboardList size={32} />
+                                                    <p className="font-black uppercase tracking-widest text-xs">No tasks for this project yet</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

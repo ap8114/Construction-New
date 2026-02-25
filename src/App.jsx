@@ -93,6 +93,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/signup" element={<Navigate to="/register" />} />
+      <Route path="/tasks" element={<Navigate to="/company-admin/tasks" />} />
 
       {/* Super Admin Routes */}
       <Route

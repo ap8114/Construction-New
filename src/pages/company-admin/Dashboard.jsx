@@ -153,10 +153,25 @@ const CompanyAdminDashboard = () => {
       }
       if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
 
-      // Fetch worker tasks if applicable
+      // Fetch worker tasks (JobTasks) and global Tasks
       if (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(user?.role)) {
-        const tasksRes = await api.get('/job-tasks/worker');
-        setMyTasks(tasksRes.data || []);
+        try {
+          const [jobTasksRes, globalTasksRes] = await Promise.all([
+            api.get('/job-tasks/worker'),
+            api.get('/tasks/my-tasks')
+          ]);
+
+          // Normalize global tasks to look like job tasks for the dashboard widget
+          const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
+            ...t,
+            isGlobal: true,
+            jobId: t.projectId // Map projectId to jobId for UI consistency
+          }));
+
+          setMyTasks([...(jobTasksRes.data || []), ...normalizedGlobal]);
+        } catch (taskErr) {
+          console.error('Error fetching tasks for dashboard:', taskErr);
+        }
       }
 
       // Fetch equipment alerts separately as it's a new feature
@@ -253,29 +268,51 @@ const CompanyAdminDashboard = () => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const handleToggleTaskStatus = async (task, currentStatus) => {
+    try {
+      const isGlobal = !!task.isGlobal;
+      const apiPath = isGlobal ? `/tasks/${task._id}` : `/job-tasks/${task._id}`;
+
+      let nextStatus;
+      if (isGlobal) {
+        nextStatus = currentStatus === 'completed' ? 'todo' : 'completed';
+      } else {
+        nextStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+      }
+
+      await api.patch(apiPath, { status: nextStatus });
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('Failed to update task status');
+    }
+  };
+
   const handleCancelTask = async (reason) => {
     try {
       setSubmitting(true);
+      // Currently cancellation is only for JobTasks in this UI
       await api.patch(`/job-tasks/${taskToCancel}`, {
         status: 'cancelled',
         cancellationReason: reason
       });
       setIsCancellationModalOpen(false);
       setTaskToCancel(null);
-      fetchDashboardData(); // Refresh tasks
+      fetchDashboardData();
     } catch (error) {
       console.error('Error cancelling task:', error);
-      alert('Failed to cancel task. Please try again.');
+      alert('Failed to cancel task.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to remove this cancelled task from your list?')) return;
+  const handleDeleteTask = async (taskId, isGlobal) => {
+    if (!window.confirm('Are you sure you want to remove this task?')) return;
     try {
       setLoading(true);
-      await api.delete(`/job-tasks/${taskId}`);
+      const apiPath = isGlobal ? `/tasks/${taskId}` : `/job-tasks/${taskId}`;
+      await api.delete(apiPath);
       fetchDashboardData();
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -500,23 +537,21 @@ const CompanyAdminDashboard = () => {
                   <div key={task._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
                       <button
-                        onClick={async () => {
-                          const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
-                          await api.patch(`/job-tasks/${task._id}`, { status: nextStatus });
-                          fetchDashboardData();
-                        }}
+                        onClick={() => handleToggleTaskStatus(task, task.status)}
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0
                             ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' :
-                            task.status === 'cancelled' ? 'bg-red-500 border-red-500 text-white' :
+                            task.status === 'cancelled' ? 'bg-red-50 border-red-200 text-transparent' :
                               'border-slate-200 text-transparent hover:border-emerald-500'}`}
                       >
-                        {task.status === 'cancelled' ? <X size={12} strokeWidth={4} /> : <Check size={12} strokeWidth={4} />}
+                        {task.status === 'completed' ? <Check size={12} strokeWidth={4} /> :
+                          task.status === 'cancelled' ? <X size={12} className="text-red-500" /> : null}
                       </button>
                       <div className="min-w-0">
                         <p className={`font-black text-slate-900 text-sm tracking-tight truncate 
                           ${task.status === 'completed' ? 'text-slate-400 line-through' :
                             task.status === 'cancelled' ? 'text-red-500' : ''}`}>
                           {task.title}
+                          {task.isGlobal && <span className="ml-2 text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100">Global</span>}
                         </p>
                         {task.status === 'cancelled' && task.cancellationReason && (
                           <p className="text-[10px] text-red-400 font-bold italic mt-0.5 max-w-[200px] truncate">
@@ -525,7 +560,7 @@ const CompanyAdminDashboard = () => {
                         )}
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                            <Briefcase size={10} /> {task.jobId?.name || 'Unknown Job'}
+                            <Briefcase size={10} /> {task.jobId?.name || task.projectId?.name || 'Project Assignment'}
                           </span>
                           {task.dueDate && (
                             <span className={`text-[10px] font-bold flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-500' : 'text-slate-400'}`}>
@@ -537,12 +572,12 @@ const CompanyAdminDashboard = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border
-                        ${task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
-                          task.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                        ${task.priority?.toLowerCase() === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
+                          task.priority?.toLowerCase() === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                             'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                        {task.priority}
+                        {task.priority || 'Medium'}
                       </span>
-                      {task.status !== 'completed' && task.status !== 'cancelled' ? (
+                      {!task.isGlobal && task.status !== 'completed' && task.status !== 'cancelled' ? (
                         <button
                           onClick={() => {
                             setTaskToCancel(task._id);
@@ -553,17 +588,23 @@ const CompanyAdminDashboard = () => {
                         >
                           <X size={14} />
                         </button>
-                      ) : task.status === 'cancelled' ? (
+                      ) : (task.status === 'cancelled' || task.isGlobal) ? (
                         <button
-                          onClick={() => handleDeleteTask(task._id)}
+                          onClick={() => handleDeleteTask(task._id, task.isGlobal)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          title="Delete Cancelled Task"
+                          title="Remove Task"
                         >
                           <Trash2 size={14} />
                         </button>
                       ) : null}
                       <button
-                        onClick={() => navigate(`/company-admin/projects/${task.jobId?.projectId?._id}/jobs/${task.jobId?._id}`)}
+                        onClick={() => {
+                          if (task.isGlobal) {
+                            navigate('/company-admin/tasks');
+                          } else {
+                            navigate(`/company-admin/projects/${task.jobId?.projectId?._id || 'all'}/jobs/${task.jobId?._id || task.jobId}`);
+                          }
+                        }}
                         className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <ExternalLink size={14} />
