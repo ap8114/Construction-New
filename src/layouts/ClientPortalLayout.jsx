@@ -1,13 +1,15 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import Logo from '../assets/images/Logo.png';
 import sidebarlogo from '../assets/images/sidebarlogo.png';
 import {
   PieChart, Clock, Image, FileCheck, DollarSign,
   MessageCircle, LogOut, Menu, X, Bell, User,
-  Building2, LayoutDashboard, FileText, ClipboardList, Briefcase
+  Building2, LayoutDashboard, FileText, ClipboardList, Briefcase, MessageSquare
 } from 'lucide-react';
+import api from '../utils/api';
 
 const ClientPortalLayout = () => {
   const { logout, user } = useAuth();
@@ -15,19 +17,71 @@ const ClientPortalLayout = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const profileMenuRef = useRef(null);
+  const notificationRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const socketRef = useRef();
 
-  // Close sidebar on route change
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await api.get('/chat/unread-count');
+      setChatUnreadCount(res.data.count);
+    } catch (error) {
+      console.error('Error fetching unread chat count:', error);
+    }
+  };
+
   useEffect(() => {
-    setIsSidebarOpen(false);
-    setIsProfileMenuOpen(false);
-  }, [location.pathname]);
+    if (user) {
+      fetchNotifications();
+      fetchUnreadCount();
+
+      const token = localStorage.getItem('token');
+      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+
+      socketRef.current = io(socketUrl, {
+        auth: { token }
+      });
+
+      socketRef.current.on('new_notification', (payload) => {
+        if (payload.type === 'chat') {
+          setChatUnreadCount(prev => prev + 1);
+        } else {
+          fetchNotifications();
+        }
+      });
+
+      const interval = setInterval(() => {
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 60000); // Sync every minute
+
+      return () => {
+        clearInterval(interval);
+        if (socketRef.current) socketRef.current.disconnect();
+      };
+    }
+  }, [user]);
 
   // Click outside to close profile menu
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -96,11 +150,12 @@ const ClientPortalLayout = () => {
         <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
           {filteredNavItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const isChat = item.label === 'Chat';
             return (
               <Link
                 key={item.label}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium relative
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -109,6 +164,11 @@ const ClientPortalLayout = () => {
               >
                 <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'} />
                 {item.label}
+                {isChat && chatUnreadCount > 0 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-black animate-pulse">
+                    {chatUnreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -138,10 +198,91 @@ const ClientPortalLayout = () => {
 
           <div className="flex items-center gap-3 md:gap-4 relative" ref={profileMenuRef}>
             {/* Notifications */}
-            <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative hidden sm:block">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative hidden sm:block"
+              >
+                <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-orange-600' : ''} />
+                {(chatUnreadCount > 0 || notifications.some(n => !n.isRead)) && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white rounded-full border-2 border-white flex items-center justify-center text-[8px] font-black">
+                    {chatUnreadCount + notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-[400px] flex flex-col">
+                  <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alert Center</span>
+                    <div className="flex gap-2">
+                      {chatUnreadCount > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">Messages</span>}
+                    </div>
+                  </div>
+                  <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    {chatUnreadCount > 0 && (
+                      <button
+                        onClick={() => { navigate('/client-portal/messages'); setIsNotificationOpen(false); }}
+                        className="w-full text-left px-4 py-3 bg-blue-50/50 hover:bg-blue-50 transition-colors border-b border-slate-50 flex gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white shrink-0 flex items-center justify-center">
+                          <MessageSquare size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800">New Messages</p>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 leading-relaxed">You have {chatUnreadCount} unread transmissions.</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {notifications.length > 0 ? (
+                      notifications.map((notif) => (
+                        <button
+                          key={notif._id}
+                          onClick={async () => {
+                            if (!notif.isRead) await api.patch(`/notifications/${notif._id}/read`);
+                            if (notif.link) navigate(notif.link);
+                            setIsNotificationOpen(false);
+                            fetchNotifications();
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none flex gap-3 ${!notif.isRead ? 'bg-orange-50/10' : ''}`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center bg-slate-50 text-slate-600 text-slate-600`}>
+                            <Bell size={16} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-slate-800 truncate">{notif.title}</p>
+                            <p className="text-xs text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{notif.message}</p>
+                          </div>
+                          {!notif.isRead && <div className="w-2 h-2 rounded-full bg-orange-600 mt-2 shrink-0"></div>}
+                        </button>
+                      ))
+                    ) : chatUnreadCount === 0 && (
+                      <div className="p-10 flex flex-col items-center justify-center text-center">
+                        <Bell className="text-slate-200 mb-3" size={40} />
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-tight">No active alerts</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2 border-t border-slate-50">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.patch('/notifications/mark-all-read');
+                          fetchNotifications();
+                        } catch (err) {
+                          console.error('Failed to mark all as read:', err);
+                        }
+                      }}
+                      className="w-full py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                    >
+                      Mark All as Read
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile */}
             <button

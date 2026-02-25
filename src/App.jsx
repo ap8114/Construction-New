@@ -201,7 +201,7 @@ function App() {
         <Route path="daily-logs" element={<ClientDailyLogs />} />
         <Route path="approvals" element={<ClientApprovals />} />
         <Route path="invoices" element={<ClientInvoices />} />
-        <Route path="messages" element={<ClientMessages />} />
+        <Route path="messages" element={<Chat />} />
         <Route path="profile" element={<ProjectTeamProfile />} />
       </Route>
 
