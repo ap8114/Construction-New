@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Briefcase, Clock, FileText,
   Wrench, ClipboardList, BarChart2, DollarSign,
   Users, Settings, LogOut, Menu, X, Bell, MessageSquare,
-  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle
+  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle, Activity
 } from 'lucide-react';
 import api from '../utils/api';
 import sidebarlogo from './../assets/images/sidebarlogo.png';
@@ -118,6 +118,7 @@ const CompanyAdminLayout = () => {
     { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT' },
     { icon: FileQuestion, label: 'RFI', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
     { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
+    { icon: Activity, label: 'Attendance Reports', path: '/company-admin/attendance-reports', permission: 'VIEW_REPORTS' },
     { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
     { icon: Users, label: 'Users', path: '/company-admin/team', permission: 'VIEW_TEAM' },
     { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },

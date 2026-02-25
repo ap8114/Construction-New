@@ -44,6 +44,7 @@ import PurchaseOrderForm from './pages/company-admin/PurchaseOrderForm';
 import PurchaseOrderDetail from './pages/company-admin/PurchaseOrderDetail';
 import Clients from './pages/company-admin/Clients';
 import Reports from './pages/company-admin/Reports';
+import AttendanceReports from './pages/company-admin/AttendanceReports';
 import Payroll from './pages/company-admin/Payroll';
 import Equipment from './pages/company-admin/Equipment';
 import WorkerPunch from './pages/company-admin/WorkerPunch';
@@ -151,6 +152,7 @@ function App() {
         <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
         <Route path="clients" element={<Clients />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="attendance-reports" element={<AttendanceReports />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="equipment" element={<Equipment />} />
         <Route path="clock" element={<WorkerPunch />} />
