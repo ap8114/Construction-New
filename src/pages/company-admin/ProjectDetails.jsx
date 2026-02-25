@@ -409,9 +409,9 @@ const ProjectDetails = () => {
             <div className="flex gap-2 bg-slate-100/50 p-1.5 rounded-2xl border border-slate-100 overflow-x-auto no-scrollbar">
                 {[
                     { id: 'overview', label: 'Overview', icon: LayoutGrid },
-                    { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
+                    user?.role !== 'WORKER' && { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
                     { id: 'updates', label: 'Client Updates', icon: MessageSquare },
-                ].map((tab) => (
+                ].filter(Boolean).map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
