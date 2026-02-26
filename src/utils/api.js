@@ -19,7 +19,7 @@ api.interceptors.request.use(
 );
 
 export const getServerUrl = (path) => {
-    if (!path) return '';
+    if (!path) return ''; 
     if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
     const baseUrl = (import.meta.env.VITE_API_URL || 'https://construction-backend-production-b192.up.railway.app/api').replace('/api', '');
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
