@@ -241,7 +241,9 @@ const AttendanceReports = () => {
                                 {activeTab !== 'projects' ? (
                                     <>
                                         <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Resource</th>
-                                        <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        {activeTab === 'workers' && (
+                                            <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                        )}
                                         <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Hours</th>
                                         <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Days Worked</th>
                                         <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Average (H/D)</th>
@@ -294,14 +296,16 @@ const AttendanceReports = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-8 py-5">
-                                                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${row.role === 'FOREMAN'
-                                                        ? 'bg-amber-50 text-amber-600 border-amber-100'
-                                                        : 'bg-blue-50 text-blue-600 border-blue-100'
-                                                        }`}>
-                                                        {row.role}
-                                                    </span>
-                                                </td>
+                                                {activeTab === 'workers' && (
+                                                    <td className="px-8 py-5">
+                                                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${row.role === 'FOREMAN'
+                                                            ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                                            : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                            }`}>
+                                                            {row.role}
+                                                        </span>
+                                                    </td>
+                                                )}
                                                 <td className="px-8 py-5 font-black text-slate-900 text-sm">{row.totalHours}h</td>
                                                 <td className="px-8 py-5 font-black text-slate-900 text-sm">{row.totalDaysWorked}</td>
                                                 <td className="px-8 py-5">
