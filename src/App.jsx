@@ -44,11 +44,13 @@ import PurchaseOrderForm from './pages/company-admin/PurchaseOrderForm';
 import PurchaseOrderDetail from './pages/company-admin/PurchaseOrderDetail';
 import Clients from './pages/company-admin/Clients';
 import Reports from './pages/company-admin/Reports';
+import AttendanceReports from './pages/company-admin/AttendanceReports';
 import Payroll from './pages/company-admin/Payroll';
 import Equipment from './pages/company-admin/Equipment';
 import WorkerPunch from './pages/company-admin/WorkerPunch';
 import CrewClock from './pages/company-admin/CrewClock';
 import Deficiencies from './pages/jobs/Deficiencies';
+import JobDetails from './pages/jobs/JobDetails';
 
 // RFI Module
 import RFIDashboard from './pages/company-admin/RFIDashboard';
@@ -70,6 +72,7 @@ import ClientApprovals from './pages/client-portal/Approvals';
 import ClientInvoices from './pages/client-portal/Invoices';
 import ClientMessages from './pages/client-portal/Messages';
 import ClientDailyLogs from './pages/client-portal/DailyLogs';
+import ClientWorkProgress from './pages/client-portal/WorkProgress';
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -91,6 +94,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/signup" element={<Navigate to="/register" />} />
+      <Route path="/tasks" element={<Navigate to="/company-admin/tasks" />} />
 
       {/* Super Admin Routes */}
       <Route
@@ -126,7 +130,8 @@ function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:id" element={<ProjectDetails />} />
         <Route path="projects/:id/jobs/new" element={<CreateJob />} />
-        <Route path="projects/:projectId/jobs/:jobId/deficiencies" element={<Deficiencies />} />
+        <Route path="projects/:id/jobs/:jobId/deficiencies" element={<Deficiencies />} />
+        <Route path="projects/:projectId/jobs/:jobId" element={<JobDetails />} />
         <Route path="team" element={<Team />} />
 
         <Route path="schedule" element={<Schedule />} />
@@ -147,6 +152,7 @@ function App() {
         <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
         <Route path="clients" element={<Clients />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="attendance-reports" element={<AttendanceReports />} />
         <Route path="payroll" element={<Payroll />} />
         <Route path="equipment" element={<Equipment />} />
         <Route path="clock" element={<WorkerPunch />} />
@@ -190,13 +196,18 @@ function App() {
         }
       >
         <Route index element={<ClientPortalDashboard />} />
+        <Route path="progress/:id" element={<ClientWorkProgress />} />
         <Route path="projects" element={<Projects />} />
         <Route path="photos" element={<ClientPhotos />} />
         <Route path="drawings" element={<Drawings />} />
         <Route path="daily-logs" element={<ClientDailyLogs />} />
         <Route path="approvals" element={<ClientApprovals />} />
         <Route path="invoices" element={<ClientInvoices />} />
-        <Route path="messages" element={<ClientMessages />} />
+        <Route path="messages" element={<Chat />} />
+        {/* Client RFI Routes */}
+        <Route path="rfi" element={<RFIDashboard />} />
+        <Route path="rfi/list" element={<RFIList />} />
+        <Route path="rfi/:id" element={<RFIDetail />} />
         <Route path="profile" element={<ProjectTeamProfile />} />
       </Route>
 

@@ -162,6 +162,43 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, projectMan
         </div>
       </div>
 
+      {/* Geofencing Configuration */}
+      <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-200/60 space-y-4">
+        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+          <Globe size={14} className="text-blue-600" /> Geofence & Location Validation
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Site Latitude</label>
+            <input type="number" step="any" value={data.siteLatitude || ''} onChange={e => setData({ ...data, siteLatitude: e.target.value })}
+              className={inputCls} placeholder="e.g. 40.7128" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Site Longitude</label>
+            <input type="number" step="any" value={data.siteLongitude || ''} onChange={e => setData({ ...data, siteLongitude: e.target.value })}
+              className={inputCls} placeholder="e.g. -74.0060" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">Radius (Meters)</label>
+            <input type="number" value={data.allowedRadiusMeters || ''} onChange={e => setData({ ...data, allowedRadiusMeters: e.target.value })}
+              className={inputCls} placeholder="Default: 100m" />
+          </div>
+          <div className="flex items-center gap-3 pt-6">
+            <button
+              onClick={() => setData({ ...data, strictGeofence: !data.strictGeofence })}
+              className={`w-12 h-6 rounded-full transition-all relative ${data.strictGeofence ? 'bg-blue-600' : 'bg-slate-300'}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${data.strictGeofence ? 'left-7' : 'left-1'}`} />
+            </button>
+            <label className="text-[10px] font-bold text-slate-500 uppercase cursor-pointer" onClick={() => setData({ ...data, strictGeofence: !data.strictGeofence })}>
+              Strict Geofence <span className="text-slate-400 font-normal normal-case">(Block if outside)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <button onClick={onSubmit} disabled={!data.name}
         className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2 shadow-xl
           ${data.name ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
@@ -212,6 +249,7 @@ const Projects = () => {
   const EMPTY = {
     name: '', clientId: '', startDate: '', endDate: '', budget: '', pmId: '',
     status: 'active', progress: 0, location: '', image: '', companyId: user?.companyId,
+    siteLatitude: '', siteLongitude: '', allowedRadiusMeters: 100, strictGeofence: false
   };
   const [formData, setFormData] = useState(EMPTY);
 
@@ -287,6 +325,10 @@ const Projects = () => {
       pmId: typeof project.pmId === 'object' ? (project.pmId?._id || '') : (project.pmId || ''),
       startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
       endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
+      siteLatitude: project.siteLatitude || '',
+      siteLongitude: project.siteLongitude || '',
+      allowedRadiusMeters: project.allowedRadiusMeters || 100,
+      strictGeofence: project.strictGeofence || false,
     });
     setIsEditOpen(true);
   };
@@ -518,7 +560,7 @@ const Projects = () => {
             <div key={project._id}
               onClick={() => {
                 const path = user?.role === 'CLIENT'
-                  ? `/client-portal/drawings?projectId=${project._id}`
+                  ? `/client-portal/progress/${project._id}`
                   : `/company-admin/projects/${project._id}`;
                 navigate(path);
               }}
@@ -616,12 +658,14 @@ const Projects = () => {
 
                 {/* Action buttons */}
                 <div className="flex flex-wrap items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
-                  <button onClick={(e) => openEdit(project, e)}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
-                    title="Edit Project"
-                  >
-                    <Edit size={14} />
-                  </button>
+                  {user?.role !== 'CLIENT' && (
+                    <button onClick={(e) => openEdit(project, e)}
+                      className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
+                      title="Edit Project"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  )}
 
                   <button
                     onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${project._id}`)}
@@ -629,6 +673,15 @@ const Projects = () => {
                   >
                     <FileText size={14} className="text-blue-600" /> Drawings
                   </button>
+
+                  {user?.role === 'CLIENT' && (
+                    <button
+                      onClick={() => navigate(`/client-portal/progress/${project._id}`)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                    >
+                      <TrendingUp size={14} /> Work Progress
+                    </button>
+                  )}
 
                   {user?.role !== 'CLIENT' && (
                     <button
@@ -639,12 +692,14 @@ const Projects = () => {
                     </button>
                   )}
 
-                  <button onClick={(e) => handleDelete(project._id, e)}
-                    className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
-                    title="Delete Project"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {user?.role !== 'CLIENT' && (
+                    <button onClick={(e) => handleDelete(project._id, e)}
+                      className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
+                      title="Delete Project"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div >
@@ -677,7 +732,7 @@ const Projects = () => {
                 <tr key={project._id}
                   onClick={() => {
                     const path = user?.role === 'CLIENT'
-                      ? `/client-portal/drawings?projectId=${project._id}`
+                      ? `/client-portal/progress/${project._id}`
                       : `/company-admin/projects/${project._id}`;
                     navigate(path);
                   }}

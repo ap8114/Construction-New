@@ -4,7 +4,7 @@ import {
   Clock, CheckCircle, FileText, Download,
   TrendingUp, Calendar, AlertCircle,
   Image as ImageIcon, MoreHorizontal,
-  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader, ExternalLink
+  ArrowUpRight, DollarSign, Target, ShieldCheck, Loader, ExternalLink, FileQuestion
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -38,19 +38,21 @@ const ClientPortalDashboard = () => {
     invoices: [],
     photos: [],
     drawings: [],
-    logs: []
+    logs: [],
+    rfis: []
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [projRes, invRes, photoRes, drawRes, logRes] = await Promise.all([
+        const [projRes, invRes, photoRes, drawRes, logRes, rfiRes] = await Promise.all([
           api.get('/projects'),
           api.get('/invoices'),
           api.get('/photos'),
           api.get('/drawings'),
-          api.get('/dailylogs')
+          api.get('/dailylogs'),
+          api.get('/rfis')
         ]);
 
         setData({
@@ -58,7 +60,8 @@ const ClientPortalDashboard = () => {
           invoices: invRes.data,
           photos: photoRes.data.slice(0, 4), // Latest 4
           drawings: drawRes.data.slice(0, 3), // Latest 3
-          logs: logRes.data.slice(0, 4) // Latest 4
+          logs: logRes.data.slice(0, 4), // Latest 4
+          rfis: rfiRes.data
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -132,6 +135,13 @@ const ClientPortalDashboard = () => {
           icon={ImageIcon}
           color="bg-indigo-600 shadow-lg shadow-indigo-100"
         />
+        <ClientStatCard
+          title="RFIs"
+          value={data.rfis.length}
+          subtext="Requests for Information"
+          icon={FileQuestion}
+          color="bg-violet-600 shadow-lg shadow-violet-100"
+        />
       </div>
 
       {/* Main Content Grid */}
@@ -151,9 +161,15 @@ const ClientPortalDashboard = () => {
               {data.projects.length > 0 && (
                 <div className="mb-12">
                   <div className="flex justify-between items-end mb-4">
-                    <div>
-                      <p className="text-2xl font-black text-slate-800">{primaryProject.progress}%</p>
-                      <p className="text-xs text-slate-400 font-bold uppercase">{primaryProject.name} Progress</p>
+                    <div
+                      className="cursor-pointer group"
+                      onClick={() => navigate(`/client-portal/progress/${primaryProject._id}`)}
+                    >
+                      <p className="text-2xl font-black text-slate-800 group-hover:text-blue-600 transition-colors">{primaryProject.progress}%</p>
+                      <p className="text-xs text-slate-400 font-bold uppercase group-hover:text-slate-600">
+                        {primaryProject.name} Progress
+                        <ArrowUpRight size={12} className="inline ml-1" />
+                      </p>
                     </div>
                     <button
                       onClick={() => navigate(`/client-portal/drawings?projectId=${primaryProject._id}`)}

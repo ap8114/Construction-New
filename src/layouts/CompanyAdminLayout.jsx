@@ -1,11 +1,12 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Briefcase, Clock, FileText,
   Wrench, ClipboardList, BarChart2, DollarSign,
   Users, Settings, LogOut, Menu, X, Bell, MessageSquare,
-  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle
+  Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle, Activity
 } from 'lucide-react';
 import api from '../utils/api';
 import sidebarlogo from './../assets/images/sidebarlogo.png';
@@ -24,6 +25,8 @@ const CompanyAdminLayout = () => {
 
   const [projectsList, setProjectsList] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const socketRef = useRef();
 
   const fetchNotifications = async () => {
     try {
@@ -34,20 +37,44 @@ const CompanyAdminLayout = () => {
     }
   };
 
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await api.get('/chat/unread-count');
+      setChatUnreadCount(res.data.count);
+    } catch (error) {
+      console.error('Error fetching unread chat count:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const res = await api.get('/projects');
-        setProjectsList(res.data);
-      } catch (error) {
-        console.error('Error fetching projects for selector:', error);
-      }
-    };
     if (user) {
-      fetchProjects();
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      fetchUnreadCount();
+
+      const token = localStorage.getItem('token');
+      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+
+      socketRef.current = io(socketUrl, {
+        auth: { token }
+      });
+
+      socketRef.current.on('new_notification', (payload) => {
+        if (payload.type === 'chat') {
+          setChatUnreadCount(prev => prev + 1);
+          // Optional: Fetch fresh count to be sure
+          // fetchUnreadCount();
+        }
+      });
+
+      const interval = setInterval(() => {
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 60000); // Pulse every minute for safety
+
+      return () => {
+        clearInterval(interval);
+        if (socketRef.current) socketRef.current.disconnect();
+      };
     }
   }, [user]);
 
@@ -76,7 +103,7 @@ const CompanyAdminLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
     { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
-    // { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
+    { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
     { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
     { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
     { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
@@ -91,6 +118,7 @@ const CompanyAdminLayout = () => {
     { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT' },
     { icon: FileQuestion, label: 'RFI', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
     { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
+    { icon: Activity, label: 'Attendance Reports', path: '/company-admin/attendance-reports', permission: 'VIEW_REPORTS' },
     { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
     { icon: Users, label: 'Users', path: '/company-admin/team', permission: 'VIEW_TEAM' },
     { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },
@@ -264,23 +292,53 @@ const CompanyAdminLayout = () => {
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 className="p-2 hover:bg-slate-50 rounded-lg transition relative group"
               >
-                <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-blue-600' : 'text-slate-400'} />
-                {notifications.some(n => !n.isRead) && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
-                    {notifications.filter(n => !n.isRead).length}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <MessageSquare size={20} className={chatUnreadCount > 0 ? 'text-blue-600' : 'text-slate-400'} />
+                    {chatUnreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {chatUnreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-orange-600' : 'text-slate-400'} />
+                    {notifications.some(n => !n.isRead) && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {notifications.filter(n => !n.isRead).length}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </button>
 
               {isNotificationOpen && (
                 <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-[400px] flex flex-col">
                   <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Notifications</span>
-                    {notifications.some(n => !n.isRead) && (
-                      <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">New</span>
-                    )}
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alert Center</span>
+                    <div className="flex gap-2">
+                      {chatUnreadCount > 0 && <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase">Messages</span>}
+                      {notifications.some(n => !n.isRead) && <span className="text-[9px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">System</span>}
+                    </div>
                   </div>
                   <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    {/* Chat Notification Entry */}
+                    {chatUnreadCount > 0 && (
+                      <button
+                        onClick={() => { navigate('/company-admin/chat'); setIsNotificationOpen(false); }}
+                        className="w-full text-left px-4 py-3 bg-blue-50/50 hover:bg-blue-50 transition-colors border-b border-slate-50 flex gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white shrink-0 flex items-center justify-center">
+                          <MessageSquare size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800">New Messages</p>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 leading-relaxed">You have {chatUnreadCount} unread transmissions.</p>
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0 animate-pulse"></div>
+                      </button>
+                    )}
+
                     {notifications.length > 0 ? (
                       notifications.map((notif) => (
                         <button
@@ -291,7 +349,7 @@ const CompanyAdminLayout = () => {
                             setIsNotificationOpen(false);
                             fetchNotifications();
                           }}
-                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none flex gap-3 ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none flex gap-3 ${!notif.isRead ? 'bg-orange-50/10' : ''}`}
                         >
                           <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center 
                             ${notif.type === 'financial' ? 'bg-emerald-50 text-emerald-600' :
@@ -305,10 +363,10 @@ const CompanyAdminLayout = () => {
                               {new Date(notif.createdAt).toLocaleDateString()} · {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          {!notif.isRead && <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>}
+                          {!notif.isRead && <div className="w-2 h-2 rounded-full bg-orange-600 mt-2 shrink-0"></div>}
                         </button>
                       ))
-                    ) : (
+                    ) : chatUnreadCount === 0 && (
                       <div className="p-10 flex flex-col items-center justify-center text-center">
                         <Bell className="text-slate-200 mb-3" size={40} />
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-tight">No active alerts</p>
@@ -316,8 +374,19 @@ const CompanyAdminLayout = () => {
                     )}
                   </div>
                   <div className="p-2 border-t border-slate-50">
-                    <button className="w-full py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors">
-                      Clear All Notifications
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.patch('/notifications/mark-all-read');
+                          fetchNotifications();
+                        } catch (err) {
+                          console.error('Failed to mark all as read:', err);
+                        }
+                      }}
+                      className="w-full py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                    >
+                      Mark All as Read
                     </button>
                   </div>
                 </div>

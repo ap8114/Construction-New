@@ -59,18 +59,28 @@ const TimeClockWidget = () => {
             return;
         }
 
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser. Location access is mandatory for clock-in.');
+            return;
+        }
+
         try {
             setStatus('loading');
 
             // Get geolocation
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject);
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                });
             });
 
             const res = await api.post('/timelogs/clock-in', {
                 projectId: selectedProject,
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
                 deviceInfo: navigator.userAgent
             });
 
@@ -78,22 +88,44 @@ const TimeClockWidget = () => {
             setStatus('active');
         } catch (error) {
             console.error('Clock in failed:', error);
-            alert(error.response?.data?.message || 'Clock in failed');
+            let message = 'Clock in failed';
+
+            if (error.code === 1) { // PERMISSION_DENIED
+                message = 'Location permission denied. You MUST allow location access to clock in. Please check your browser settings.';
+            } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                message = 'Location unavailable. Please ensure GPS is turned on and you have a clear view of the sky.';
+            } else if (error.code === 3) { // TIMEOUT
+                message = 'Location request timed out. Please try again in an area with better signal.';
+            } else {
+                message = error.response?.data?.message || error.message || message;
+            }
+
+            alert(message);
             setStatus('idle');
         }
     };
 
     const handleClockOut = async () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser. Location access is mandatory for clock-out.');
+            return;
+        }
+
         try {
             setStatus('loading');
 
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject);
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                });
             });
 
             await api.post('/timelogs/clock-out', {
                 latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy
             });
 
             setActiveLog(null);
@@ -101,7 +133,19 @@ const TimeClockWidget = () => {
             setElapsedTime('00:00:00');
         } catch (error) {
             console.error('Clock out failed:', error);
-            alert('Clock out failed');
+            let message = 'Clock out failed';
+
+            if (error.code === 1) {
+                message = 'Location permission denied. You MUST allow location access to clock out. Please check your browser settings.';
+            } else if (error.code === 2) {
+                message = 'Location unavailable. Please ensure GPS is turned on.';
+            } else if (error.code === 3) {
+                message = 'Location request timed out. Please try again.';
+            } else {
+                message = error.response?.data?.message || error.message || message;
+            }
+
+            alert(message);
             setStatus('active');
         }
     };
@@ -118,9 +162,15 @@ const TimeClockWidget = () => {
                         <p className="text-xs text-slate-500">{status === 'active' ? 'Recording session...' : 'Ready to start'}</p>
                     </div>
                 </div>
-                {status === 'active' && (
-                    <div className="text-xl font-mono font-bold text-slate-800 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
-                        {elapsedTime}
+                {status === 'active' && activeLog && (
+                    <div className="flex flex-col items-end gap-1">
+                        <div className="text-xl font-mono font-bold text-slate-800 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
+                            {elapsedTime}
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">
+                            <div className={`w-1.5 h-1.5 rounded-full ${activeLog.isOutsideGeofence ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            {activeLog.isOutsideGeofence ? 'Outside Geofence' : 'Location Verified'}
+                        </div>
                     </div>
                 )}
             </div>
@@ -146,9 +196,12 @@ const TimeClockWidget = () => {
                 )}
 
                 {status === 'active' && activeLog && (
-                    <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                        <p className="text-xs text-blue-600 font-medium">Currently working at:</p>
-                        <p className="text-sm font-bold text-blue-900">{projects.find(p => p._id === (activeLog.projectId?._id || activeLog.projectId))?.name || 'Project Site'}</p>
+                    <div className={`p-3 rounded-lg border ${activeLog.isOutsideGeofence ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                        <p className={`text-xs font-medium ${activeLog.isOutsideGeofence ? 'text-red-600' : 'text-blue-600'}`}>
+                            {activeLog.isOutsideGeofence ? '⚠️ Warning: Outside Site Area' : 'Currently working at:'}
+                        </p>
+                        <p className={`text-sm font-bold ${activeLog.isOutsideGeofence ? 'text-red-900' : 'text-blue-900'}`}>{projects.find(p => p._id === (activeLog.projectId?._id || activeLog.projectId))?.name || 'Project Site'}</p>
+                        <p className="text-[10px] mt-1 text-slate-400">Clocked in at: {new Date(activeLog.clockIn).toLocaleTimeString()}</p>
                     </div>
                 )}
 

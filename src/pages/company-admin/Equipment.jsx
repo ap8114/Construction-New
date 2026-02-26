@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
     Wrench, Plus, Search, Filter, AlertTriangle, CheckCircle,
     Clock, MoreHorizontal, Trash2, Edit, Eye, Download,
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
-    Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap,
+    Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap, LayoutGrid, List,
     Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon, Briefcase,
     History, FileText, Printer
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logo from '../../assets/images/Logo.png';
@@ -54,9 +55,10 @@ const StatusBadge = ({ status }) => {
 };
 
 // ─── Equipment Card (Grid View) ───────────────────────────────────────────────
-const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHistory }) => {
+const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHistory, userRole }) => {
     const isJobCompleted = item.assignedJob?.status === 'completed';
     const isSmallTool = item.category === 'Small Tools';
+    const canManage = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(userRole);
 
     const icons = {
         excavator: '🚜', crane: '🏗️', truck: '🚛', bulldozer: '🚧', generator: '⚡', compactor: '🔩',
@@ -90,7 +92,7 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
             {/* Card Body */}
             <div className="p-5">
                 <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <h3 className="font-black text-slate-900 tracking-tight truncate max-w-[140px]">{item.name}</h3>
                             <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isSmallTool ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
@@ -99,13 +101,28 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                         </div>
                         <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-tight">{item.type} · #{item.serialNumber || 'SN-NA'}</p>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => onEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit size={14} /></button>
-                        <button onClick={() => onDelete(item._id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
-                    </div>
+                    {canManage && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => onEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit size={14} /></button>
+                            <button onClick={() => onDelete(item._id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
+                        </div>
+                    )}
                 </div>
 
-                <div className="space-y-2 py-3 border-y border-slate-50 mb-3">
+                <div className="space-y-2 py-3 border-y border-slate-50 mb-3 text-[10px]">
+                    <div className="flex items-center gap-2 text-slate-500 font-bold">
+                        <MapPin size={12} className="text-slate-400" />
+                        <span className="uppercase tracking-widest truncate">{item.location || 'Warehouse'}</span>
+                    </div>
+                    {item.assignedJob && (
+                        <div className="flex items-center gap-2 text-blue-600 font-bold">
+                            <Briefcase size={12} className="text-blue-400" />
+                            <span className="uppercase tracking-widest truncate">{item.assignedJob?.projectId?.name}</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-2 py-3 border-b border-slate-50 mb-3">
                     {item.assignedJob ? (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -119,12 +136,6 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                             </div>
                             <div className={`p-3 rounded-xl border ${isJobCompleted ? 'bg-red-50 border-red-100' : 'bg-blue-50/50 border-blue-100'}`}>
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-1.5 opacity-60">
-                                        <Briefcase size={10} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
-                                        <span className={`text-[9px] font-black uppercase tracking-widest truncate ${isJobCompleted ? 'text-red-700' : 'text-blue-700'}`}>
-                                            {item.assignedJob?.projectId?.name || 'Unknown Project'}
-                                        </span>
-                                    </div>
                                     <div className="flex items-center gap-2">
                                         <Briefcase size={12} className={isJobCompleted ? 'text-red-500' : 'text-blue-500'} />
                                         <span className={`text-[9px] font-black uppercase tracking-widest text-opacity-60 ${isJobCompleted ? 'text-red-400' : 'text-blue-400'}`}>Job:</span>
@@ -138,12 +149,14 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                     ) : (
                         <div className="flex flex-col items-center gap-2 py-1">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Equipment is Idle</p>
-                            <button
-                                onClick={() => onAssign(item)}
-                                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm"
-                            >
-                                <Link2 size={12} /> Assign to Job
-                            </button>
+                            {canManage && (
+                                <button
+                                    onClick={() => onAssign(item)}
+                                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm"
+                                >
+                                    <Link2 size={12} /> Assign to Job
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -165,13 +178,104 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
     );
 };
 
-// ─── Simple Demo ─────────────────────────────────────────────────────────────
+// ─── Equipment Table (List View) ────────────────────────────────────────────────
+const EquipmentTable = ({ items, onEdit, onDelete, onAssign, onReturn, onViewHistory, userRole }) => {
+    const canManage = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(userRole);
+
+    return (
+        <div className="bg-white rounded-[32px] shadow-sm border border-slate-200/60 overflow-hidden overflow-x-auto">
+            <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <th className="px-6 py-4">Equipment</th>
+                        <th className="px-6 py-4">Asset ID / Type</th>
+                        <th className="px-6 py-4">Category</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Location</th>
+                        <th className="px-6 py-4">Assigned Job</th>
+                        <th className="px-6 py-4">Last Maint.</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                    {items.map(item => (
+                        <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl overflow-hidden">
+                                        {item.imageUrl ? (
+                                            <img src={getServerUrl(item.imageUrl)} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            item.category === 'Small Tools' ? '🛠️' : '🚜'
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-slate-900 text-sm tracking-tight">{item.name}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.type}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <p className="text-xs font-black text-slate-700">#{item.serialNumber || 'SN-NA'}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">{item.type}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${item.category === 'Small Tools' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                    {item.category === 'Small Tools' ? 'Tool' : 'Heavy'}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <StatusBadge status={item.status} />
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                                    <MapPin size={12} className="text-slate-400" />
+                                    {item.location || 'Warehouse'}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                {item.assignedJob ? (
+                                    <div className="space-y-0.5">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase truncate max-w-[120px]">{item.assignedJob?.name}</p>
+                                        <p className="text-[9px] font-bold text-slate-400 truncate max-w-[120px]">{item.assignedJob?.projectId?.name}</p>
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase">Idle</span>
+                                )}
+                            </td>
+                            <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                                {item.lastServiceDate ? new Date(item.lastServiceDate).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => onViewHistory(item)} title="View History" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition"><History size={15} /></button>
+                                    {canManage && (
+                                        <>
+                                            {item.assignedJob ? (
+                                                <button onClick={() => onReturn(item._id)} title="Return" className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"><RotateCcw size={15} /></button>
+                                            ) : (
+                                                <button onClick={() => onAssign(item)} title="Assign" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><Link2 size={15} /></button>
+                                            )}
+                                            <button onClick={() => onEdit(item)} title="Edit" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"><Edit size={15} /></button>
+                                            <button onClick={() => onDelete(item._id)} title="Delete" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition"><Trash2 size={15} /></button>
+                                        </>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
 const EMPTY_FORM = {
     name: '',
     category: 'Heavy Equipment',
     type: 'Excavator',
     status: 'operational',
     serialNumber: '',
+    location: 'Warehouse',
     notes: '',
     imageUrl: ''
 };
@@ -200,8 +304,18 @@ const Equipment = () => {
     const [allHistory, setAllHistory] = useState([]);
     const [allHistoryLoading, setAllHistoryLoading] = useState(false);
     const [allHistoryDateFrom, setAllHistoryDateFrom] = useState('');
-    const [allHistoryDateTo, setAllHistoryDateTo] = useState('');
     const [allHistorySearch, setAllHistorySearch] = useState('');
+
+    const { user } = useAuth();
+
+    // New State for View Toggle and Sorting
+    const [viewMode, setViewMode] = useState(() => localStorage.getItem('equipmentViewMode') || 'list');
+    const [sortBy, setSortBy] = useState('name'); // 'name' | 'status' | 'date'
+    const [statusFilter, setStatusFilter] = useState('all');
+
+    useEffect(() => {
+        localStorage.setItem('equipmentViewMode', viewMode);
+    }, [viewMode]);
 
     const fetchData = async () => {
         try {
@@ -429,12 +543,30 @@ const Equipment = () => {
         }
     };
 
-    const filtered = equipment.filter(e => {
-        const matchSearch = e.name?.toLowerCase().includes(search.toLowerCase()) ||
-            e.type?.toLowerCase().includes(search.toLowerCase());
-        const matchCat = categoryFilter === 'all' || e.category === categoryFilter;
-        return matchSearch && matchCat;
-    });
+    const filtered = useMemo(() => {
+        let result = equipment.filter(e => {
+            const matchSearch = e.name?.toLowerCase().includes(search.toLowerCase()) ||
+                e.type?.toLowerCase().includes(search.toLowerCase()) ||
+                e.serialNumber?.toLowerCase().includes(search.toLowerCase());
+            const matchCat = categoryFilter === 'all' || e.category === categoryFilter;
+            const matchStatus = statusFilter === 'all' || e.status === statusFilter;
+            return matchSearch && matchCat && matchStatus;
+        });
+
+        // Apply Sorting
+        result.sort((a, b) => {
+            if (sortBy === 'name') return a.name.localeCompare(b.name);
+            if (sortBy === 'status') return a.status.localeCompare(b.status);
+            if (sortBy === 'date') {
+                const dateA = a.lastServiceDate ? new Date(a.lastServiceDate) : new Date(0);
+                const dateB = b.lastServiceDate ? new Date(b.lastServiceDate) : new Date(0);
+                return dateB - dateA; // Newest first
+            }
+            return 0;
+        });
+
+        return result;
+    }, [equipment, search, categoryFilter, statusFilter, sortBy]);
 
     const counts = {
         heavy: equipment.filter(e => e.category === 'Heavy Equipment').length,
@@ -460,27 +592,31 @@ const Equipment = () => {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        onClick={async () => {
-                            setShowAllHistory(true);
-                            setAllHistoryLoading(true);
-                            setAllHistoryDateFrom('');
-                            setAllHistoryDateTo('');
-                            setAllHistorySearch('');
-                            try {
-                                const res = await api.get('/equipment/all-history');
-                                setAllHistory(res.data || []);
-                            } catch { setAllHistory([]); }
-                            finally { setAllHistoryLoading(false); }
-                        }}
-                        className="px-6 py-3 border-2 border-slate-200 bg-white text-slate-700 rounded-xl flex items-center gap-2 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50 transition-all font-black text-sm uppercase tracking-tight shadow-sm"
-                    >
-                        <History size={18} /> Full History
-                    </button>
-                    <button onClick={openCreate}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight">
-                        <Plus size={18} /> Add New Item
-                    </button>
+                    {['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                        <>
+                            <button
+                                onClick={async () => {
+                                    setShowAllHistory(true);
+                                    setAllHistoryLoading(true);
+                                    setAllHistoryDateFrom('');
+                                    setAllHistoryDateTo('');
+                                    setAllHistorySearch('');
+                                    try {
+                                        const res = await api.get('/equipment/all-history');
+                                        setAllHistory(res.data || []);
+                                    } catch { setAllHistory([]); }
+                                    finally { setAllHistoryLoading(false); }
+                                }}
+                                className="px-6 py-3 border-2 border-slate-200 bg-white text-slate-700 rounded-xl flex items-center gap-2 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50 transition-all font-black text-sm uppercase tracking-tight shadow-sm"
+                            >
+                                <History size={18} /> Full History
+                            </button>
+                            <button onClick={openCreate}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight">
+                                <Plus size={18} /> Add New Item
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -510,9 +646,27 @@ const Equipment = () => {
             </div>
 
             {/* Toolbar */}
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center">
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col xl:flex-row gap-4 items-center">
+                {/* View Toggle */}
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl shrink-0">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        title="List View"
+                    >
+                        <List size={18} />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('grid')}
+                        className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        title="Grid View"
+                    >
+                        <LayoutGrid size={18} />
+                    </button>
+                </div>
+
                 {/* Category filter tabs */}
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl">
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl shrink-0">
                     <button onClick={() => setCategoryFilter('all')}
                         className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${categoryFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                         All Assets
@@ -525,41 +679,81 @@ const Equipment = () => {
                     ))}
                 </div>
 
+                {/* Status Filter */}
+                <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-tight text-slate-700 outline-none focus:border-blue-500/50 transition-all shrink-0 min-w-[140px]"
+                >
+                    <option value="all">All Statuses</option>
+                    <option value="operational">Operational</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="idle">Idle</option>
+                    <option value="out_of_service">Out of Service</option>
+                </select>
+
+                {/* Sort Dropdown */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-1.5 shrink-0">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort:</span>
+                    <select
+                        value={sortBy}
+                        onChange={e => setSortBy(e.target.value)}
+                        className="bg-transparent text-xs font-black text-slate-900 outline-none cursor-pointer uppercase tracking-tight"
+                    >
+                        <option value="name">Name</option>
+                        <option value="status">Status</option>
+                        <option value="date">Last Service</option>
+                    </select>
+                </div>
+
                 <div className="flex-1 relative w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input type="text" placeholder="Search by name or type..." value={search}
+                    <input type="text" placeholder="Search by name, type, or SN..." value={search}
                         onChange={e => setSearch(e.target.value)}
                         className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400" />
                 </div>
             </div>
 
-            {/* Content */}
-            {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[...Array(8)].map((_, i) => (
-                        <div key={i} className="bg-white rounded-[28px] h-80 animate-pulse border border-slate-100" />
-                    ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {filtered.length === 0 ? (
-                        <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300">
-                            <Box size={48} className="opacity-30" />
-                            <p className="font-bold uppercase tracking-widest text-[11px]">No equipment found</p>
-                        </div>
-                    ) : filtered.map(item => (
-                        <EquipmentCard
-                            key={item._id}
-                            item={item}
-                            onEdit={openEdit}
-                            onDelete={handleDelete}
-                            onAssign={openAssign}
-                            onReturn={handleReturn}
-                            onViewHistory={openHistory}
-                        />
-                    ))}
-                </div>
-            )}
+            {/* Content Container with Animation */}
+            <div className="transition-all duration-300">
+                {loading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[...Array(8)].map((_, i) => (
+                            <div key={i} className="bg-white rounded-[28px] h-80 animate-pulse border border-slate-100" />
+                        ))}
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300 bg-white rounded-[32px] border border-slate-100">
+                        <Box size={48} className="opacity-30" />
+                        <p className="font-bold uppercase tracking-widest text-[11px]">No equipment found matching your criteria</p>
+                    </div>
+                ) : viewMode === 'list' ? (
+                    <EquipmentTable
+                        items={filtered}
+                        onEdit={openEdit}
+                        onDelete={handleDelete}
+                        onAssign={openAssign}
+                        onReturn={handleReturn}
+                        onViewHistory={openHistory}
+                        userRole={user?.role}
+                    />
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+                        {filtered.map(item => (
+                            <EquipmentCard
+                                key={item._id}
+                                item={item}
+                                onEdit={openEdit}
+                                onDelete={handleDelete}
+                                onAssign={openAssign}
+                                onReturn={handleReturn}
+                                onViewHistory={openHistory}
+                                userRole={user?.role}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Add/Edit Modal */}
             {isModalOpen && createPortal(
@@ -642,6 +836,21 @@ const Equipment = () => {
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Serial Number</label>
                                     <input type="text" value={form.serialNumber} onChange={e => setForm({ ...form, serialNumber: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Location</label>
+                                    <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
+                                        placeholder="e.g. Yard 1, Warehouse"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Last Maint. Date</label>
+                                    <input type="date" value={form.lastServiceDate ? new Date(form.lastServiceDate).toISOString().split('T')[0] : ''}
+                                        onChange={e => setForm({ ...form, lastServiceDate: e.target.value })}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none" />
                                 </div>
                                 <div className="space-y-2">

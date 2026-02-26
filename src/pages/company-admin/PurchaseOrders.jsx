@@ -26,6 +26,8 @@ const PurchaseOrders = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [projectFilter, setProjectFilter] = useState('all');
+    const [jobFilter, setJobFilter] = useState('all');
+    const [jobs, setJobs] = useState([]);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
     const fetchData = async () => {
@@ -48,6 +50,23 @@ const PurchaseOrders = () => {
         fetchData();
     }, []);
 
+    // Fetch jobs when projectFilter changes
+    useEffect(() => {
+        const fetchJobs = async () => {
+            if (projectFilter !== 'all') {
+                try {
+                    const res = await api.get(`/jobs?projectId=${projectFilter}`);
+                    setJobs(res.data);
+                } catch (err) {
+                    console.error('Error fetching jobs:', err);
+                }
+            } else {
+                setJobs([]);
+                setJobFilter('all');
+            }
+        };
+        fetchJobs();
+    }, [projectFilter]);
     const handleDelete = async (e, id) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this purchase order?')) {
@@ -74,12 +93,12 @@ const PurchaseOrders = () => {
 
         const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
         const matchesProject = projectFilter === 'all' || o.projectId?._id === projectFilter || o.projectId === projectFilter;
-
+        const matchesJob = jobFilter === 'all' || o.jobId?._id === jobFilter || o.jobId === jobFilter;
         const poDate = new Date(o.createdAt);
         const matchesDate = (!dateRange.start || poDate >= new Date(dateRange.start)) &&
             (!dateRange.end || poDate <= new Date(dateRange.end));
 
-        return matchesSearch && matchesStatus && matchesProject && matchesDate;
+        return matchesSearch && matchesStatus && matchesProject && matchesJob && matchesDate;
     });
 
     const getStatusStyles = (status) => {
@@ -153,6 +172,15 @@ const PurchaseOrders = () => {
                             {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                         </select>
                         <select
+                            value={jobFilter}
+                            onChange={e => setJobFilter(e.target.value)}
+                            disabled={projectFilter === 'all'}
+                            className="px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 pr-10 outline-none focus:border-blue-500/50 disabled:opacity-50"
+                        >
+                            <option value="all">All Jobs</option>
+                            {jobs.map(j => <option key={j._id} value={j._id}>{j.name}</option>)}
+                        </select>
+                        <select
                             value={statusFilter}
                             onChange={e => setStatusFilter(e.target.value)}
                             className="px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 pr-10 outline-none focus:border-blue-500/50"
@@ -170,6 +198,7 @@ const PurchaseOrders = () => {
                             onClick={() => {
                                 setStatusFilter('all');
                                 setProjectFilter('all');
+                                setJobFilter('all');
                                 setSearchTerm('');
                                 setDateRange({ start: '', end: '' });
                             }}

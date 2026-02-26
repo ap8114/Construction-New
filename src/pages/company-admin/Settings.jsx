@@ -196,10 +196,11 @@ const RoleSettings = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [allPermissions, setAllPermissions] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleDisplayNames = {
     'PM': 'Project Manager',
-    'FOREMAN': 'Site Foreman',
+    'FOREMAN': 'Foreman',
     'WORKER': 'Worker',
     'SUBCONTRACTOR': 'Subcontractor',
     'CLIENT': 'Client',
@@ -209,6 +210,7 @@ const RoleSettings = () => {
   const permissionLabels = {
     'VIEW_DASHBOARD': 'Dashboard',
     'VIEW_PROJECTS': 'Jobs',
+    'VIEW_TASKS': 'Tasks',
     'CLOCK_IN_OUT': 'My Clock',
     'CLOCK_IN_CREW': 'Clock In Crew',
     'VIEW_TIMESHEETS': 'Timesheets',
@@ -224,6 +226,8 @@ const RoleSettings = () => {
     'VIEW_REPORTS': 'Reports',
     'VIEW_PAYROLL': 'Payroll',
     'VIEW_TEAM': 'Users',
+    'VIEW_ISSUES': 'Issues',
+    'VIEW_PROFILE': 'My Profile',
     'ACCESS_SETTINGS': 'Settings',
   };
 
@@ -233,11 +237,11 @@ const RoleSettings = () => {
       const response = await api.get('/roles');
       const permissionsMap = {};
       response.data.forEach(r => {
-        permissionsMap[r.role] = r.permissions;
+        permissionsMap[r.name] = r.permissions;
       });
       setAllPermissions(permissionsMap);
       const ALLOWED_ROLES = ['PM', 'FOREMAN', 'WORKER', 'SUBCONTRACTOR', 'CLIENT'];
-      setRoles(response.data.map(r => r.role).filter(r => ALLOWED_ROLES.includes(r)));
+      setRoles(response.data.filter(r => ALLOWED_ROLES.includes(r.name)));
     } catch (error) {
       console.error('Error fetching roles:', error);
     } finally {
@@ -263,11 +267,31 @@ const RoleSettings = () => {
 
   const handleSaveRoles = async () => {
     try {
+      setIsSubmitting(true);
       await api.put(`/roles/${activeRole}`, { permissions: allPermissions[activeRole] });
       alert(`Permissions for ${roleDisplayNames[activeRole] || activeRole} updated successfully.`);
     } catch (error) {
       console.error('Error saving permissions:', error);
       alert("Failed to save permissions.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBulkSave = async () => {
+    try {
+      setIsSubmitting(true);
+      const roleUpdates = Object.entries(allPermissions).map(([roleName, permissions]) => ({
+        roleName,
+        permissions
+      }));
+      await api.put(`/roles/bulk`, { roleUpdates });
+      alert("All role permissions updated successfully.");
+    } catch (error) {
+      console.error('Error in bulk saving permissions:', error);
+      alert("Failed to save all permissions.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -275,18 +299,18 @@ const RoleSettings = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Role Selector */}
-      <div className="flex flex-wrap gap-2 pb-4 border-b border-slate-100">
+      {/* Role Tabs */}
+      <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl w-fit">
         {roles.map(role => (
           <button
-            key={role}
-            onClick={() => setActiveRole(role)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeRole === role
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+            key={role.name}
+            onClick={() => setActiveRole(role.name)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeRole === role.name
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
               }`}
           >
-            {roleDisplayNames[role] || role}
+            {roleDisplayNames[role.name] || role.name}
           </button>
         ))}
       </div>
@@ -306,17 +330,27 @@ const RoleSettings = () => {
               checked={allPermissions[activeRole]?.includes(key) || false}
               onChange={() => handleToggle(key)}
             />
-            <span className="text-sm text-slate-700">{label}</span>
+            <span className="text-sm text-slate-700 font-medium">{label}</span>
           </label>
         ))}
       </div>
 
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+        <button
+          onClick={handleBulkSave}
+          disabled={isSubmitting}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2.5 rounded-lg font-bold transition disabled:opacity-50"
+        >
+          {isSubmitting ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
+          Save All Role Changes
+        </button>
         <button
           onClick={handleSaveRoles}
-          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg"
+          disabled={isSubmitting}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold transition shadow-lg shadow-blue-200 disabled:opacity-50"
         >
-          <Save size={18} /> Save Permissions
+          {isSubmitting ? <Loader size={18} className="animate-spin" /> : <Shield size={18} />}
+          Save {roleDisplayNames[activeRole] || activeRole} Only
         </button>
       </div>
     </div>

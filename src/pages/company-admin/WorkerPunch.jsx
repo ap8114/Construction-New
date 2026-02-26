@@ -45,9 +45,17 @@ const WorkerPunch = () => {
                     setCurrentTimeLog(active);
                     setActiveJob(active.projectId?.name || 'Assigned Site');
                     setSiteLocation(active.projectId?.location?.address || 'Site Recorded');
+                    setIsClockedIn(true);
+
+                    // Calculate timer if it wasn't set or is outdated
+                    const start = new Date(active.clockIn).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.floor((now - start) / 1000));
                 } else {
                     setActiveJob(null);
                     setSiteLocation('Not Clocked In');
+                    setIsClockedIn(false);
+                    setTimer(0);
                 }
             } catch (error) {
                 console.error('Error fetching punch data:', error);

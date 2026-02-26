@@ -39,6 +39,8 @@ const RFIDetail = () => {
     const [showReassign, setShowReassign] = useState(false);
     const commentRef = useRef(null);
 
+    const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
+
     const isAdmin = ['COMPANY_OWNER', 'PM'].includes(user?.role);
 
     useEffect(() => {
@@ -327,8 +329,8 @@ const RFIDetail = () => {
                                             onClick={() => handleStatusChange(s)}
                                             disabled={rfi.status === s || statusChanging}
                                             className={`text-xs py-2 px-2 rounded-lg font-bold border transition ${rfi.status === s
-                                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
-                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
                                                 }`}
                                         >
                                             {statusChanging && rfi.status !== s ? <Loader size={10} className="animate-spin mx-auto" /> : statusLabels[s]}
