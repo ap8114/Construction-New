@@ -89,22 +89,16 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/login', { email, password });
       const userData = response.data;
 
-      // Fetch actual permissions from DB
-      localStorage.setItem('token', userData.token); // Set token first for the next API call
-
-      let permissions = [];
-      try {
-        const permRes = await api.get('/roles/my-permissions');
-        permissions = permRes.data.permissions || [];
-      } catch (e) {
-        console.error('Failed to fetch permissions during login:', e);
-      }
+      // Now permissions are included in the login response
+      const permissions = userData.permissions || [];
 
       const userWithPerms = {
         ...userData,
         permissions
       };
 
+      // Set token and user data in local storage
+      localStorage.setItem('token', userData.token);
       setUser(userWithPerms);
       localStorage.setItem('user', JSON.stringify(userWithPerms));
 

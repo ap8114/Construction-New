@@ -304,6 +304,7 @@ const Equipment = () => {
     const [allHistory, setAllHistory] = useState([]);
     const [allHistoryLoading, setAllHistoryLoading] = useState(false);
     const [allHistoryDateFrom, setAllHistoryDateFrom] = useState('');
+    const [allHistoryDateTo, setAllHistoryDateTo] = useState('');
     const [allHistorySearch, setAllHistorySearch] = useState('');
 
     const { user } = useAuth();
