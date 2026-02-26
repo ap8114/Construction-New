@@ -940,7 +940,7 @@ const ProjectDetails = () => {
                                 <h3 className="text-lg font-black text-slate-900 tracking-tight">Purchase Orders</h3>
                                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Direct material procurement for this project</p>
                             </div>
-                            {user?.role !== 'CLIENT' && (
+                            {['COMPANY_OWNER', 'PM', 'FOREMAN', 'SUPER_ADMIN'].includes(user?.role) && (
                                 <button
                                     onClick={() => navigate('/company-admin/purchase-orders/new', { state: { projectId } })}
                                     className="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200"
