@@ -182,7 +182,7 @@ const Chat = () => {
 
     // Fetch Messages for Active Room
     useEffect(() => {
-        if (!activeRoom) return;
+        if (!activeRoom?.id) return;
 
         const fetchMessages = async () => {
             try {
@@ -384,7 +384,7 @@ const Chat = () => {
                                 `}>
                                     {room.avatar ? (
                                         <img src={room.avatar} className="w-full h-full object-cover rounded-2xl" alt="" />
-                                    ) : room.name.charAt(0)}
+                                    ) : (room.name?.[0] || '?')}
                                 </div>
                                 {room.unreadCount > 0 && (
                                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black shadow-lg animate-bounce">
@@ -443,7 +443,7 @@ const Chat = () => {
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-xl
                                     ${activeRoom.roomType === 'INTERNAL' ? 'bg-blue-600' : 'bg-slate-900'}
                                 `}>
-                                    {activeRoom.name.charAt(0)}
+                                    {activeRoom.name?.[0] || '?'}
                                 </div>
                                 <div>
                                     <h3 className="font-black text-slate-800 text-lg leading-tight uppercase tracking-tight">{activeRoom.name}</h3>
@@ -609,7 +609,7 @@ const Chat = () => {
                                         <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 font-bold group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                                             {u.avatar ? (
                                                 <img src={u.avatar} className="w-full h-full object-cover rounded-2xl" alt="" />
-                                            ) : u.fullName.charAt(0)}
+                                            ) : (u.fullName?.[0] || '?')}
                                         </div>
                                         <div className="flex-1">
                                             <h4 className="font-bold text-slate-800 text-sm">{u.fullName}</h4>
