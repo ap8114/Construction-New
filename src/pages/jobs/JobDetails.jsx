@@ -5,7 +5,7 @@ import {
     Search, Filter, MoreHorizontal, Camera, FileText,
     Users, MapPin, DollarSign, ChevronRight, Layout,
     Trash2, Edit, Save, X, ArrowLeft, TrendingUp,
-    AlertTriangle, ShoppingCart
+    AlertTriangle, ShoppingCart, Download, History
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +27,8 @@ const JobDetails = () => {
     const [taskToCancel, setTaskToCancel] = useState(null);
     const [jobPOs, setJobPOs] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+    const [historyData, setHistoryData] = useState(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     const fetchJobDetails = async () => {
         try {
@@ -53,6 +55,42 @@ const JobDetails = () => {
     useEffect(() => {
         fetchJobDetails();
     }, [jobId]);
+
+    const fetchHistory = async () => {
+        try {
+            setHistoryLoading(true);
+            const res = await api.get(`/jobs/${jobId}/full-history`);
+            setHistoryData(res.data);
+        } catch (err) {
+            console.error('Error fetching job history:', err);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchHistory();
+        }
+    }, [activeTab, jobId]);
+
+    const handleDownloadHistory = async () => {
+        try {
+            const response = await api.get(`/jobs/${jobId}/history-pdf`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${job?.name || 'Job'}_History.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Error downloading history:', err);
+            alert('Failed to download history PDF');
+        }
+    };
 
     const handleUpdateTaskStatus = async (taskId, newStatus) => {
         try {
@@ -99,6 +137,7 @@ const JobDetails = () => {
         // { id: 'overview', label: 'Overview', icon: Layout },
         { id: 'tasks', label: 'Tasks', icon: CheckCircle },
         { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
+        { id: 'history', label: 'History', icon: History },
         // { id: 'photos', label: 'Photos', icon: Camera },
         // { id: 'documents', label: 'Documents', icon: FileText },
         // { id: 'logs', label: 'Daily Logs', icon: Clock },
@@ -476,11 +515,167 @@ const JobDetails = () => {
                         </div>
                     </div>
                 )}
-                {['photos', 'documents', 'logs'].includes(activeTab) && (
-                    <div className="p-10 flex flex-col items-center justify-center text-center gap-4 animate-fade-in py-32">
-                        <Layout size={48} className="text-slate-200" />
-                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Module Integration Pending</h3>
-                        <p className="max-w-xs text-xs text-slate-400 font-bold leading-relaxed">We are currently linking this job to the central {activeTab} repository.</p>
+                {activeTab === 'history' && (
+                    <div className="p-0 animate-fade-in flex flex-col gap-6 p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Job Full History</h3>
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Complete record of every action and work hour</p>
+                            </div>
+                            <button
+                                onClick={handleDownloadHistory}
+                                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2"
+                            >
+                                <Download size={14} /> Download Full History
+                            </button>
+                        </div>
+
+                        {historyLoading && !historyData ? (
+                            <div className="flex items-center justify-center py-24">
+                                <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* SECTION 1: Summary Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {[
+                                        { label: 'Total Workers', value: historyData?.worker_summary?.length || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { label: 'Total Hours', value: historyData?.worker_summary?.reduce((acc, curr) => acc + curr.totalHours, 0).toFixed(1) || '0.0', icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                        { label: 'Total Days Worked', value: historyData?.daily_logs?.length || 0, icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50' },
+                                        { label: 'Completion', value: `${job?.progress || 0}%`, icon: TrendingUp, color: 'text-violet-600', bg: 'bg-violet-50' },
+                                    ].map((stat, i) => (
+                                        <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+                                                <stat.icon size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                                                <p className="text-lg font-black text-slate-900 tracking-tighter">{stat.value}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* SECTION 2: Worker Summary Table */}
+                                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm mt-4">
+                                    <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Worker Summary Aggregation</h4>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-slate-50/30 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Worker</th>
+                                                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total Days</th>
+                                                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total Hours</th>
+                                                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Avg Hours/Day</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {historyData?.worker_summary?.length > 0 ? historyData.worker_summary.map((w, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] uppercase">
+                                                                    {w.workerName.charAt(0)}
+                                                                </div>
+                                                                <span className="text-xs font-black text-slate-700">{w.workerName}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center text-xs font-bold text-slate-500">{w.totalDays}</td>
+                                                        <td className="px-6 py-4 text-center text-xs font-black text-slate-900">{w.totalHours.toFixed(1)} hrs</td>
+                                                        <td className="px-6 py-4 text-right text-xs font-bold text-blue-600">{(w.totalHours / (w.totalDays || 1)).toFixed(1)} hrs</td>
+                                                    </tr>
+                                                )) : (
+                                                    <tr><td colSpan="4" className="px-6 py-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No work records found</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                                    {/* SECTION 3: Daily Time Log Table */}
+                                    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+                                        <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50">
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Daily Work Records</h4>
+                                        </div>
+                                        <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                                            <table className="w-full text-left">
+                                                <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Worker | Date</th>
+                                                        <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">In / Out</th>
+                                                        <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Hours</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {historyData?.daily_logs?.length > 0 ? historyData.daily_logs.map((log, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <p className="text-xs font-black text-slate-700">{log.workerId?.fullName || 'Worker'}</p>
+                                                                <p className="text-[10px] text-slate-400 font-bold uppercase">{new Date(log.workDate).toLocaleDateString()}</p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <p className="text-[10px] font-bold text-slate-600">
+                                                                    {new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {log.checkOut ? new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right text-xs font-black text-emerald-600">{log.totalHours.toFixed(1)}</td>
+                                                        </tr>
+                                                    )) : (
+                                                        <tr><td colSpan="3" className="px-6 py-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No logs yet</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    {/* SECTION 4: Activity Timeline */}
+                                    <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+                                        <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50">
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Activity Timeline</h4>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[500px] custom-scrollbar">
+                                            {historyData?.activity_logs?.length > 0 ? historyData.activity_logs.map((act, idx) => (
+                                                <div key={idx} className="relative pl-8 pb-2">
+                                                    {/* Timeline Line */}
+                                                    {idx !== historyData.activity_logs.length - 1 && (
+                                                        <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-slate-100" />
+                                                    )}
+
+                                                    {/* Timeline Dot */}
+                                                    <div className={`absolute left-0 top-1.5 w-6 h-6 rounded-full border-4 border-white shadow-sm flex items-center justify-center
+                                                        ${act.actionType === 'CREATED' ? 'bg-blue-500' :
+                                                            act.actionType === 'COMPLETED' ? 'bg-emerald-500' :
+                                                                act.actionType === 'STATUS_CHANGED' ? 'bg-orange-400' :
+                                                                    act.actionType.includes('WORKER') ? 'bg-indigo-500' : 'bg-slate-400'}`}>
+                                                        {act.actionType === 'CREATED' ? <Plus size={10} className="text-white" /> :
+                                                            act.actionType === 'COMPLETED' ? <CheckCircle size={10} className="text-white" /> :
+                                                                act.actionType.includes('WORKER') ? <Users size={10} className="text-white" /> :
+                                                                    <Clock size={10} className="text-white" />}
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] font-black uppercase tracking-widest text-slate-500">{act.actionType}</span>
+                                                            <span className="text-[9px] font-bold text-slate-400">{new Date(act.createdAt).toLocaleString()}</span>
+                                                        </div>
+                                                        <p className="text-xs font-bold text-slate-700 leading-snug">{act.description}</p>
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">By {act.createdBy?.fullName || 'System'}</p>
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                                                    <History size={40} />
+                                                    <p className="text-[10px] font-black uppercase tracking-widest mt-3">No activity recorded</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
