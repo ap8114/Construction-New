@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+    baseURL: 'http://localhost:8080/api',
 });
 
 // Add interceptor to include JWT token in requests
@@ -9,7 +9,7 @@ api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;   
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
@@ -19,9 +19,9 @@ api.interceptors.request.use(
 );
 
 export const getServerUrl = (path) => {
-    if (!path) return ''; 
+    if (!path) return '';
     if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
-    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
+    const baseUrl = 'http://localhost:8080/api';
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 

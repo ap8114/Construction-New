@@ -49,6 +49,7 @@ import Payroll from './pages/company-admin/Payroll';
 import Equipment from './pages/company-admin/Equipment';
 import WorkerPunch from './pages/company-admin/WorkerPunch';
 import CrewClock from './pages/company-admin/CrewClock';
+import TradeManagement from './pages/company-admin/TradeManagement';
 import Deficiencies from './pages/jobs/Deficiencies';
 import JobDetails from './pages/jobs/JobDetails';
 
@@ -64,6 +65,7 @@ import UploadPage from './pages/project-team/Upload';
 import TasksPage from './pages/project-team/Tasks';
 import ProjectTeamChat from './pages/project-team/Chat';
 import ProjectTeamProfile from './pages/project-team/Profile';
+import PublicBidSubmission from './pages/PublicBidSubmission';
 
 import ClientPortalDashboard from './pages/client-portal/Dashboard';
 import ClientTimeline from './pages/client-portal/Timeline';
@@ -95,6 +97,9 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/signup" element={<Navigate to="/register" />} />
       <Route path="/tasks" element={<Navigate to="/company-admin/tasks" />} />
+
+      {/* Public Pages */}
+      <Route path="/submit-bid/:drawingId" element={<PublicBidSubmission />} />
 
       {/* Super Admin Routes */}
       <Route
@@ -157,6 +162,7 @@ function App() {
         <Route path="equipment" element={<Equipment />} />
         <Route path="clock" element={<WorkerPunch />} />
         <Route path="crew-clock" element={<CrewClock />} />
+        <Route path="trades" element={<TradeManagement />} />
         <Route path="settings" element={<Settings />} />
 
         {/* RFI Routes */}

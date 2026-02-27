@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader, File } from 'lucide-react';
+import { FileText, Eye, Download, Search, Filter, Upload, Trash2, X, Save, AlertTriangle, CheckCircle, Loader, File, Send, Check } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import DrawingViewer from './DrawingViewer';
+import emailjs from '@emailjs/browser';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -44,6 +45,11 @@ const Drawings = () => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isFullViewerOpen, setIsFullViewerOpen] = useState(false);
+  const [isDistributionOpen, setIsDistributionOpen] = useState(false);
+
+  const [trades, setTrades] = useState([]);
+  const [selectedTrades, setSelectedTrades] = useState([]);
+  const [tradeCategoryFilter, setTradeCategoryFilter] = useState('All');
 
   const [selectedDrawing, setSelectedDrawing] = useState(null);
   const [selectedVersion, setSelectedVersion] = useState(null);
@@ -54,12 +60,14 @@ const Drawings = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [drwRes, projRes] = await Promise.all([
+      const [drwRes, projRes, tradeRes] = await Promise.all([
         api.get('/drawings'),
-        api.get('/projects')
+        api.get('/projects'),
+        api.get('/vendors?status=active')
       ]);
       setDrawings(drwRes.data);
       setProjects(projRes.data);
+      setTrades(tradeRes.data);
     } catch (error) {
       console.error('Error fetching drawing data:', error);
     } finally {
@@ -140,6 +148,61 @@ const Drawings = () => {
       setIsDeleteOpen(false);
     } catch (error) {
       console.error('Error deleting drawing:', error);
+    }
+  };
+
+  const handleSendToTrade = (drawing) => {
+    setSelectedDrawing(drawing);
+    setSelectedTrades([]);
+    setIsDistributionOpen(true);
+  };
+
+  const confirmSend = async () => {
+    if (selectedTrades.length === 0) return alert('Select at least one trade');
+    try {
+      setLoading(true);
+
+      // 1. Backend update for status tracking
+      await api.post('/vendors/send-drawing', {
+        drawingId: selectedDrawing._id,
+        vendorIds: selectedTrades
+      });
+
+      // 2. EmailJS Logic
+      const selectedTradeData = trades.filter(t => selectedTrades.includes(t._id));
+
+      const emailPromises = selectedTradeData.map(trade => {
+        // Prepare template parameters matching your screenshot EXACTLY
+        const templateParams = {
+          to_email: trade.email,
+          trade_name: trade.name,
+          drawing_title: selectedDrawing.title,
+          project_name: selectedDrawing.projectId?.name || 'Construction Project',
+          title: selectedDrawing.title, // Contact Us: {{title}}
+          name: user?.fullName || 'Company Admin', // Maps to {{name}} in your screenshot
+          email: user?.email || 'admin@kaal.com', // Maps to {{email}} in your screenshot
+          download_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`,
+          bid_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`
+        };
+
+        // Note: Please replace these with your actual IDs from EmailJS Dashboard
+        return emailjs.send(
+          'service_1aid9rt', // Your Service ID
+          'template_wflydl5', // Your Template ID
+          templateParams,
+          '2L1gfv6cdJc9YuzdP' // Your Public Key
+        );
+      });
+
+      await Promise.all(emailPromises);
+
+      setIsDistributionOpen(false);
+      alert(`Drawing sent successfully to ${selectedTrades.length} trades via EmailJS!`);
+    } catch (error) {
+      console.error('Error sending drawing:', error);
+      alert('Failed to send emails. Make sure your EmailJS IDs are correct.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -296,6 +359,9 @@ const Drawings = () => {
                         </button>
                         <button onClick={() => handleView(drawing)} className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100" title="View Details">
                           <Eye size={18} />
+                        </button>
+                        <button onClick={() => handleSendToTrade(drawing)} className="p-2 text-violet-600 hover:bg-violet-50 rounded-lg transition-colors border border-transparent hover:border-violet-100" title="Send to Trade">
+                          <Send size={18} />
                         </button>
                         {canManage && (
                           <button onClick={() => handleDelete(drawing)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Delete">
@@ -521,6 +587,74 @@ const Drawings = () => {
               Delete
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Distribution Modal */}
+      <Modal isOpen={isDistributionOpen} onClose={() => setIsDistributionOpen(false)} title="Send to Trades">
+        <div className="space-y-4">
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Drawing</p>
+            <p className="text-sm font-bold text-slate-800">{selectedDrawing?.title}</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Filter by Category</label>
+            <select
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
+              value={tradeCategoryFilter}
+              onChange={(e) => setTradeCategoryFilter(e.target.value)}
+            >
+              <option>All</option>
+              <option>Flooring</option>
+              <option>Plumbing</option>
+              <option>Electrical</option>
+              <option>Carpentry</option>
+              <option>Painting</option>
+            </select>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto border border-slate-100 rounded-lg divide-y divide-slate-50">
+            <div className="px-4 py-2 bg-slate-50 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedTrades.length === trades.length && trades.length > 0}
+                onChange={(e) => {
+                  if (e.target.checked) setSelectedTrades(trades.map(t => t._id));
+                  else setSelectedTrades([]);
+                }}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-bold text-slate-700">Select All</span>
+            </div>
+            {trades
+              .filter(t => tradeCategoryFilter === 'All' || t.category === tradeCategoryFilter)
+              .map(trade => (
+                <label key={trade._id} className="px-4 py-3 flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition">
+                  <input
+                    type="checkbox"
+                    checked={selectedTrades.includes(trade._id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedTrades([...selectedTrades, trade._id]);
+                      else setSelectedTrades(selectedTrades.filter(id => id !== trade._id));
+                    }}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 leading-none">{trade.name}</p>
+                    <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter mt-1">{trade.category}</p>
+                  </div>
+                </label>
+              ))}
+          </div>
+
+          <button
+            onClick={confirmSend}
+            disabled={selectedTrades.length === 0 || loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 flex justify-center items-center gap-2 disabled:opacity-50"
+          >
+            {loading ? <Loader className="animate-spin" size={18} /> : <><Send size={18} /> Send to {selectedTrades.length} Trades</>}
+          </button>
         </div>
       </Modal>
 
