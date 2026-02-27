@@ -49,97 +49,134 @@ const SystemLogs = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
                         <Terminal size={32} className="text-blue-600" /> System Audit Logs
                     </h1>
-                    <p className="text-slate-500 text-sm">Track all administrative actions and security events system-wide.</p>
+                    <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
+                        <Activity size={14} className="text-blue-600" />
+                        Administrative actions and security events system-wide
+                    </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={fetchLogs} className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
-                        <RefreshCw size={20} />
+                <div className="flex gap-3">
+                    <button
+                        onClick={fetchLogs}
+                        className="p-2.5 bg-white rounded-xl border border-slate-200 text-slate-400 hover:text-blue-600 hover:shadow-sm transition-all shadow-sm"
+                    >
+                        <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                     </button>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <div className="relative group/search">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/search:text-blue-500 transition-colors" size={18} />
                         <input
                             type="text"
-                            placeholder="Filter by action, user, or module..."
+                            placeholder="Search actions, users, modules..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 w-80 shadow-sm"
+                            className="w-full md:w-80 pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400 shadow-sm transition-all"
                         />
                     </div>
                 </div>
             </div>
 
-            <div className="bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-800">
+            <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-800/50 text-slate-400 border-b border-slate-800">
-                            <tr>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">Timestamp</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">Action</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">Module</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">User</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">Details</th>
-                                <th className="px-6 py-4 font-bold uppercase tracking-wider text-[10px]">IP Address</th>
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Timestamp</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Module</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">User</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Details</th>
+                                <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">IP Address</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-50">
                             {filteredLogs.map((log) => (
-                                <tr key={log._id} className="hover:bg-slate-800/30 transition-colors group">
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">
-                                        {new Date(log.createdAt).toLocaleString()}
+                                <tr key={log._id} className="hover:bg-slate-50/50 transition-all duration-300 group">
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={14} className="text-slate-300" />
+                                            <span className="text-[11px] font-black text-slate-500 uppercase tracking-tight">
+                                                {new Date(log.createdAt).toLocaleString(undefined, {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    second: '2-digit'
+                                                })}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getActionColor(log.action)}`}>
+                                    <td className="px-8 py-5">
+                                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${getActionColor(log.action)}`}>
                                             {log.action}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-slate-300 font-medium px-2 py-1 rounded bg-slate-800 text-[11px]">
+                                    <td className="px-8 py-5">
+                                        <span className="text-slate-600 font-black px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[10px] uppercase tracking-widest">
                                             {log.module}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">
                                                 {log.userId?.fullName?.charAt(0) || 'S'}
                                             </div>
-                                            <span className="text-slate-300 font-medium">{log.userId?.fullName || 'System'}</span>
+                                            <span className="text-sm font-black text-slate-900 leading-none">{log.userId?.fullName || 'System'}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-400 max-w-xs truncate group-hover:whitespace-normal group-hover:overflow-visible group-hover:bg-slate-800/80 group-hover:rounded-lg group-hover:p-2 transition-all">
-                                        {log.details}
+                                    <td className="px-8 py-5">
+                                        <p className="text-sm font-bold text-slate-700 max-w-sm leading-relaxed truncate group-hover:whitespace-normal group-hover:overflow-visible transition-all">
+                                            {log.details}
+                                        </p>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-500 font-mono text-[11px]">
-                                        {log.ipAddress || '127.0.0.1'}
+                                    <td className="px-8 py-5">
+                                        <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
+                                            <Shield size={12} className="text-slate-400" />
+                                            <span className="text-[11px] font-black text-slate-500 font-mono">
+                                                {log.ipAddress || '127.0.0.1'}
+                                            </span>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
-                            {filteredLogs.length === 0 && (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-20 text-center text-slate-500">
-                                        <Activity size={40} className="mx-auto mb-3 opacity-20" />
-                                        <p className="text-lg font-medium">No system logs found</p>
-                                        <p className="text-sm">Try clearing your filters or search terms.</p>
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
+
+                    {filteredLogs.length === 0 && (
+                        <div className="py-24 flex flex-col items-center justify-center gap-6">
+                            <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-200">
+                                <Terminal size={40} />
+                            </div>
+                            <div className="text-center">
+                                <h3 className="text-xl font-black text-slate-900">No System Logs Found</h3>
+                                <p className="text-slate-500 font-bold max-w-xs mx-auto mt-2 text-sm">
+                                    We couldn't find any audit logs matching your search parameters.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
-                <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
-                <div className="text-sm text-blue-700">
-                    <p className="font-bold mb-1">Log Retention Policy</p>
-                    <p>System audit logs are retained for 365 days. Exports can be requested via the primary platform administrator.</p>
+            {/* <div className="bg-blue-600 rounded-[32px] p-8 shadow-xl shadow-blue-200 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+                <div className="flex items-center gap-5 relative z-10">
+                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
+                        <Shield size={28} />
+                    </div>
+                    <div>
+                        <h4 className="text-white text-lg font-black tracking-tight">Log Retention Policy</h4>
+                        <p className="text-blue-100 text-sm font-bold">System audit logs are retained for 365 days for compliance.</p>
+                    </div>
                 </div>
-            </div>
+                <button className="px-8 py-3 bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-tight hover:shadow-2xl transition-all relative z-10">
+                    Request Export
+                </button>
+            </div> */}
         </div>
     );
 };

@@ -9,9 +9,8 @@ import {
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 
-// Set up worker
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+// Set up worker from CDN for better reliability in production
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const DrawingViewer = ({ drawing, version, onClose }) => {
     // PDF State

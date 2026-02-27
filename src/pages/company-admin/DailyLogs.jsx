@@ -32,6 +32,10 @@ const DailyLogs = () => {
         manpower: [{ role: 'General', count: 0, hours: 8 }],
         workPerformed: ''
     });
+    const [filters, setFilters] = useState({
+        projectId: '',
+        date: ''
+    });
 
     const isSubcontractor = user?.role === 'SUBCONTRACTOR';
 
@@ -39,7 +43,7 @@ const DailyLogs = () => {
         try {
             setLoading(true);
             const [logRes, projRes] = await Promise.all([
-                api.get('/dailylogs'),
+                api.get('/dailylogs', { params: filters }),
                 api.get('/projects')
             ]);
             setLogs(logRes.data);
@@ -53,7 +57,7 @@ const DailyLogs = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [filters]);
 
     const handleCreate = () => {
         setFormData({
@@ -102,9 +106,6 @@ const DailyLogs = () => {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="p-2.5 bg-white rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:shadow-sm transition-all">
-                        <MoreHorizontal size={20} />
-                    </button>
                     {!isSubcontractor && (
                         <button
                             onClick={handleCreate}
@@ -128,13 +129,37 @@ const DailyLogs = () => {
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
                     />
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <button className="flex-1 md:flex-none px-6 py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                        <Filter size={18} /> Filters
-                    </button>
-                    <button className="flex-1 md:flex-none px-6 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                        <Calendar size={18} /> This Week
-                    </button>
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:flex-none min-w-[160px]">
+                        <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <select
+                            value={filters.projectId}
+                            onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500/50 text-xs font-bold text-slate-600 appearance-none cursor-pointer"
+                        >
+                            <option value="">All Projects</option>
+                            {projects.map(p => (
+                                <option key={p._id} value={p._id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="relative flex-1 md:flex-none">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                            type="date"
+                            value={filters.date}
+                            onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500/50 text-xs font-bold text-slate-600 cursor-pointer"
+                        />
+                    </div>
+                    {(filters.projectId || filters.date) && (
+                        <button
+                            onClick={() => setFilters({ projectId: '', date: '' })}
+                            className="px-4 py-3 bg-red-50 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all"
+                        >
+                            Clear
+                        </button>
+                    )}
                 </div>
             </div>
 

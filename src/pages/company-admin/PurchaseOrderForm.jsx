@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
     ChevronLeft, Plus, Trash2, Save, FileText,
     Truck, Calendar, DollarSign, Briefcase, Info, Mail
@@ -11,6 +11,7 @@ import '../../styles/PurchaseOrders.css';
 const PurchaseOrderForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
     const isEdit = !!id;
 
@@ -18,7 +19,7 @@ const PurchaseOrderForm = () => {
     const [projects, setProjects] = useState([]);
     const [jobs, setJobs] = useState([]);
     const [formData, setFormData] = useState({
-        projectId: '',
+        projectId: location.state?.projectId || '',
         jobId: '',
         vendorName: '',
         vendorEmail: '',

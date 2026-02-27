@@ -19,7 +19,6 @@ const ROLE_LABELS = {
     FOREMAN: 'Foreman',
     SUBCONTRACTOR: 'Subcontractor',
     PM: 'Project Manager',
-    ENGINEER: 'Engineer',
     COMPANY_OWNER: 'Owner',
 };
 
@@ -28,7 +27,6 @@ const ROLE_COLORS = {
     FOREMAN: 'bg-orange-50 text-orange-600 border-orange-100',
     SUBCONTRACTOR: 'bg-purple-50 text-purple-600 border-purple-100',
     PM: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    ENGINEER: 'bg-cyan-50 text-cyan-700 border-cyan-100',
     COMPANY_OWNER: 'bg-slate-50 text-slate-700 border-slate-200',
 };
 
@@ -229,7 +227,7 @@ const Tasks = () => {
             setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
             // Only include field workers for assignment dropdown
             setTeam((usersRes.data || []).filter(u =>
-                ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM', 'ENGINEER'].includes(u.role)
+                ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role)
             ));
         } catch (error) {
             console.error('Error fetching task data:', error);
@@ -437,7 +435,6 @@ const Tasks = () => {
                             <option value="FOREMAN">Foreman</option>
                             <option value="SUBCONTRACTOR">Subcontractor</option>
                             <option value="PM">Project Manager</option>
-                            <option value="ENGINEER">Engineer</option>
                         </select>
                         <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500">
                             <option value="">All Projects</option>
@@ -628,7 +625,6 @@ const Tasks = () => {
                                 <option value="FOREMAN">Foreman</option>
                                 <option value="SUBCONTRACTOR">Subcontractor</option>
                                 <option value="PM">Project Manager</option>
-                                <option value="ENGINEER">Engineer</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">
