@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://construction-backend-production-b192.up.railway.app/api';
 const BASE_URL = API_URL.replace('/api', '');
 
 const api = axios.create({
@@ -24,7 +24,7 @@ api.interceptors.request.use(
 export const getServerUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
-    const baseUrl = 'http://localhost:8080';
+    const baseUrl = 'https://construction-backend-production-b192.up.railway.app';
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
