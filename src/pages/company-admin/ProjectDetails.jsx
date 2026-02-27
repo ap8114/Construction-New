@@ -737,12 +737,12 @@ const ProjectDetails = () => {
                                                                     <label key={u._id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
                                                                         <input
                                                                             type="checkbox"
-                                                                            checked={job.assignedWorkers?.includes(u._id)}
+                                                                            checked={job.assignedWorkers?.some(w => (typeof w === 'object' ? w._id === u._id : w === u._id))}
                                                                             onChange={(e) => {
-                                                                                const current = job.assignedWorkers || [];
+                                                                                const currentIds = (job.assignedWorkers || []).map(w => typeof w === 'object' ? w._id : w);
                                                                                 const next = e.target.checked
-                                                                                    ? [...current, u._id]
-                                                                                    : current.filter(id => id !== u._id);
+                                                                                    ? [...currentIds, u._id]
+                                                                                    : currentIds.filter(id => id !== u._id);
                                                                                 handleAssignWorkers(job._id, next);
                                                                             }}
                                                                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
