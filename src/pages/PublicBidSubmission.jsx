@@ -113,12 +113,12 @@ const PublicBidSubmission = () => {
                                 Drawing Documentation
                             </h3>
 
-                            <div className="aspect-[4/3] bg-slate-100 rounded-xl mb-6 overflow-hidden border border-slate-200 flex items-center justify-center group relative">
+                            <div className="aspect-[4/3] bg-slate-100 rounded-xl mb-6 overflow-hidden border border-slate-200 group relative">
                                 {latestVersion?.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                                     <img src={getServerUrl(latestVersion.fileUrl)} alt="Blueprint" className="w-full h-full object-contain" />
                                 ) : (
-                                    <div className="text-center">
-                                        <FileText size={48} className="text-slate-300 mx-auto mb-2" />
+                                    <div className="w-full h-full flex flex-col items-center justify-center">
+                                        <FileText size={48} className="text-slate-300 mb-2" />
                                         <p className="text-xs font-bold text-slate-400 uppercase">PDF Blueprint</p>
                                     </div>
                                 )}
@@ -136,6 +136,8 @@ const PublicBidSubmission = () => {
 
                             <a
                                 href={getServerUrl(latestVersion?.fileUrl)}
+                                target="_blank"
+                                rel="noreferrer"
                                 download
                                 className="w-full py-4 bg-slate-100 text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest flex justify-center items-center gap-2 hover:bg-slate-200 transition"
                             >

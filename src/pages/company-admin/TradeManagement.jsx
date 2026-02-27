@@ -139,26 +139,39 @@ const TradeManagement = () => {
             if (bidToUpdate && bidToUpdate.vendorId?.email) {
                 const templateParams = {
                     to_email: bidToUpdate.vendorId.email,
+                    email: bidToUpdate.vendorId.email,
                     trade_name: bidToUpdate.vendorId.name,
+                    name: bidToUpdate.vendorId.name,
+                    to_name: bidToUpdate.vendorId.name,
                     drawing_title: bidToUpdate.drawingId?.title || 'Construction Drawing',
+                    title: bidToUpdate.drawingId?.title || 'Construction Drawing',
                     status: status.toUpperCase(),
                     message: status === 'Approved'
                         ? 'Congratulations! Your bid has been approved. We will be in touch shortly with contract details.'
                         : 'Thank you for your interest. Unfortunately, your bid was not selected for this project.'
                 };
 
-                // Using your existing credentials
-                await emailjs.send(
-                    'service_1aid9rt',
-                    'template_n5du8sy', // Updated your new template ID
-                    templateParams,
-                    '2L1gfv6cdJc9YuzdP'
-                );
+                try {
+                    // Using your existing credentials
+                    await emailjs.send(
+                        'service_1aid9rt',
+                        'template_n5du8sy',
+                        templateParams,
+                        '2L1gfv6cdJc9YuzdP'
+                    );
+                    alert(`Bid ${status.toLowerCase()}! Email sent to ${bidToUpdate.vendorId.name} successfully.`);
+                } catch (emailErr) {
+                    console.error('EmailJS Error:', emailErr);
+                    alert(`Bid ${status.toLowerCase()} but failed to send email. Check console for EmailJS error.`);
+                }
+            } else {
+                alert(`Bid ${status.toLowerCase()} successfully, but trade email is missing. No email sent.`);
             }
 
             fetchBids();
         } catch (err) {
             console.error('Error updating bid status:', err);
+            alert('Error updating bid status.');
         }
     };
 

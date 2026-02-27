@@ -181,7 +181,7 @@ const Drawings = () => {
           title: selectedDrawing.title, // Contact Us: {{title}}
           name: user?.fullName || 'Company Admin', // Maps to {{name}} in your screenshot
           email: user?.email || 'admin@kaal.com', // Maps to {{email}} in your screenshot
-          download_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`,
+          download_link: getServerUrl(selectedDrawing.versions?.[selectedDrawing.versions.length - 1]?.fileUrl),
           bid_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`
         };
 

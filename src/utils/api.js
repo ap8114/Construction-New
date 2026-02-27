@@ -21,7 +21,7 @@ api.interceptors.request.use(
 export const getServerUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
-    const baseUrl = 'http://localhost:8080/api';
+    const baseUrl = 'http://localhost:8080';
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
