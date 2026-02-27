@@ -128,6 +128,8 @@ const CompanyAdminDashboard = () => {
   const socketRef = useRef();
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState('');
+  const [selectedAssignment, setSelectedAssignment] = useState('');
 
   const fetchDashboardData = async () => {
     try {
@@ -234,9 +236,37 @@ const CompanyAdminDashboard = () => {
       });
 
       if (!isClockedIn) {
+        let pId = null;
+        let tId = null;
+        let jId = null;
+
+        if (selectedAssignment.startsWith('task_')) {
+          tId = selectedAssignment.replace('task_', '');
+          const tMatch = workerMetrics.assignedTasks?.find(t => t._id === tId);
+          if (tMatch) {
+            pId = tMatch.projectId;
+            jId = tMatch.jobId;
+          }
+        } else if (selectedAssignment.startsWith('project_')) {
+          pId = selectedAssignment.replace('project_', '');
+          const pMatch = workerMetrics.assignedProjects?.find(p => p._id === pId);
+          if (pMatch) {
+            jId = pMatch.jobId;
+          }
+        } else if (!selectedAssignment && workerMetrics.assignedTasks?.length > 0) {
+          tId = workerMetrics.assignedTasks[0]._id;
+          pId = workerMetrics.assignedTasks[0].projectId;
+          jId = workerMetrics.assignedTasks[0].jobId;
+        } else if (!selectedAssignment && workerMetrics.assignedProjects?.length > 0) {
+          pId = workerMetrics.assignedProjects[0]._id;
+          jId = workerMetrics.assignedProjects[0].jobId;
+        }
+
         const coords = await getPosition();
         await api.post('/timelogs/clock-in', {
-          projectId: selectedProjectId || workerMetrics.assignedProjects?.[0]?._id,
+          projectId: pId,
+          jobId: jId,
+          taskId: tId,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
           deviceInfo: navigator.userAgent
@@ -366,14 +396,25 @@ const CompanyAdminDashboard = () => {
                 <div className="mt-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Site for Clock In</label>
                   <select
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    value={selectedAssignment}
+                    onChange={(e) => setSelectedAssignment(e.target.value)}
                     className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 w-full max-w-sm"
                   >
-                    <option value="">-- Choose Project --</option>
-                    {workerMetrics.assignedProjects.map(p => (
-                      <option key={p._id} value={p._id}>{p.name} ({p.jobName})</option>
-                    ))}
+                    <option value="">-- Choose Task / Project --</option>
+                    {workerMetrics.assignedTasks?.length > 0 && <optgroup label="My Tasks">
+                      {workerMetrics.assignedTasks.map(t => (
+                        <option key={`task_${t._id}`} value={`task_${t._id}`}>
+                          Task: {t.title} ({t.jobName})
+                        </option>
+                      ))}
+                    </optgroup>}
+                    {workerMetrics.assignedProjects?.length > 0 && <optgroup label="General Site Attendance">
+                      {workerMetrics.assignedProjects.map(p => (
+                        <option key={`project_${p._id}`} value={`project_${p._id}`}>
+                          Project: {p.name} ({p.jobName})
+                        </option>
+                      ))}
+                    </optgroup>}
                   </select>
                 </div>
               )}
@@ -533,7 +574,7 @@ const CompanyAdminDashboard = () => {
                 )}
               </div>
               <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto no-scrollbar">
-                {myTasks.map((task) => (
+                {myTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').map((task) => (
                   <div key={task._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
                       <button

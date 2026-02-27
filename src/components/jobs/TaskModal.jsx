@@ -124,7 +124,7 @@ const TaskModal = ({ isOpen, onClose, onSave, jobId, task, assignedWorkers }) =>
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 font-bold text-slate-800 outline-none appearance-none focus:border-blue-500/50 transition-all cursor-pointer"
                             >
-                                <option value="">Select Worker</option>
+                                <option value="">Select Personnel</option>
                                 {assignedWorkers && assignedWorkers.length > 0 ? (
                                     assignedWorkers.map(worker => (
                                         <option key={worker._id || worker} value={worker._id || worker}>

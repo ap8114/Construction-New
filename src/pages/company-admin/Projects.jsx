@@ -231,7 +231,7 @@ const InsightCard = ({ title, value, subtext, icon: Icon, color }) => {
 const Projects = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [workerTab, setWorkerTab] = useState('planning'); // 'planning' | 'active' | 'completed'
+  const [workerTab, setWorkerTab] = useState('active'); // 'planning' | 'active' | 'completed'
   const [jobs, setJobs] = useState([]);
   const [view, setView] = useState('grid');
   const [projects, setProjects] = useState([]);
@@ -257,19 +257,19 @@ const Projects = () => {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const isWorker = user?.role === 'WORKER';
+      const isJobView = ['WORKER', 'FOREMAN'].includes(user?.role);
 
       const [projRes, clientRes, usersRes, jobsRes] = await Promise.all([
         api.get('/projects'),
         api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
         api.get('/auth/users').catch(() => ({ data: [] })),
-        isWorker ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        isJobView ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
       ]);
 
       setProjects(projRes.data || []);
       setClients(clientRes.data || []);
       setProjectManagers((usersRes.data || []).filter(u => u.role === 'PM'));
-      if (isWorker) setJobs(jobsRes.data || []);
+      if (isJobView) setJobs(jobsRes.data || []);
     } catch (err) {
       console.error('Projects fetch error:', err);
     } finally {
@@ -352,10 +352,12 @@ const Projects = () => {
   });
 
   const isWorker = user?.role === 'WORKER';
+  const isForeman = user?.role === 'FOREMAN';
+  const isJobView = isWorker || isForeman;
   const filteredJobs = jobs.filter(j => {
     const matchSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchTab = j.status === workerTab;
+    const matchTab = isForeman ? true : j.status === workerTab; // Foreman sees all jobs
     return matchSearch && matchTab;
   });
 
@@ -380,15 +382,15 @@ const Projects = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
-            {user?.role === 'WORKER' ? 'Job Assignments' : 'Projects'}
+            {isJobView ? 'My Job Assignments' : 'Projects'}
           </h1>
           <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
             <Globe size={14} className="text-blue-600" />
-            {user?.role === 'WORKER' ? 'Manage your assigned operational objectives' : 'Click a project card to manage jobs'}
+            {isJobView ? 'View your assigned jobs and their tasks' : 'Click a project card to manage jobs'}
           </p>
         </div>
         <div className="flex gap-3">
-          {user?.role === 'WORKER' ? (
+          {isWorker ? (
             <div className="bg-white border border-slate-200 rounded-xl p-1 flex shadow-sm">
               <button
                 onClick={() => setWorkerTab('planning')}
@@ -409,7 +411,7 @@ const Projects = () => {
                 Complete
               </button>
             </div>
-          ) : (
+          ) : isForeman ? null : (
             <>
               <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
                 <button onClick={() => setView('grid')}
@@ -471,73 +473,52 @@ const Projects = () => {
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-4">
           <div className="w-12 h-12 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin" />
-          <p className="font-black text-slate-400 uppercase tracking-widest text-xs">Loading {isWorker ? 'Objectives' : 'Projects'}...</p>
+          <p className="font-black text-slate-400 uppercase tracking-widest text-xs">Loading {isJobView ? 'Job Assignments' : 'Projects'}...</p>
         </div>
-      ) : isWorker ? (
-        /* ── Worker Job Assignments View ── */
+      ) : isJobView ? (
+        /* ── Worker / Foreman Job Assignments View ── */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredJobs.length === 0 ? (
             <div className="col-span-full py-24 text-center flex flex-col items-center gap-4 text-slate-300">
               <Briefcase size={48} className="opacity-30" />
-              <p className="font-bold uppercase tracking-widest text-[11px]">No objectives in this status</p>
+              <p className="font-bold uppercase tracking-widest text-[11px]">No assigned jobs found</p>
             </div>
           ) : filteredJobs.map(job => (
             <div key={job._id} className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm p-6 hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 flex flex-col">
               <div className="flex justify-between items-start mb-4">
-                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100">
                   <Briefcase size={20} className="text-blue-600" />
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Project</span>
                   <span className="text-xs font-bold text-slate-900 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 truncate max-w-[140px]">
-                    {job.projectId?.name || 'Commercial Site'}
+                    {job.projectId?.name || 'Site Project'}
                   </span>
                 </div>
               </div>
 
               <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">{job.name}</h3>
-              <p className="text-slate-500 text-xs font-bold flex items-center gap-2 mb-6">
-                <MapPin size={12} /> {job.location || 'Main Site Entrance'}
+              <p className="text-slate-500 text-xs font-bold flex items-center gap-2 mb-2">
+                <MapPin size={12} /> {job.location || 'Main Site'}
               </p>
 
-              <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Set Status</span>
-                  <div className="flex gap-1.5">
-                    {workerTab !== 'planning' && (
-                      <button
-                        onClick={() => handleUpdateJobStatus(job._id, 'planning')}
-                        className="p-2 bg-orange-50 text-orange-500 rounded-xl hover:bg-orange-500 hover:text-white transition-all border border-orange-100"
-                        title="Move to Pending"
-                      >
-                        <RefreshCw size={14} />
-                      </button>
-                    )}
-                    {workerTab !== 'active' && (
-                      <button
-                        onClick={() => handleUpdateJobStatus(job._id, 'active')}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100"
-                        title="Start Work"
-                      >
-                        <TrendingUp size={14} />
-                      </button>
-                    )}
-                    {workerTab !== 'completed' && (
-                      <button
-                        onClick={() => handleUpdateJobStatus(job._id, 'completed')}
-                        className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100"
-                        title="Mark Complete"
-                      >
-                        <CheckCircle size={14} />
-                      </button>
-                    )}
-                  </div>
+              {/* Job progress bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Progress</span>
+                  <span className="text-[9px] font-black text-slate-600">{job.progress || 0}%</span>
                 </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full transition-all duration-700" style={{ width: `${job.progress || 0}%` }} />
+                </div>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-slate-50">
                 <button
-                  onClick={() => navigate(`/company-admin/projects/${job.projectId?._id || job.projectId}`)}
-                  className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                  onClick={() => navigate(`/company-admin/projects/${job.projectId?._id || job.projectId}/jobs/${job._id}`)}
+                  className="w-full bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
                 >
-                  Details <ArrowRight size={12} />
+                  <CheckCircle size={14} /> View Tasks
                 </button>
               </div>
             </div>

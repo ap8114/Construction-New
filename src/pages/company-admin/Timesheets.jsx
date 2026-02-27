@@ -183,7 +183,7 @@ const Timesheets = () => {
     const handleExport = () => {
         const wrap = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
         const csv = [
-            ['Employee', 'Project', 'Date', 'Time In', 'Time Out', 'Duration (h)', 'Status', 'Geofence Status', 'Location Verified', 'GPS In', 'GPS Out'].map(wrap).join(','),
+            ['Employee', 'Task / Project', 'Date', 'Time In', 'Time Out', 'Duration (h)', 'Status', 'Geofence Status', 'Location Verified', 'GPS In', 'GPS Out'].map(wrap).join(','),
             ...filteredEntries.map(e => {
                 const clockIn = new Date(e.clockIn);
                 const clockOut = e.clockOut ? new Date(e.clockOut) : null;
@@ -191,7 +191,7 @@ const Timesheets = () => {
                 const geofence = e.isOutsideGeofence ? 'OUTSIDE' : (e.geofenceStatus === 'inside' ? 'INSIDE' : 'UNKNOWN');
                 return [
                     e.userId?.fullName || '',
-                    e.projectId?.name || 'Manual Entry',
+                    e.taskId?.title ? `${e.taskId.title} (${e.jobId?.name || ''})` : (e.projectId?.name || 'Manual Entry'),
                     clockIn.toLocaleDateString('en-GB'),
                     clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                     clockOut ? clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '---',
@@ -461,9 +461,11 @@ const Timesheets = () => {
                                                 </td>
                                                 <td className="px-8 py-5">
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-700">{entry.projectId?.name || 'Manual Log'}</span>
+                                                        <span className="font-bold text-slate-700">
+                                                            {entry.taskId ? `Task: ${entry.taskId.title}` : (entry.projectId?.name || 'Manual Log')}
+                                                        </span>
                                                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tight">
-                                                            <Hash size={10} /> {entry.projectId?._id.slice(-6).toUpperCase() || '---'}
+                                                            <Hash size={10} /> {entry.jobId?.name || entry.projectId?._id.slice(-6).toUpperCase() || '---'}
                                                         </span>
                                                     </div>
                                                 </td>

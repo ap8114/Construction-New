@@ -246,9 +246,19 @@ const Tasks = () => {
 
     // Filtered team based on selected role type in form
     const filteredTeamByRole = useMemo(() => {
-        if (!formData.assignedRoleType) return team;
-        return team.filter(u => u.role === formData.assignedRoleType);
-    }, [team, formData.assignedRoleType]);
+        let list = team;
+        if (formData.assignedRoleType) {
+            list = team.filter(u => u.role === formData.assignedRoleType);
+        }
+
+        if (user?.role === 'PM') {
+            list = list.filter(u => ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role));
+        } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
+            list = list.filter(u => u.role === 'WORKER');
+        }
+
+        return list;
+    }, [team, formData.assignedRoleType, user?.role]);
 
     // Apply all filters
     const filteredTasks = useMemo(() => {
@@ -621,10 +631,18 @@ const Tasks = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none"
                             >
                                 <option value="">Any Role</option>
-                                <option value="WORKER">Worker</option>
-                                <option value="FOREMAN">Foreman</option>
-                                <option value="SUBCONTRACTOR">Subcontractor</option>
-                                <option value="PM">Project Manager</option>
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role) || ['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) && (
+                                    <option value="WORKER">Worker</option>
+                                )}
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                    <>
+                                        <option value="FOREMAN">Foreman</option>
+                                        <option value="SUBCONTRACTOR">Subcontractor</option>
+                                    </>
+                                )}
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) && (
+                                    <option value="PM">Project Manager</option>
+                                )}
                             </select>
                         </div>
                         <div className="space-y-1.5">
