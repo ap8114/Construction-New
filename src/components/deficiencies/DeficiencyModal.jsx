@@ -12,7 +12,8 @@ const DeficiencyModal = ({
     onSave,
     initialData = null,
     users = [],
-    isSubmitting = false
+    isSubmitting = false,
+    mode = 'edit' // 'add', 'edit', or 'view'
 }) => {
     const [formData, setFormData] = useState({
         title: '',
@@ -85,9 +86,10 @@ const DeficiencyModal = ({
                     <input
                         type="text"
                         required
+                        disabled={mode === 'view'}
                         value={formData.title}
                         onChange={e => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-red-500/50 focus:ring-4 focus:ring-red-500/5 transition-all text-sm"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-red-500/50 focus:ring-4 focus:ring-red-500/5 transition-all text-sm disabled:opacity-75"
                         placeholder="e.g. Incomplete wiring in Unit 4"
                     />
                 </div>
@@ -100,8 +102,9 @@ const DeficiencyModal = ({
                         <div className="relative">
                             <select
                                 value={formData.category}
+                                disabled={mode === 'view'}
                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance disabled:opacity-75"
                             >
                                 {categories.map(cat => (
                                     <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -116,8 +119,9 @@ const DeficiencyModal = ({
                         </label>
                         <select
                             value={formData.priority}
+                            disabled={mode === 'view'}
                             onChange={e => setFormData({ ...formData, priority: e.target.value })}
-                            className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold outline-none transition-all text-sm appearance-none custom-select-appearance
+                            className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold outline-none transition-all text-sm appearance-none custom-select-appearance disabled:opacity-75
                         ${formData.priority === 'critical' ? 'border-red-400 text-red-700 bg-red-50' : 'border-slate-200 text-slate-800'}`}
                         >
                             {priorities.map(p => (
@@ -134,8 +138,9 @@ const DeficiencyModal = ({
                         </label>
                         <select
                             value={formData.assignedTo}
+                            disabled={mode === 'view'}
                             onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance disabled:opacity-75"
                         >
                             <option value="">Select Worker</option>
                             {users.map(u => (
@@ -150,8 +155,9 @@ const DeficiencyModal = ({
                         </label>
                         <select
                             value={formData.status}
+                            disabled={mode === 'view'}
                             onChange={e => setFormData({ ...formData, status: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance disabled:opacity-75"
                         >
                             <option value="open">Open</option>
                             <option value="in_progress">In Progress</option>
@@ -167,9 +173,10 @@ const DeficiencyModal = ({
                     </label>
                     <input
                         type="date"
+                        disabled={mode === 'view'}
                         value={formData.dueDate}
                         onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm disabled:opacity-75"
                     />
                 </div>
 
@@ -179,8 +186,9 @@ const DeficiencyModal = ({
                     </label>
                     <textarea
                         value={formData.description}
+                        disabled={mode === 'view'}
                         onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all h-32 resize-none text-sm"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all h-32 resize-none text-sm disabled:opacity-75"
                         placeholder="Provide technical details for the fix..."
                     />
                 </div>
@@ -194,16 +202,18 @@ const DeficiencyModal = ({
                         {(formData.images || []).map((img, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group">
                                 <img src={img} alt="Preview" className="w-full h-full object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({
-                                        ...formData,
-                                        images: formData.images.filter((_, i) => i !== idx)
-                                    })}
-                                    className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
-                                >
-                                    <X size={12} />
-                                </button>
+                                {mode !== 'view' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            images: formData.images.filter((_, i) => i !== idx)
+                                        })}
+                                        className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                )}
                             </div>
                         ))}
                         {formData.newImages?.map((file, idx) => (
@@ -226,38 +236,42 @@ const DeficiencyModal = ({
                         ))}
 
                         {/* Add Button */}
-                        <label className="relative aspect-square rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group">
-                            <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={(e) => {
-                                    if (e.target.files) {
-                                        const files = Array.from(e.target.files);
-                                        setFormData({
-                                            ...formData,
-                                            newImages: [...(formData.newImages || []), ...files]
-                                        });
-                                    }
-                                }}
-                                className="hidden"
-                            />
-                            <ImageIcon size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-                            <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600 uppercase">Attach</span>
-                        </label>
+                        {mode !== 'view' && (
+                            <label className="relative aspect-square rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            const files = Array.from(e.target.files);
+                                            setFormData({
+                                                ...formData,
+                                                newImages: [...(formData.newImages || []), ...files]
+                                            });
+                                        }
+                                    }}
+                                    className="hidden"
+                                />
+                                <ImageIcon size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600 uppercase">Attach</span>
+                            </label>
+                        )}
                     </div>
                 </div>
 
-                <div className="pt-4">
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                        {isSubmitting ? <Loader size={20} className="animate-spin" /> : <Save size={20} />}
-                        {initialData ? "Update Deficiency" : "Save Deficiency"}
-                    </button>
-                </div>
+                {mode !== 'view' && (
+                    <div className="pt-4">
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
+                        >
+                            {isSubmitting ? <Loader size={20} className="animate-spin" /> : <Save size={20} />}
+                            {initialData ? "Update Deficiency" : "Save Deficiency"}
+                        </button>
+                    </div>
+                )}
             </form>
         </Modal>
     );

@@ -55,13 +55,25 @@ const ClientPortalDashboard = () => {
           api.get('/rfis')
         ]);
 
+        const projects = projRes.data;
+        let updates = [];
+        if (projects.length > 0) {
+          try {
+            const updatesRes = await api.get(`/projects/${projects[0]._id}/client-updates`);
+            updates = updatesRes.data.slice(0, 3); // Latest 3 updates
+          } catch (err) {
+            console.error('Error fetching updates:', err);
+          }
+        }
+
         setData({
-          projects: projRes.data,
+          projects,
           invoices: invRes.data,
-          photos: photoRes.data.slice(0, 4), // Latest 4
-          drawings: drawRes.data.slice(0, 3), // Latest 3
-          logs: logRes.data.slice(0, 4), // Latest 4
-          rfis: rfiRes.data
+          photos: photoRes.data.slice(0, 4),
+          drawings: drawRes.data.slice(0, 3),
+          logs: logRes.data.slice(0, 4),
+          rfis: rfiRes.data,
+          updates
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -185,6 +197,44 @@ const ClientPortalDashboard = () => {
                     >
                       <div className="absolute -top-1 right-0 w-6 h-6 bg-white border-4 border-blue-600 rounded-full shadow-xl"></div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Latest Project Updates Section */}
+              {data.updates && data.updates.length > 0 && (
+                <div className="mb-12">
+                  <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest flex items-center gap-2 mb-6">
+                    <TrendingUp size={18} className="text-blue-600" /> Latest Project Updates
+                  </h3>
+                  <div className="space-y-6">
+                    {data.updates.map((update) => (
+                      <div key={update._id} className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 hover:border-blue-100 transition-all group">
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{update.title}</h4>
+                          <span className="text-[10px] font-black text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100 uppercase">
+                            {new Date(update.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed mb-4">{update.description}</p>
+
+                        {update.images && update.images.length > 0 && (
+                          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                            {update.images.map((img, i) => (
+                              <div key={i} className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 border border-slate-200">
+                                <img src={img} className="w-full h-full object-cover" alt="Update Attachment" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => navigate(`/client-portal/progress/${primaryProject._id}`)}
+                      className="w-full py-3 bg-white border border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-400 tracking-widest hover:border-blue-300 hover:text-blue-600 transition-all"
+                    >
+                      Explore All Work Progress Updates
+                    </button>
                   </div>
                 </div>
               )}

@@ -9,7 +9,7 @@ import {
 import api from '../../utils/api';
 
 const WorkProgress = () => {
-    const { id } = useParams();
+    const { projectId } = useParams();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [progressData, setProgressData] = useState(null);
@@ -20,8 +20,8 @@ const WorkProgress = () => {
             try {
                 setLoading(true);
                 const [progRes, updateRes] = await Promise.all([
-                    api.get(`/projects/${id}/client-progress`),
-                    api.get(`/projects/${id}/client-updates`)
+                    api.get(`/projects/${projectId}/client-progress`),
+                    api.get(`/projects/${projectId}/client-updates`)
                 ]);
                 setProgressData(progRes.data);
                 setUpdates(updateRes.data);
@@ -33,7 +33,7 @@ const WorkProgress = () => {
         };
 
         fetchProgress();
-    }, [id]);
+    }, [projectId]);
 
     if (loading) {
         return (

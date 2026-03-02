@@ -4,7 +4,7 @@ import {
     AlertCircle, CheckCircle2, Clock, Filter, Plus, Search,
     MoreHorizontal, Edit, Trash2, ShieldAlert, Hammer,
     Layers, AlertTriangle, User, ArrowLeft, ChevronRight,
-    Info, Check, Calendar, Image as ImageIcon
+    Info, Check, Calendar, Image as ImageIcon, Eye
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -45,6 +45,7 @@ const Deficiencies = () => {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState('add'); // 'add', 'edit', 'view'
     const [selectedDeficiency, setSelectedDeficiency] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -187,7 +188,7 @@ const Deficiencies = () => {
                 </div>
                 {canManage && (
                     <button
-                        onClick={() => { setSelectedDeficiency(null); setIsModalOpen(true); }}
+                        onClick={() => { setModalMode('add'); setSelectedDeficiency(null); setIsModalOpen(true); }}
                         className="bg-slate-900 text-white px-8 py-3 rounded-2xl flex items-center gap-2 hover:bg-slate-800 transition shadow-xl font-black text-sm uppercase tracking-tight"
                     >
                         <Plus size={18} /> Add Deficiency
@@ -311,6 +312,17 @@ const Deficiencies = () => {
                                             </td>
                                             <td className="px-6 py-5 text-right">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setModalMode('view');
+                                                            setSelectedDeficiency(d);
+                                                            setIsModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
                                                     {canUpdate && d.status !== 'fixed' && d.status !== 'closed' && (
                                                         <button
                                                             onClick={() => handleStatusUpdate(d._id, 'fixed')}
@@ -322,7 +334,7 @@ const Deficiencies = () => {
                                                     )}
                                                     {canUpdate && (
                                                         <button
-                                                            onClick={() => { setSelectedDeficiency(d); setIsModalOpen(true); }}
+                                                            onClick={() => { setModalMode('edit'); setSelectedDeficiency(d); setIsModalOpen(true); }}
                                                             className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
                                                         >
                                                             <Edit size={18} />
@@ -352,6 +364,7 @@ const Deficiencies = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 initialData={selectedDeficiency}
+                mode={modalMode}
                 users={(() => {
                     // Start with company users
                     let list = Array.isArray(users) ? [...users] : [];

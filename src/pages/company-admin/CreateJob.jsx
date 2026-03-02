@@ -12,7 +12,7 @@ const canSeeBudget = (role) =>
     ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
 
 const CreateJob = () => {
-    const { id: projectId } = useParams();   // project id from URL
+    const { projectId } = useParams();   // project id from URL
     const navigate = useNavigate();
     const { user } = useAuth();
 

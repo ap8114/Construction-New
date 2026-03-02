@@ -5,7 +5,7 @@ import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
     Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart,
-    CheckCircle, Flag, UserCheck, ClipboardList
+    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -53,7 +53,7 @@ const FinancialCard = ({ label, value, icon: Icon, color, subtext }) => {
 };
 
 const ProjectDetails = () => {
-    const { id: projectId } = useParams();
+    const { projectId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -71,7 +71,7 @@ const ProjectDetails = () => {
     const [equipment, setEquipment] = useState([]);
     const [returningEquipId, setReturningEquipId] = useState(null);
     const [isPostingUpdate, setIsPostingUpdate] = useState(false);
-    const [newUpdate, setNewUpdate] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true });
+    const [newUpdate, setNewUpdate] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -206,10 +206,27 @@ const ProjectDetails = () => {
         e.preventDefault();
         try {
             setIsSubmittingUpdate(true);
-            await api.post(`/projects/${projectId}/client-updates`, newUpdate);
+            const formData = new FormData();
+            formData.append('title', newUpdate.title);
+            formData.append('description', newUpdate.description);
+            formData.append('date', newUpdate.date);
+            formData.append('isVisibleToClient', newUpdate.isVisibleToClient);
+
+            newUpdate.images.forEach(img => {
+                formData.append('images', img);
+            });
+
+            await api.post(`/projects/${projectId}/client-updates`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             setIsPostingUpdate(false);
-            setNewUpdate({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true });
+            setNewUpdate({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
             alert('Update posted successfully!');
+
+            // Refresh updates
+            const uRes = await api.get(`/projects/${projectId}/client-updates`);
+            setUpdates(uRes.data);
         } catch (err) {
             console.error(err);
             alert('Failed to post update');
@@ -1045,6 +1062,24 @@ const ProjectDetails = () => {
                                                     </div>
                                                 </div>
                                                 <p className="text-slate-600 font-bold leading-relaxed whitespace-pre-wrap text-sm">{update.description}</p>
+
+                                                {update.images && update.images.length > 0 && (
+                                                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        {update.images.map((img, i) => (
+                                                            <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-100 shadow-sm relative group/img">
+                                                                <img src={img} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" alt="Update" />
+                                                                <a
+                                                                    href={img}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center"
+                                                                >
+                                                                    <ImageIcon size={20} className="text-white" />
+                                                                </a>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-xl bg-slate-900 text-[10px] font-black text-white flex items-center justify-center uppercase shadow-lg shadow-slate-200">
@@ -1147,6 +1182,46 @@ const ProjectDetails = () => {
                                             />
                                             <span className="text-sm font-bold text-slate-600">Visible to Client</span>
                                         </label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Attachments (Max 5)</label>
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {newUpdate.images.map((img, idx) => (
+                                            <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group">
+                                                <img src={URL.createObjectURL(img)} alt="Preview" className="w-full h-full object-cover" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewUpdate({
+                                                        ...newUpdate,
+                                                        images: newUpdate.images.filter((_, i) => i !== idx)
+                                                    })}
+                                                    className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {newUpdate.images.length < 5 && (
+                                            <label className="relative aspect-square rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group">
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        if (e.target.files) {
+                                                            const files = Array.from(e.target.files);
+                                                            const totalFiles = [...newUpdate.images, ...files].slice(0, 5);
+                                                            setNewUpdate({ ...newUpdate, images: totalFiles });
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                />
+                                                <ImageIcon size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                                <span className="text-[8px] font-black text-slate-400 group-hover:text-blue-600 uppercase">Add Photo</span>
+                                            </label>
+                                        )}
                                     </div>
                                 </div>
 

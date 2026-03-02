@@ -133,9 +133,9 @@ function App() {
       >
         <Route index element={<CompanyAdminDashboard />} />
         <Route path="projects" element={<Projects />} />
-        <Route path="projects/:id" element={<ProjectDetails />} />
-        <Route path="projects/:id/jobs/new" element={<CreateJob />} />
-        <Route path="projects/:id/jobs/:jobId/deficiencies" element={<Deficiencies />} />
+        <Route path="projects/:projectId" element={<ProjectDetails />} />
+        <Route path="projects/:projectId/jobs/new" element={<CreateJob />} />
+        <Route path="projects/:projectId/jobs/:jobId/deficiencies" element={<Deficiencies />} />
         <Route path="projects/:projectId/jobs/:jobId" element={<JobDetails />} />
         <Route path="team" element={<Team />} />
 
@@ -202,7 +202,7 @@ function App() {
         }
       >
         <Route index element={<ClientPortalDashboard />} />
-        <Route path="progress/:id" element={<ClientWorkProgress />} />
+        <Route path="progress/:projectId" element={<ClientWorkProgress />} />
         <Route path="projects" element={<Projects />} />
         <Route path="photos" element={<ClientPhotos />} />
         <Route path="drawings" element={<Drawings />} />
