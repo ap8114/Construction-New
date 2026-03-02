@@ -120,6 +120,7 @@ const CompanyAdminLayout = () => {
     { icon: FileQuestion, label: 'RFI', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
     { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
     { icon: Activity, label: 'Attendance Reports', path: '/company-admin/attendance-reports', permission: 'VIEW_REPORTS' },
+    { icon: BarChart2, label: 'Daily Log Reports', path: '/company-admin/daily-log-reports', permission: 'VIEW_REPORTS' },
     { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
     { icon: Users, label: 'Users', path: '/company-admin/team', permission: 'VIEW_TEAM' },
     { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },

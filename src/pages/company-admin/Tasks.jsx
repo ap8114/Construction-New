@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Plus, Search, Filter, Calendar, MoreVertical,
     CheckCircle, Clock, AlertCircle, LayoutGrid, List, Loader,
     Hash, Target, Edit, Trash2,
     AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag,
-    ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight
+    ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
+    ChevronUp, Settings, ChevronRight, Check
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
@@ -23,6 +24,7 @@ const ROLE_LABELS = {
 };
 
 const ROLE_COLORS = {
+    ADMIN: 'bg-indigo-50 text-indigo-700 border-indigo-100',
     WORKER: 'bg-blue-50 text-blue-600 border-blue-100',
     FOREMAN: 'bg-orange-50 text-orange-600 border-orange-100',
     SUBCONTRACTOR: 'bg-purple-50 text-purple-600 border-purple-100',
@@ -56,7 +58,7 @@ const priorityStyles = {
 };
 
 // ─── Kanban Task Card ──────────────────────────────────────────────────────────
-const DraggableTask = ({ task, onEdit, onDelete }) => {
+const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
     const [menuOpen, setMenuOpen] = useState(false);
     const urgency = getTaskUrgency(task);
@@ -74,7 +76,8 @@ const DraggableTask = ({ task, onEdit, onDelete }) => {
             style={style}
             {...attributes}
             {...listeners}
-            className={`p-5 rounded-3xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-grab active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''}`}
+            onClick={() => onClick(task)}
+            className={`p-5 rounded-3xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''}`}
         >
             {/* Urgency strip */}
             {urgency !== 'normal' && (
@@ -111,6 +114,22 @@ const DraggableTask = ({ task, onEdit, onDelete }) => {
                 </div>
             </div>
 
+            {/* Progress / Sub-task count */}
+            <div className="mb-4">
+                <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
+                        <Layers size={10} /> {task.subTaskCount || 0} Sub-tasks
+                    </span>
+                    <span className="text-[10px] font-black text-blue-600">{task.progress || 0}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                        style={{ width: `${task.progress || 0}%` }}
+                    />
+                </div>
+            </div>
+
             {/* Assignee row */}
             {task.assignedTo?.length > 0 && (
                 <div className="flex items-center gap-2 mb-3">
@@ -143,7 +162,7 @@ const DraggableTask = ({ task, onEdit, onDelete }) => {
 };
 
 // ─── Kanban Column ─────────────────────────────────────────────────────────────
-const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete }) => {
+const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick }) => {
     const { setNodeRef } = useDroppable({ id: status });
     const colTasks = filteredTasks.filter(t => t.status === status);
     const taskIds = colTasks.map(t => t._id);
@@ -164,7 +183,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete }) => 
             <div className="p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {colTasks.map(task => (
-                        <DraggableTask key={task._id} task={task} onEdit={onEdit} onDelete={onDelete} />
+                        <DraggableTask key={task._id} task={task} onEdit={onEdit} onDelete={onDelete} onClick={onTaskClick} />
                     ))}
                 </SortableContext>
                 {colTasks.length === 0 && (
@@ -175,6 +194,199 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete }) => 
                 )}
             </div>
         </div>
+    );
+};
+
+// ─── SubTask Row for List View ──────────────────────────────────────────
+const SubTaskRow = ({ subTask, onToggle, onUpdate, canManage }) => {
+    return (
+        <tr className="bg-slate-50/30 border-l-2 border-slate-200 group/subtask">
+            <td className="px-6 py-2 pl-12">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggle(subTask); }}
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${subTask.status === 'completed'
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-slate-300 hover:border-emerald-500'
+                            }`}
+                    >
+                        {subTask.status === 'completed' && <Check size={12} strokeWidth={4} />}
+                    </button>
+                    <span className={`text-xs font-bold ${subTask.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                        {subTask.title}
+                    </span>
+                </div>
+            </td>
+            <td className="px-6 py-2" colSpan={2}>
+                {subTask.assignedTo && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-slate-200 text-[8px] font-black flex items-center justify-center text-slate-700">
+                            {subTask.assignedTo.fullName?.charAt(0)}
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-700">{subTask.assignedTo.fullName}</span>
+                    </div>
+                )}
+            </td>
+            <td className="px-6 py-2">
+                {subTask.assignedTo?.role && (
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                        {subTask.assignedTo.role}
+                    </span>
+                )}
+            </td>
+            <td className="px-6 py-2">
+                <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-tighter
+                        ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                        {subTask.status.replace('_', ' ')}
+                    </span>
+                    {canManage && (
+                        <select
+                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
+                            value={subTask.status}
+                            onChange={(e) => onUpdate(subTask, { status: e.target.value })}
+                        >
+                            <option value="todo" className="text-slate-900">Todo</option>
+                            <option value="in_progress" className="text-slate-900">In Progress</option>
+                            <option value="completed" className="text-slate-900">Completed</option>
+                        </select>
+                    )}
+                </div>
+            </td>
+            <td className="px-6 py-2">
+                <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
+                        {subTask.priority}
+                    </span>
+                    {canManage && (
+                        <select
+                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
+                            value={subTask.priority}
+                            onChange={(e) => onUpdate(subTask, { priority: e.target.value })}
+                        >
+                            <option value="Low" className="text-slate-900">Low</option>
+                            <option value="Medium" className="text-slate-900">Medium</option>
+                            <option value="High" className="text-slate-900">High</option>
+                        </select>
+                    )}
+                </div>
+            </td>
+            <td className="px-6 py-2">
+                <div className="flex items-center gap-2">
+                    {subTask.dueDate ? (
+                        <div className="flex items-center gap-1.5 text-slate-700">
+                            <Calendar size={11} />
+                            <span className="text-[10px] font-black">{new Date(subTask.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                    ) : <span className="text-[10px] text-slate-500 font-bold">—</span>}
+                    {canManage && (
+                        <input
+                            type="date"
+                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
+                            value={subTask.dueDate ? subTask.dueDate.split('T')[0] : ''}
+                            onChange={(e) => onUpdate(subTask, { dueDate: e.target.value })}
+                        />
+                    )}
+                </div>
+            </td>
+            <td className="px-6 py-2 text-right">
+                {canManage && (
+                    <button
+                        onClick={() => onUpdate(subTask, { delete: true })}
+                        className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded opacity-0 group-hover/subtask:opacity-100 transition-opacity"
+                    >
+                        <Trash2 size={12} />
+                    </button>
+                )}
+            </td>
+        </tr>
+    );
+};
+
+// ─── Quick Add Sub-task Row ───────────────────────────────────────────────
+const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
+    const [title, setTitle] = useState('');
+    const [assignedTo, setAssignedTo] = useState('');
+    const [priority, setPriority] = useState('Medium');
+    const [status, setStatus] = useState('todo');
+    const [dueDate, setDueDate] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+        onSave(taskId, { title, assignedTo, priority, status, dueDate });
+        setTitle('');
+        setAssignedTo('');
+        setPriority('Medium');
+        setStatus('todo');
+        setDueDate('');
+    };
+
+    return (
+        <tr className="bg-slate-50/20 border-l-2 border-slate-200">
+            <td className="px-6 py-2 pl-12" colSpan={8}>
+                <form onSubmit={handleSubmit} className="flex items-center gap-3">
+                    <Plus size={14} className="text-slate-300 shrink-0" />
+                    <input
+                        type="text"
+                        placeholder="Add sub-task..."
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        className="bg-transparent text-xs font-bold text-slate-600 outline-none placeholder:text-slate-300 flex-1 min-w-[200px]"
+                    />
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <select
+                            value={status}
+                            onChange={e => setStatus(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none cursor-pointer"
+                        >
+                            <option value="todo">Todo</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+
+                        <select
+                            value={priority}
+                            onChange={e => setPriority(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none cursor-pointer"
+                        >
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+
+                        <select
+                            value={assignedTo}
+                            onChange={e => setAssignedTo(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none max-w-[120px]"
+                        >
+                            <option value="">Assignee</option>
+                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                        </select>
+
+                        <div className="relative">
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={e => setDueDate(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none w-[110px]"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={!title.trim() || isSubmitting}
+                            className="text-blue-600 hover:text-blue-700 disabled:opacity-30 p-1"
+                        >
+                            <CheckCircle size={18} />
+                        </button>
+                    </div>
+                </form>
+            </td>
+        </tr>
     );
 };
 
@@ -190,9 +402,17 @@ const Tasks = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [subTasks, setSubTasks] = useState([]);
     const [taskToDelete, setTaskToDelete] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
+    const [isSubmittingSubTask, setIsSubmittingSubTask] = useState(false);
+    const [expandedTasks, setExpandedTasks] = useState(new Set());
+    const [subTasksMap, setSubTasksMap] = useState({});
+
+
 
     // Filters
     const [filterStatus, setFilterStatus] = useState('');
@@ -200,10 +420,13 @@ const Tasks = () => {
     const [filterDueFrom, setFilterDueFrom] = useState('');
     const [filterDueTo, setFilterDueTo] = useState('');
     const [filterProject, setFilterProject] = useState('');
-
     const [formData, setFormData] = useState({
         title: '', projectId: '', assignedTo: [], assignedRoleType: '',
         priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: ''
+    });
+
+    const [newSubTask, setNewSubTask] = useState({
+        title: '', assignedTo: '', dueDate: '', remarks: ''
     });
 
     const columns = {
@@ -214,6 +437,31 @@ const Tasks = () => {
     };
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+    const fetchSubTasks = async (taskId, viewUpdate = true) => {
+        try {
+            const res = await api.get(`/tasks/${taskId}/subtasks`);
+            const data = res.data || [];
+            if (viewUpdate) setSubTasks(data);
+            setSubTasksMap(prev => ({ ...prev, [taskId]: data }));
+            return data;
+        } catch (error) {
+            console.error('Error fetching subtasks:', error);
+        }
+    };
+
+    const toggleTaskExpansion = async (taskId) => {
+        const newExpanded = new Set(expandedTasks);
+        if (newExpanded.has(taskId)) {
+            newExpanded.delete(taskId);
+        } else {
+            newExpanded.add(taskId);
+            if (!subTasksMap[taskId]) {
+                await fetchSubTasks(taskId, false);
+            }
+        }
+        setExpandedTasks(newExpanded);
+    };
 
     const fetchData = async () => {
         try {
@@ -252,7 +500,7 @@ const Tasks = () => {
         }
 
         if (user?.role === 'PM') {
-            list = list.filter(u => ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role));
+            list = list.filter(u => ['FOREMAN', 'SUBCONTRACTOR', 'WORKER'].includes(u.role));
         } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
             list = list.filter(u => u.role === 'WORKER');
         }
@@ -303,6 +551,39 @@ const Tasks = () => {
             await api.patch(`/tasks/${taskId}`, { status: newStatus });
         } catch {
             fetchData();
+        }
+    };
+
+    const openDetails = (task) => {
+        setSelectedTask(task);
+        fetchSubTasks(task._id);
+        setIsDetailModalOpen(true);
+    };
+
+    const handleSubTaskSave = async (e) => {
+        e.preventDefault();
+        if (!newSubTask.title) return;
+        try {
+            setIsSubmittingSubTask(true);
+            const res = await api.post(`/tasks/${selectedTask._id}/subtasks`, {
+                ...newSubTask,
+                priority: newSubTask.priority || 'Medium'
+            });
+            setSubTasks([...subTasks, res.data]);
+            setNewSubTask({ title: '', assignedTo: '', dueDate: '', remarks: '', priority: 'Medium' });
+            fetchData(); // Refresh main task for progress/count
+        } catch (error) {
+            console.error('Error adding subtask:', error);
+        } finally {
+            setIsSubmittingSubTask(false);
+        }
+    };
+
+    const handleSubTaskToggle = async (subTaskId, currentStatus) => {
+        const newStatus = currentStatus === 'completed' ? 'todo' : 'completed';
+        const subTask = subTasks.find(st => st._id === subTaskId);
+        if (subTask) {
+            handleSubTaskUpdateInList(selectedTask._id, subTask, { status: newStatus });
         }
     };
 
@@ -365,7 +646,71 @@ const Tasks = () => {
         }
     };
 
-    const canManage = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role);
+    const handleQuickSubTaskSave = async (taskId, subTaskData) => {
+        try {
+            setIsSubmittingSubTask(true);
+            const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
+
+            // Update local map
+            setSubTasksMap(prev => ({
+                ...prev,
+                [taskId]: [...(prev[taskId] || []), res.data]
+            }));
+
+            // If this is the currently selected task in the modal, update it too
+            if (selectedTask?._id === taskId) {
+                setSubTasks(prev => [...prev, res.data]);
+                // Update selectedTask progress locally if possible or just rely on fetchData
+                setSelectedTask(prev => ({ ...prev, progress: Math.min(100, (prev.progress || 0)) }));
+            }
+
+            fetchData(); // Refresh main task progress
+        } catch (error) {
+            console.error('Error saving quick sub-task:', error);
+        } finally {
+            setIsSubmittingSubTask(false);
+        }
+    };
+
+    const handleSubTaskUpdateInList = async (taskId, subTask, updates) => {
+        try {
+            if (updates.delete) {
+                if (!window.confirm('Delete this sub-task?')) return;
+                await api.delete(`/tasks/${taskId}/subtasks/${subTask._id}`);
+
+                setSubTasksMap(prev => ({
+                    ...prev,
+                    [taskId]: (prev[taskId] || []).filter(st => st._id !== subTask._id)
+                }));
+
+                if (selectedTask?._id === taskId) {
+                    setSubTasks(prev => prev.filter(st => st._id !== subTask._id));
+                }
+            } else {
+                const res = await api.patch(`/tasks/${taskId}/subtasks/${subTask._id}`, updates);
+
+                setSubTasksMap(prev => ({
+                    ...prev,
+                    [taskId]: (prev[taskId] || []).map(st => st._id === subTask._id ? res.data : st)
+                }));
+
+                if (selectedTask?._id === taskId) {
+                    setSubTasks(prev => prev.map(st => st._id === subTask._id ? res.data : st));
+                }
+            }
+            fetchData();
+        } catch (error) {
+            console.error('Error updating sub-task:', error);
+            alert('Failed to update sub-task');
+        }
+    };
+
+    const handleSubTaskToggleInList = async (taskId, subTask) => {
+        const newStatus = subTask.status === 'completed' ? 'todo' : 'completed';
+        handleSubTaskUpdateInList(taskId, subTask, { status: newStatus });
+    };
+
+    const canManage = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
 
     return (
         <div className="space-y-6 animate-fade-in max-w-[1600px] mx-auto pb-12 h-[calc(100vh-140px)] flex flex-col">
@@ -479,6 +824,7 @@ const Tasks = () => {
                                     filteredTasks={filteredTasks}
                                     onEdit={openEdit}
                                     onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
+                                    onTaskClick={openDetails}
                                 />
                             ))}
                         </div>
@@ -512,70 +858,118 @@ const Tasks = () => {
                                         </tr>
                                     ) : filteredTasks.map(task => {
                                         const urgency = getTaskUrgency(task);
+                                        const isExpanded = expandedTasks.has(task._id);
+                                        const taskSubTasks = subTasksMap[task._id] || [];
+
                                         return (
-                                            <tr key={task._id} className={`hover:bg-slate-50/50 transition-colors group ${urgency === 'overdue' ? 'bg-red-50/30' : urgency === 'due-soon' ? 'bg-yellow-50/20' : ''}`}>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        {urgency === 'overdue' && <div className="w-1.5 h-8 bg-red-500 rounded-full shrink-0" />}
-                                                        {urgency === 'due-soon' && <div className="w-1.5 h-8 bg-yellow-400 rounded-full shrink-0" />}
-                                                        {urgency === 'completed' && <div className="w-1.5 h-8 bg-emerald-400 rounded-full shrink-0" />}
-                                                        <div>
-                                                            <p className="font-black text-slate-900 text-sm">{task.title}</p>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase">By: {task.assignedBy?.fullName || task.createdBy?.fullName || '—'}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-slate-500">{task.projectId?.name || '—'}</td>
-                                                <td className="px-6 py-4">
-                                                    {task.assignedTo?.length > 0 ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
-                                                                {task.assignedTo[0]?.fullName?.charAt(0) || '?'}
-                                                            </div>
+                                            <React.Fragment key={task._id}>
+                                                <tr
+                                                    onClick={() => openDetails(task)}
+                                                    className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${urgency === 'overdue' ? 'bg-red-50/30' : urgency === 'due-soon' ? 'bg-yellow-50/20' : ''}`}
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); toggleTaskExpansion(task._id); }}
+                                                                className="p-1 hover:bg-slate-200 rounded-md text-slate-400 transition-transform duration-200"
+                                                                style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                                                            >
+                                                                <ChevronRight size={14} />
+                                                            </button>
+                                                            {urgency === 'overdue' && <div className="w-1.5 h-8 bg-red-500 rounded-full shrink-0" />}
+                                                            {urgency === 'due-soon' && <div className="w-1.5 h-8 bg-yellow-400 rounded-full shrink-0" />}
+                                                            {urgency === 'completed' && <div className="w-1.5 h-8 bg-emerald-400 rounded-full shrink-0" />}
                                                             <div>
-                                                                <p className="text-xs font-black text-slate-700">{task.assignedTo[0]?.fullName}</p>
-                                                                {task.assignedTo.length > 1 && <p className="text-[10px] font-bold text-slate-400">+{task.assignedTo.length - 1} more</p>}
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-black text-slate-900 text-sm">{task.title}</p>
+                                                                    {task.subTaskCount > 0 && (
+                                                                        <span className="text-[9px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">
+                                                                            {task.subTaskCount}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                                                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${task.progress || 0}%` }} />
+                                                                    </div>
+                                                                    <span className="text-[9px] font-bold text-slate-400">{task.progress || 0}%</span>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {task.assignedRoleType ? (
-                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                            {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
-                                                        </span>
-                                                    ) : <span className="text-slate-300 text-[10px] font-bold">—</span>}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
-                                                        ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                            task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                    'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                        {task.status?.replace('_', ' ')}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
-                                                        {task.priority}
-                                                    </span>
-                                                </td>
-                                                <td className={`px-6 py-4 text-xs font-black ${urgency === 'overdue' ? 'text-red-600' : urgency === 'due-soon' ? 'text-yellow-600' : 'text-slate-800'}`}>
-                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}
-                                                </td>
-                                                {canManage && (
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex justify-end gap-1.5">
-                                                            <button onClick={() => openEdit(task)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition">
-                                                                <Edit size={15} />
-                                                            </button>
-                                                            <button onClick={() => { setTaskToDelete(task); setIsDeleteModalOpen(true); }} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition">
-                                                                <Trash2 size={15} />
-                                                            </button>
                                                         </div>
                                                     </td>
+                                                    <td className="px-6 py-4 text-sm font-bold text-slate-500">{task.projectId?.name || '—'}</td>
+                                                    <td className="px-6 py-4">
+                                                        {task.assignedTo?.length > 0 ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
+                                                                    {task.assignedTo[0]?.fullName?.charAt(0) || '?'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-black text-slate-700">{task.assignedTo[0]?.fullName}</p>
+                                                                    {task.assignedTo.length > 1 && <p className="text-[10px] font-bold text-slate-400">+{task.assignedTo.length - 1} more</p>}
+                                                                </div>
+                                                            </div>
+                                                        ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {task.assignedRoleType ? (
+                                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                                {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
+                                                            </span>
+                                                        ) : <span className="text-slate-300 text-[10px] font-bold">—</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
+                                                            ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                    task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                        'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                            {task.status?.replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
+                                                            {task.priority}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-6 py-4 text-xs font-black ${urgency === 'overdue' ? 'text-red-600' : urgency === 'due-soon' ? 'text-yellow-600' : 'text-slate-800'}`}>
+                                                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}
+                                                    </td>
+                                                    {canManage && (
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex justify-end gap-1.5">
+                                                                <button onClick={(e) => { e.stopPropagation(); openEdit(task); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition">
+                                                                    <Edit size={15} />
+                                                                </button>
+                                                                <button onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); setIsDeleteModalOpen(true); }} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition">
+                                                                    <Trash2 size={15} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                                {isExpanded && (
+                                                    <>
+                                                        {taskSubTasks.map(st => (
+                                                            <SubTaskRow
+                                                                key={st._id}
+                                                                subTask={st}
+                                                                onToggle={() => handleSubTaskToggleInList(task._id, st)}
+                                                                onUpdate={(sub, updates) => handleSubTaskUpdateInList(task._id, sub, updates)}
+                                                                canManage={canManage}
+                                                            />
+                                                        ))}
+                                                        {canManage && (
+                                                            <QuickAddSubTask
+                                                                taskId={task._id}
+                                                                onSave={handleQuickSubTaskSave}
+                                                                team={filteredTeamByRole}
+                                                                isSubmitting={isSubmittingSubTask}
+                                                            />
+                                                        )}
+                                                    </>
                                                 )}
-                                            </tr>
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>
@@ -631,7 +1025,7 @@ const Tasks = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none"
                             >
                                 <option value="">Any Role</option>
-                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role) || ['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) && (
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role) || ['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) && (
                                     <option value="WORKER">Worker</option>
                                 )}
                                 {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
@@ -740,6 +1134,160 @@ const Tasks = () => {
                         </button>
                     </div>
                 </div>
+            </Modal>
+
+            {/* ── Task Details & Sub-Tasks Modal (ClickUp Inspired) ── */}
+            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Task Execution">
+                {selectedTask && (
+                    <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+                        {/* Header Stats */}
+                        <div className="bg-slate-50 rounded-[32px] p-6 border border-slate-100 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-200">
+                                <div
+                                    className="h-full bg-blue-500 transition-all duration-700"
+                                    style={{ width: `${selectedTask.progress || 0}%` }}
+                                />
+                            </div>
+                            <div className="flex justify-between items-start mb-4 pt-2">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedTask.title}</h2>
+                                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1 flex items-center gap-2">
+                                        <Hash size={12} className="text-blue-500" /> {selectedTask.projectId?.name || 'Unassigned Project'}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`text-[10px] font-black px-3 py-1.5 rounded-full border uppercase tracking-widest bg-white ${priorityStyles[selectedTask.priority]}`}>
+                                        {selectedTask.priority} Priority
+                                    </span>
+                                    <p className="text-[10px] font-black text-blue-600 mt-2">{selectedTask.progress || 0}% Complete</p>
+                                </div>
+                            </div>
+
+                            <p className="text-sm font-bold text-slate-600 leading-relaxed italic bg-white/50 p-4 rounded-2xl border border-white">
+                                "{selectedTask.description || 'No description provided.'}"
+                            </p>
+                        </div>
+
+                        {/* Sub Tasks Section */}
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center px-2">
+                                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                    <Layers size={14} className="text-blue-600" /> Sub-Tasks breakdown
+                                </h3>
+                                <span className="bg-slate-100 text-slate-400 px-2.5 py-1 rounded-xl text-[10px] font-black">
+                                    {subTasks.length} ITEMS
+                                </span>
+                            </div>
+
+                            <div className="space-y-2">
+                                {subTasks.map((st) => (
+                                    <div key={st._id} className="group bg-white hover:bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleSubTaskToggle(st._id, st.status); }}
+                                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${st.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent'}`}
+                                        >
+                                            <CheckCircle2 size={14} strokeWidth={3} />
+                                        </button>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className={`text-sm font-black transition-all ${st.status === 'completed' ? 'text-slate-300 line-through' : 'text-slate-800'}`}>
+                                                    {st.title}
+                                                </p>
+                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0 ${priorityStyles[st.priority] || priorityStyles.Medium}`}>
+                                                    {st.priority}
+                                                </span>
+                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0
+                                                    ${st.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                        st.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                            'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                    {st.status.replace('_', ' ')}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                                                    <UserCheck size={11} className="text-blue-400" />
+                                                    {st.assignedTo?.fullName || 'Unassigned'}
+                                                </div>
+                                                {st.dueDate && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                                                        <Clock size={11} className="text-orange-400" />
+                                                        {new Date(st.dueDate).toLocaleDateString()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-blue-500 transition-all rounded-lg hover:bg-white border border-transparent hover:border-slate-100">
+                                                <Camera size={14} />
+                                            </button>
+                                            {canManage && (
+                                                <button
+                                                    onClick={() => handleSubTaskUpdateInList(selectedTask._id, st, { delete: true })}
+                                                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all rounded-lg hover:bg-white border border-transparent hover:border-slate-100"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {canManage && (
+                                    <form onSubmit={handleSubTaskSave} className="mt-4 bg-slate-50/50 rounded-2xl p-4 border border-slate-100 border-dashed">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                            <input
+                                                required
+                                                type="text"
+                                                placeholder="Add a new sub-task..."
+                                                value={newSubTask.title}
+                                                onChange={e => setNewSubTask({ ...newSubTask, title: e.target.value })}
+                                                className="col-span-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
+                                            />
+                                            <select
+                                                value={newSubTask.assignedTo}
+                                                onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
+                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
+                                            >
+                                                <option value="">Assign To</option>
+                                                {filteredTeamByRole.map(u => (
+                                                    <option key={u._id} value={u._id}>{u.fullName}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={newSubTask.priority || 'Medium'}
+                                                onChange={e => setNewSubTask({ ...newSubTask, priority: e.target.value })}
+                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
+                                            >
+                                                <option value="Low">Low Priority</option>
+                                                <option value="Medium">Medium Priority</option>
+                                                <option value="High">High Priority</option>
+                                            </select>
+                                            <input
+                                                type="date"
+                                                value={newSubTask.dueDate || ''}
+                                                onChange={e => setNewSubTask({ ...newSubTask, dueDate: e.target.value })}
+                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmittingSubTask}
+                                                className="bg-slate-900 text-white p-2 rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest"
+                                            >
+                                                <Plus size={16} /> Add Task
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 flex justify-end">
+                            <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-2 rounded-xl bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-200">
+                                Close Details
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

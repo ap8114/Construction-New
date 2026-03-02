@@ -37,6 +37,7 @@ import Tasks from './pages/company-admin/Tasks';
 import Timesheets from './pages/company-admin/Timesheets';
 import GPS from './pages/company-admin/GPS';
 import DailyLogs from './pages/company-admin/DailyLogs';
+import DailyLogReports from './pages/company-admin/DailyLogReports';
 import Invoices from './pages/company-admin/Invoices';
 import InvoiceDetail from './pages/company-admin/InvoiceDetail';
 import PurchaseOrders from './pages/company-admin/PurchaseOrders';
@@ -149,6 +150,7 @@ function App() {
         <Route path="timesheets" element={<Timesheets />} />
         <Route path="gps" element={<GPS />} />
         <Route path="daily-logs" element={<DailyLogs />} />
+        <Route path="daily-log-reports" element={<DailyLogReports />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="invoices/:id" element={<InvoiceDetail />} />
         <Route path="purchase-orders" element={<PurchaseOrders />} />
