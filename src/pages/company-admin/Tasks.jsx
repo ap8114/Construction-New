@@ -197,115 +197,8 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
     );
 };
 
-// ─── SubTask Row for List View ──────────────────────────────────────────
-const SubTaskRow = ({ subTask, onToggle, onUpdate, canManage }) => {
-    return (
-        <tr className="bg-slate-50/30 border-l-2 border-slate-200 group/subtask">
-            <td className="px-6 py-2 pl-12">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onToggle(subTask); }}
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${subTask.status === 'completed'
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-slate-300 hover:border-emerald-500'
-                            }`}
-                    >
-                        {subTask.status === 'completed' && <Check size={12} strokeWidth={4} />}
-                    </button>
-                    <span className={`text-xs font-bold ${subTask.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                        {subTask.title}
-                    </span>
-                </div>
-            </td>
-            <td className="px-6 py-2" colSpan={2}>
-                {subTask.assignedTo && (
-                    <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-slate-200 text-[8px] font-black flex items-center justify-center text-slate-700">
-                            {subTask.assignedTo.fullName?.charAt(0)}
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-700">{subTask.assignedTo.fullName}</span>
-                    </div>
-                )}
-            </td>
-            <td className="px-6 py-2">
-                {subTask.assignedTo?.role && (
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase">
-                        {subTask.assignedTo.role}
-                    </span>
-                )}
-            </td>
-            <td className="px-6 py-2">
-                <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-tighter
-                        ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                            subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                        {subTask.status.replace('_', ' ')}
-                    </span>
-                    {canManage && (
-                        <select
-                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
-                            value={subTask.status}
-                            onChange={(e) => onUpdate(subTask, { status: e.target.value })}
-                        >
-                            <option value="todo" className="text-slate-900">Todo</option>
-                            <option value="in_progress" className="text-slate-900">In Progress</option>
-                            <option value="completed" className="text-slate-900">Completed</option>
-                        </select>
-                    )}
-                </div>
-            </td>
-            <td className="px-6 py-2">
-                <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
-                        {subTask.priority}
-                    </span>
-                    {canManage && (
-                        <select
-                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
-                            value={subTask.priority}
-                            onChange={(e) => onUpdate(subTask, { priority: e.target.value })}
-                        >
-                            <option value="Low" className="text-slate-900">Low</option>
-                            <option value="Medium" className="text-slate-900">Medium</option>
-                            <option value="High" className="text-slate-900">High</option>
-                        </select>
-                    )}
-                </div>
-            </td>
-            <td className="px-6 py-2">
-                <div className="flex items-center gap-2">
-                    {subTask.dueDate ? (
-                        <div className="flex items-center gap-1.5 text-slate-700">
-                            <Calendar size={11} />
-                            <span className="text-[10px] font-black">{new Date(subTask.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                        </div>
-                    ) : <span className="text-[10px] text-slate-500 font-bold">—</span>}
-                    {canManage && (
-                        <input
-                            type="date"
-                            className="bg-transparent opacity-0 group-hover/subtask:opacity-100 w-4 focus:opacity-100 outline-none cursor-pointer text-slate-900 font-bold"
-                            value={subTask.dueDate ? subTask.dueDate.split('T')[0] : ''}
-                            onChange={(e) => onUpdate(subTask, { dueDate: e.target.value })}
-                        />
-                    )}
-                </div>
-            </td>
-            <td className="px-6 py-2 text-right">
-                {canManage && (
-                    <button
-                        onClick={() => onUpdate(subTask, { delete: true })}
-                        className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded opacity-0 group-hover/subtask:opacity-100 transition-opacity"
-                    >
-                        <Trash2 size={12} />
-                    </button>
-                )}
-            </td>
-        </tr>
-    );
-};
 
-// ─── Quick Add Sub-task Row ───────────────────────────────────────────────
+// ─── Quick Add Sub-task form (Root level) ───────────────────────────────────
 const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     const [title, setTitle] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
@@ -317,31 +210,30 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
         e.preventDefault();
         if (!title.trim()) return;
         onSave(taskId, { title, assignedTo, priority, status, dueDate });
-        setTitle('');
-        setAssignedTo('');
-        setPriority('Medium');
-        setStatus('todo');
-        setDueDate('');
+        setTitle(''); setAssignedTo(''); setPriority('Medium'); setStatus('todo'); setDueDate('');
     };
 
     return (
-        <tr className="bg-slate-50/20 border-l-2 border-slate-200">
-            <td className="px-6 py-2 pl-12" colSpan={8}>
-                <form onSubmit={handleSubmit} className="flex items-center gap-3">
-                    <Plus size={14} className="text-slate-300 shrink-0" />
-                    <input
-                        type="text"
-                        placeholder="Add sub-task..."
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-slate-600 outline-none placeholder:text-slate-300 flex-1 min-w-[200px]"
-                    />
+        <tr className="bg-slate-50/10 border-l-[3px] border-slate-300">
+            <td className="py-3 pr-6 pl-14" colSpan={8}>
+                <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[220px] relative">
+                        <Plus size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            required type="text"
+                            placeholder="Add a new root sub-task..."
+                            value={title} onChange={e => setTitle(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 shadow-sm transition-all"
+                        />
+                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2">
                         <select
-                            value={status}
-                            onChange={e => setStatus(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none cursor-pointer"
+                            value={status} onChange={e => setStatus(e.target.value)}
+                            className={`text-[11px] font-black px-3 py-2 rounded-xl border shadow-sm outline-none cursor-pointer transition-colors ${status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        'bg-white text-slate-700 border-slate-200'
+                                }`}
                         >
                             <option value="todo">Todo</option>
                             <option value="in_progress">In Progress</option>
@@ -349,9 +241,8 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         </select>
 
                         <select
-                            value={priority}
-                            onChange={e => setPriority(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none cursor-pointer"
+                            value={priority} onChange={e => setPriority(e.target.value)}
+                            className={`text-[11px] font-black px-3 py-2 rounded-xl border shadow-sm outline-none cursor-pointer ${priorityStyles[priority] || priorityStyles.Medium}`}
                         >
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
@@ -359,34 +250,474 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         </select>
 
                         <select
-                            value={assignedTo}
-                            onChange={e => setAssignedTo(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none max-w-[120px]"
+                            value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 outline-none shadow-sm max-w-[140px]"
                         >
                             <option value="">Assignee</option>
                             {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
                         </select>
 
                         <div className="relative">
+                            <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                             <input
                                 type="date"
-                                value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900 outline-none w-[110px]"
+                                value={dueDate} onChange={e => setDueDate(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[11px] font-black text-slate-700 outline-none shadow-sm w-[130px]"
                             />
                         </div>
 
                         <button
                             type="submit"
                             disabled={!title.trim() || isSubmitting}
-                            className="text-blue-600 hover:text-blue-700 disabled:opacity-30 p-1"
+                            className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[11px] font-black hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-30 flex items-center gap-1.5 uppercase tracking-wider"
                         >
-                            <CheckCircle size={18} />
+                            {isSubmitting ? <Loader size={12} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
+                            Add
                         </button>
                     </div>
                 </form>
             </td>
         </tr>
+    );
+};
+
+
+// ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren }) => {
+    const [childrenOpen, setChildrenOpen] = useState(true);
+    const [addingChild, setAddingChild] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(subTask.title || '');
+    const [childTitle, setChildTitle] = useState('');
+    const [childAssigned, setChildAssigned] = useState('');
+    const [childPriority, setChildPriority] = useState('Medium');
+    const [childDueDate, setChildDueDate] = useState('');
+    const [savingChild, setSavingChild] = useState(false);
+
+    const directChildren = allSubTasks.filter(st =>
+        st.parentSubTaskId === subTask._id || st.parentSubTaskId?._id === subTask._id
+    );
+    const hasChildren = directChildren.length > 0;
+    const indentPx = 28 + depth * 20;
+
+    const handleAddChild = async (e) => {
+        e.preventDefault();
+        if (!childTitle.trim()) return;
+        setSavingChild(true);
+        await onAddChild(taskId, {
+            title: childTitle,
+            assignedTo: childAssigned || undefined,
+            priority: childPriority,
+            dueDate: childDueDate || undefined,
+            parentSubTaskId: subTask._id
+        });
+        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildDueDate('');
+        setAddingChild(false);
+        setSavingChild(false);
+    };
+
+    const handleEditSave = async (e) => {
+        if (e) e.preventDefault();
+        if (!editTitle.trim() || editTitle === subTask.title) {
+            setIsEditing(false);
+            return;
+        }
+        await onUpdate(subTask, { title: editTitle });
+        setIsEditing(false);
+    };
+
+    const depthColor = ['border-blue-200', 'border-violet-200', 'border-emerald-200', 'border-amber-200'][depth % 4];
+
+    return (
+        <>
+            {/* ── Subtask Row ── */}
+            <tr className={`bg-white hover:bg-slate-50/60 border-l-[3px] ${depthColor} transition-colors border-b border-slate-50`}>
+                {/* Task — indent + toggle + checkbox + title */}
+                <td className="py-2.5 pr-3" style={{ paddingLeft: `${indentPx}px` }}>
+                    <div className="flex items-center gap-2.5">
+                        {/* Expand/Collapse children toggle */}
+                        <button
+                            onClick={() => setChildrenOpen(!childrenOpen)}
+                            className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all ${hasChildren
+                                ? 'text-slate-600 bg-slate-100 hover:bg-blue-100 hover:text-blue-600 shadow-sm'
+                                : 'invisible'
+                                }`}
+                            style={{ transform: childrenOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                        >
+                            <ChevronRight size={11} />
+                        </button>
+
+                        {/* Status checkbox */}
+                        <button
+                            onClick={() => onToggle(subTask)}
+                            className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shadow-sm ${subTask.status === 'completed'
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'border-slate-400 hover:border-blue-500 hover:bg-blue-50'
+                                }`}
+                        >
+                            {subTask.status === 'completed' && <Check size={10} strokeWidth={3} />}
+                        </button>
+
+                        {/* Title */}
+                        {isEditing ? (
+                            <input
+                                autoFocus
+                                className="text-sm font-bold text-slate-800 bg-white border-2 border-blue-400 rounded-lg px-2 py-0.5 outline-none shadow-sm min-w-[150px]"
+                                value={editTitle}
+                                onChange={e => setEditTitle(e.target.value)}
+                                onBlur={handleEditSave}
+                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
+                            />
+                        ) : (
+                            <span className={`text-sm font-bold truncate max-w-[200px] ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'
+                                }`}>
+                                {subTask.title}
+                            </span>
+                        )}
+
+                        {/* Children count badge */}
+                        {hasChildren && (
+                            <span className="shrink-0 text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md shadow-sm">
+                                {directChildren.length}
+                            </span>
+                        )}
+                    </div>
+                </td>
+
+                {/* Project — just a dash for subtasks */}
+                <td className="px-3 py-2.5 text-[11px] text-slate-400 font-black">—</td>
+
+                {/* Assignee */}
+                <td className="px-3 py-2.5">
+                    {subTask.assignedTo?.fullName ? (
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-black border border-blue-200 shadow-sm">
+                                {subTask.assignedTo.fullName.charAt(0)}
+                            </div>
+                            <span className="text-[11px] font-black text-slate-700">{subTask.assignedTo.fullName}</span>
+                        </div>
+                    ) : <span className="text-[11px] text-slate-400 font-bold">—</span>}
+                </td>
+
+                {/* Role badge */}
+                <td className="px-3 py-2.5">
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-violet-100 text-violet-700 border-violet-200 shadow-sm uppercase tracking-wider">
+                        subtask
+                    </span>
+                </td>
+
+                {/* Status */}
+                <td className="px-3 py-2.5">
+                    {canManage ? (
+                        <select
+                            value={subTask.status}
+                            onChange={e => onUpdate(subTask, { status: e.target.value })}
+                            className={`text-[11px] font-black px-3 py-1.5 rounded-xl border-2 shadow-sm outline-none cursor-pointer transition-colors ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
+                                subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' :
+                                    'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                        >
+                            <option value="todo">Todo</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    ) : (
+                        <span className={`text-[11px] font-black px-3 py-1 rounded-xl border-2 uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}>{subTask.status.replace('_', ' ')}</span>
+                    )}
+                </td>
+
+                {/* Priority */}
+                <td className="px-3 py-2.5">
+                    {canManage ? (
+                        <select
+                            value={subTask.priority}
+                            onChange={e => onUpdate(subTask, { priority: e.target.value })}
+                            className={`text-[11px] font-black px-3 py-1.5 rounded-xl border-2 shadow-sm outline-none cursor-pointer transition-colors ${priorityStyles[subTask.priority] || priorityStyles.Medium} hover:opacity-80`}
+                        >
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    ) : (
+                        <span className={`text-[11px] font-black px-3 py-1 rounded-xl border-2 ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
+                            {subTask.priority}
+                        </span>
+                    )}
+                </td>
+
+                {/* Due Date */}
+                <td className="px-3 py-2.5 text-[11px] font-black text-slate-700">
+                    {subTask.dueDate ? (
+                        <div className="flex items-center gap-1.5">
+                            <Calendar size={12} className="text-slate-400" />
+                            <span>{new Date(subTask.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                    ) : '—'}
+                </td>
+
+                {/* Actions — always visible */}
+                {canManage && (
+                    <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1.5">
+                            {/* Add sub-subtask */}
+                            <button
+                                onClick={() => setAddingChild(!addingChild)}
+                                title="Add subtask under this"
+                                className={`p-2 rounded-xl transition-all shadow-sm border-2 ${addingChild
+                                    ? 'bg-blue-600 text-white border-blue-700'
+                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200'
+                                    }`}
+                            >
+                                <Plus size={14} strokeWidth={3} />
+                            </button>
+                            {/* Edit title */}
+                            <button
+                                onClick={() => { setIsEditing(!isEditing); setEditTitle(subTask.title); }}
+                                title="Edit title"
+                                className={`p-2 rounded-xl transition-all shadow-sm border-2 ${isEditing
+                                    ? 'bg-amber-500 text-white border-amber-600'
+                                    : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-200'
+                                    }`}
+                            >
+                                <Edit size={14} strokeWidth={3} />
+                            </button>
+                            {/* Delete */}
+                            <button
+                                onClick={() => onUpdate(subTask, { delete: true })}
+                                title="Delete subtask"
+                                className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 shadow-sm transition-all"
+                            >
+                                <Trash2 size={14} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </td>
+                )}
+            </tr>
+
+
+            {/* ── Inline Add Child Row ── */}
+            {addingChild && (
+                <tr className="bg-blue-50/50 border-l-[3px] border-blue-400">
+                    <td colSpan={8} style={{ paddingLeft: `${indentPx + 28}px` }} className="py-2.5 pr-4">
+                        <form onSubmit={handleAddChild} className="flex flex-wrap items-center gap-2">
+                            <input
+                                autoFocus required type="text"
+                                placeholder="New subtask title..."
+                                value={childTitle} onChange={e => setChildTitle(e.target.value)}
+                                className="flex-1 bg-white border border-blue-300 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 min-w-[160px] shadow-sm"
+                            />
+                            <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm">
+                                <option value="">Assign</option>
+                                {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                            </select>
+                            <select value={childPriority} onChange={e => setChildPriority(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm">
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                            <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm" />
+                            <button type="submit" disabled={savingChild}
+                                className="bg-blue-600 text-white px-4 py-1.5 rounded-xl text-xs font-black hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                                <Plus size={12} /> Add
+                            </button>
+                            <button type="button" onClick={() => setAddingChild(false)}
+                                className="p-1.5 text-slate-500 hover:text-slate-700 rounded-xl hover:bg-white transition border border-slate-200">
+                                <X size={14} />
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            )}
+
+            {/* ── Recursive children ── */}
+            {childrenOpen && hasChildren && renderChildren(subTask._id, depth + 1)}
+        </>
+    );
+};
+
+// ─── Recursive SubTask Tree Node (ClickUp Style) ─────────────────────────────
+const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage, onToggle, onAddChild, onDelete }) => {
+    const [collapsed, setCollapsed] = useState(false);
+    const [addingHere, setAddingHere] = useState(false);
+    const [childTitle, setChildTitle] = useState('');
+    const [childAssigned, setChildAssigned] = useState('');
+    const [childPriority, setChildPriority] = useState('Medium');
+    const [childDueDate, setChildDueDate] = useState('');
+    const [savingChild, setSavingChild] = useState(false);
+
+    const children = allSubTasks.filter(st => st.parentSubTaskId === node._id || st.parentSubTaskId?._id === node._id);
+
+    const handleAddChild = async (e) => {
+        e.preventDefault();
+        if (!childTitle.trim()) return;
+        setSavingChild(true);
+        await onAddChild({
+            title: childTitle,
+            assignedTo: childAssigned || undefined,
+            priority: childPriority,
+            dueDate: childDueDate || undefined,
+            parentSubTaskId: node._id
+        });
+        setChildTitle('');
+        setChildAssigned('');
+        setChildPriority('Medium');
+        setChildDueDate('');
+        setAddingHere(false);
+        setSavingChild(false);
+    };
+
+    const indentPx = depth * 20;
+
+    return (
+        <div>
+            {/* ── Node Row ── */}
+            <div
+                className="group flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-slate-50 transition-colors"
+                style={{ marginLeft: `${indentPx}px` }}
+            >
+                {/* Collapse toggle */}
+                <button
+                    onClick={() => setCollapsed(!collapsed)}
+                    className={`shrink-0 w-4 h-4 flex items-center justify-center transition-transform text-slate-300 hover:text-slate-500 ${children.length === 0 ? 'invisible' : ''}`}
+                >
+                    <ChevronRight size={12} style={{ transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.15s' }} />
+                </button>
+
+                {/* Checkbox */}
+                <button
+                    onClick={() => onToggle(node)}
+                    className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${node.status === 'completed'
+                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                        : 'border-slate-300 hover:border-blue-400'
+                        }`}
+                >
+                    {node.status === 'completed' && <Check size={11} strokeWidth={3} />}
+                </button>
+
+                {/* Title */}
+                <span className={`flex-1 text-sm font-bold truncate ${node.status === 'completed' ? 'line-through text-slate-300' : 'text-slate-800'
+                    }`}>
+                    {node.title}
+                </span>
+
+                {/* Badges */}
+                <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${priorityStyles[node.priority] || priorityStyles.Medium}`}>
+                    {node.priority}
+                </span>
+                {node.status !== 'completed' && (
+                    <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${node.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-200'
+                        }`}>
+                        {node.status.replace('_', ' ')}
+                    </span>
+                )}
+                {node.assignedTo?.fullName && (
+                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                        <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
+                    </span>
+                )}
+                {node.dueDate && (
+                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                        <Clock size={10} className="text-orange-400" />{new Date(node.dueDate).toLocaleDateString()}
+                    </span>
+                )}
+
+                {/* Actions */}
+                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {canManage && (
+                        <button
+                            onClick={() => setAddingHere(!addingHere)}
+                            title="Add subtask here"
+                            className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                        >
+                            <Plus size={13} />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => onDelete(node)}
+                        className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                    >
+                        <Trash2 size={13} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Progress bar if has children */}
+            {children.length > 0 && (
+                <div className="flex items-center gap-2 px-3 pb-1" style={{ marginLeft: `${indentPx + 28}px` }}>
+                    <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-emerald-400 transition-all"
+                            style={{ width: `${Math.round((children.filter(c => c.status === 'completed').length / children.length) * 100)}%` }}
+                        />
+                    </div>
+                    <span className="text-[9px] font-black text-slate-300">
+                        {children.filter(c => c.status === 'completed').length}/{children.length}
+                    </span>
+                </div>
+            )}
+
+            {/* Inline Add Form */}
+            {addingHere && (
+                <form onSubmit={handleAddChild} className="flex flex-wrap gap-2 items-center px-3 py-2 bg-blue-50/60 rounded-xl border border-blue-100 mb-1" style={{ marginLeft: `${indentPx + 28}px` }}>
+                    <input
+                        autoFocus
+                        required
+                        type="text"
+                        placeholder="Subtask title..."
+                        value={childTitle}
+                        onChange={e => setChildTitle(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 min-w-[140px]"
+                    />
+                    <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                        <option value="">Assign</option>
+                        {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                    </select>
+                    <select value={childPriority} onChange={e => setChildPriority(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                    <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none" />
+                    <button type="submit" disabled={savingChild}
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1">
+                        <Plus size={12} /> Add
+                    </button>
+                    <button type="button" onClick={() => setAddingHere(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-white transition">
+                        <X size={14} />
+                    </button>
+                </form>
+            )}
+
+            {/* Children */}
+            {!collapsed && children.length > 0 && (
+                <div className="border-l-2 border-slate-100 ml-5">
+                    {children.map(child => (
+                        <SubTaskTreeNode
+                            key={child._id}
+                            node={child}
+                            allSubTasks={allSubTasks}
+                            depth={depth + 1}
+                            taskId={taskId}
+                            team={team}
+                            canManage={canManage}
+                            onToggle={onToggle}
+                            onAddChild={onAddChild}
+                            onDelete={onDelete}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -569,13 +900,56 @@ const Tasks = () => {
                 ...newSubTask,
                 priority: newSubTask.priority || 'Medium'
             });
-            setSubTasks([...subTasks, res.data]);
+            setSubTasks(prev => [...prev, res.data]);
             setNewSubTask({ title: '', assignedTo: '', dueDate: '', remarks: '', priority: 'Medium' });
-            fetchData(); // Refresh main task for progress/count
+            fetchData();
         } catch (error) {
             console.error('Error adding subtask:', error);
         } finally {
             setIsSubmittingSubTask(false);
+        }
+    };
+
+    // Add a nested subtask under a parent subtask node
+    const handleAddNestedSubTask = async (subTaskData) => {
+        try {
+            const res = await api.post(`/tasks/${selectedTask._id}/subtasks`, subTaskData);
+            setSubTasks(prev => [...prev, res.data]);
+            if (selectedTask?._id) fetchSubTasks(selectedTask._id, false);
+            fetchData();
+        } catch (error) {
+            console.error('Error adding nested subtask:', error);
+        }
+    };
+
+    // Delete a subtask (cascade handled by backend)
+    const handleDeleteSubTask = async (subTask) => {
+        if (!window.confirm(`Delete "${subTask.title}"? All nested subtasks will be removed too.`)) return;
+        try {
+            await api.delete(`/tasks/${selectedTask._id}/subtasks/${subTask._id}`);
+            // Remove this and all its descendants from local state
+            const removeIds = (id, list) => {
+                const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
+                const childIds = children.flatMap(c => removeIds(c._id, list));
+                return [id, ...childIds];
+            };
+            const toRemove = new Set(removeIds(subTask._id, subTasks));
+            setSubTasks(prev => prev.filter(s => !toRemove.has(s._id)));
+            fetchData();
+        } catch (error) {
+            console.error('Error deleting subtask:', error);
+        }
+    };
+
+    // Toggle subtask status
+    const handleToggleSubTask = async (subTask) => {
+        const newStatus = subTask.status === 'completed' ? 'todo' : 'completed';
+        try {
+            const res = await api.patch(`/tasks/${selectedTask._id}/subtasks/${subTask._id}`, { status: newStatus });
+            setSubTasks(prev => prev.map(s => s._id === subTask._id ? res.data : s));
+            fetchData();
+        } catch (error) {
+            console.error('Error toggling subtask:', error);
         }
     };
 
@@ -675,16 +1049,26 @@ const Tasks = () => {
     const handleSubTaskUpdateInList = async (taskId, subTask, updates) => {
         try {
             if (updates.delete) {
-                if (!window.confirm('Delete this sub-task?')) return;
+                if (!window.confirm(`Delete "${subTask.title}"? All nested subtasks will also be removed.`)) return;
                 await api.delete(`/tasks/${taskId}/subtasks/${subTask._id}`);
 
-                setSubTasksMap(prev => ({
-                    ...prev,
-                    [taskId]: (prev[taskId] || []).filter(st => st._id !== subTask._id)
-                }));
+                // Build set of IDs to remove (deleted subtask + all its descendants)
+                const removeDescendants = (id, list) => {
+                    const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
+                    return [id, ...children.flatMap(c => removeDescendants(c._id, list))];
+                };
+
+                setSubTasksMap(prev => {
+                    const current = prev[taskId] || [];
+                    const toRemove = new Set(removeDescendants(subTask._id, current));
+                    return { ...prev, [taskId]: current.filter(st => !toRemove.has(st._id)) };
+                });
 
                 if (selectedTask?._id === taskId) {
-                    setSubTasks(prev => prev.filter(st => st._id !== subTask._id));
+                    setSubTasks(prev => {
+                        const toRemove = new Set(removeDescendants(subTask._id, prev));
+                        return prev.filter(st => !toRemove.has(st._id));
+                    });
                 }
             } else {
                 const res = await api.patch(`/tasks/${taskId}/subtasks/${subTask._id}`, updates);
@@ -704,6 +1088,7 @@ const Tasks = () => {
             alert('Failed to update sub-task');
         }
     };
+
 
     const handleSubTaskToggleInList = async (taskId, subTask) => {
         const newStatus = subTask.status === 'completed' ? 'todo' : 'completed';
@@ -948,27 +1333,46 @@ const Tasks = () => {
                                                         </td>
                                                     )}
                                                 </tr>
-                                                {isExpanded && (
-                                                    <>
-                                                        {taskSubTasks.map(st => (
-                                                            <SubTaskRow
+                                                {isExpanded && (() => {
+                                                    // Build + render recursive tree inline using SubTaskTableRows
+                                                    const renderSubTaskRows = (parentId, depth) => {
+                                                        const nodes = taskSubTasks.filter(st =>
+                                                            parentId === null
+                                                                ? !st.parentSubTaskId
+                                                                : (st.parentSubTaskId === parentId || st.parentSubTaskId?._id === parentId)
+                                                        );
+                                                        return nodes.map(st => (
+                                                            <SubTaskTableRow
                                                                 key={st._id}
                                                                 subTask={st}
-                                                                onToggle={() => handleSubTaskToggleInList(task._id, st)}
-                                                                onUpdate={(sub, updates) => handleSubTaskUpdateInList(task._id, sub, updates)}
-                                                                canManage={canManage}
-                                                            />
-                                                        ))}
-                                                        {canManage && (
-                                                            <QuickAddSubTask
+                                                                depth={depth}
+                                                                allSubTasks={taskSubTasks}
                                                                 taskId={task._id}
-                                                                onSave={handleQuickSubTaskSave}
                                                                 team={filteredTeamByRole}
+                                                                canManage={canManage}
+                                                                onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
+                                                                onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
+                                                                onAddChild={handleQuickSubTaskSave}
                                                                 isSubmitting={isSubmittingSubTask}
+                                                                renderChildren={renderSubTaskRows}
                                                             />
-                                                        )}
-                                                    </>
-                                                )}
+                                                        ));
+                                                    };
+                                                    return (
+                                                        <>
+                                                            {renderSubTaskRows(null, 0)}
+                                                            {canManage && (
+                                                                <QuickAddSubTask
+                                                                    taskId={task._id}
+                                                                    onSave={handleQuickSubTaskSave}
+                                                                    team={filteredTeamByRole}
+                                                                    isSubmitting={isSubmittingSubTask}
+                                                                />
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+
                                             </React.Fragment>
                                         );
                                     })}
@@ -1168,117 +1572,76 @@ const Tasks = () => {
                             </p>
                         </div>
 
-                        {/* Sub Tasks Section */}
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center px-2">
+                        {/* Sub Tasks Section — ClickUp Style Nested Tree */}
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center px-1">
                                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                                    <Layers size={14} className="text-blue-600" /> Sub-Tasks breakdown
+                                    <Layers size={14} className="text-blue-600" /> Subtasks
                                 </h3>
                                 <span className="bg-slate-100 text-slate-400 px-2.5 py-1 rounded-xl text-[10px] font-black">
                                     {subTasks.length} ITEMS
                                 </span>
                             </div>
 
-                            <div className="space-y-2">
-                                {subTasks.map((st) => (
-                                    <div key={st._id} className="group bg-white hover:bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex items-center gap-4 transition-all">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleSubTaskToggle(st._id, st.status); }}
-                                            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${st.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent'}`}
-                                        >
-                                            <CheckCircle2 size={14} strokeWidth={3} />
-                                        </button>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className={`text-sm font-black transition-all ${st.status === 'completed' ? 'text-slate-300 line-through' : 'text-slate-800'}`}>
-                                                    {st.title}
-                                                </p>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0 ${priorityStyles[st.priority] || priorityStyles.Medium}`}>
-                                                    {st.priority}
-                                                </span>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0
-                                                    ${st.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                        st.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                            'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                    {st.status.replace('_', ' ')}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                                                    <UserCheck size={11} className="text-blue-400" />
-                                                    {st.assignedTo?.fullName || 'Unassigned'}
-                                                </div>
-                                                {st.dueDate && (
-                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                                                        <Clock size={11} className="text-orange-400" />
-                                                        {new Date(st.dueDate).toLocaleDateString()}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-blue-500 transition-all rounded-lg hover:bg-white border border-transparent hover:border-slate-100">
-                                                <Camera size={14} />
-                                            </button>
-                                            {canManage && (
-                                                <button
-                                                    onClick={() => handleSubTaskUpdateInList(selectedTask._id, st, { delete: true })}
-                                                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all rounded-lg hover:bg-white border border-transparent hover:border-slate-100"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {canManage && (
-                                    <form onSubmit={handleSubTaskSave} className="mt-4 bg-slate-50/50 rounded-2xl p-4 border border-slate-100 border-dashed">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                            <input
-                                                required
-                                                type="text"
-                                                placeholder="Add a new sub-task..."
-                                                value={newSubTask.title}
-                                                onChange={e => setNewSubTask({ ...newSubTask, title: e.target.value })}
-                                                className="col-span-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
-                                            />
-                                            <select
-                                                value={newSubTask.assignedTo}
-                                                onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
-                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
-                                            >
-                                                <option value="">Assign To</option>
-                                                {filteredTeamByRole.map(u => (
-                                                    <option key={u._id} value={u._id}>{u.fullName}</option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                value={newSubTask.priority || 'Medium'}
-                                                onChange={e => setNewSubTask({ ...newSubTask, priority: e.target.value })}
-                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
-                                            >
-                                                <option value="Low">Low Priority</option>
-                                                <option value="Medium">Medium Priority</option>
-                                                <option value="High">High Priority</option>
-                                            </select>
-                                            <input
-                                                type="date"
-                                                value={newSubTask.dueDate || ''}
-                                                onChange={e => setNewSubTask({ ...newSubTask, dueDate: e.target.value })}
-                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none"
-                                            />
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmittingSubTask}
-                                                className="bg-slate-900 text-white p-2 rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest"
-                                            >
-                                                <Plus size={16} /> Add Task
-                                            </button>
-                                        </div>
-                                    </form>
+                            {/* Tree — only render root-level nodes (parentSubTaskId is null) */}
+                            <div className="bg-white border border-slate-100 rounded-2xl p-3 space-y-0.5">
+                                {subTasks.filter(st => !st.parentSubTaskId).length === 0 && (
+                                    <p className="text-xs font-bold text-slate-300 text-center py-4">No subtasks yet. Add one below.</p>
                                 )}
+                                {subTasks
+                                    .filter(st => !st.parentSubTaskId)
+                                    .map(root => (
+                                        <SubTaskTreeNode
+                                            key={root._id}
+                                            node={root}
+                                            allSubTasks={subTasks}
+                                            depth={0}
+                                            taskId={selectedTask._id}
+                                            team={filteredTeamByRole}
+                                            canManage={canManage}
+                                            onToggle={handleToggleSubTask}
+                                            onAddChild={handleAddNestedSubTask}
+                                            onDelete={handleDeleteSubTask}
+                                        />
+                                    ))
+                                }
                             </div>
+
+                            {/* Add root-level subtask form */}
+                            {canManage && (
+                                <form onSubmit={handleSubTaskSave} className="bg-slate-50 rounded-2xl p-4 border border-dashed border-slate-200">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                        <Plus size={11} /> Add Root Subtask
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="Subtask title..."
+                                            value={newSubTask.title}
+                                            onChange={e => setNewSubTask({ ...newSubTask, title: e.target.value })}
+                                            className="col-span-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
+                                        />
+                                        <select value={newSubTask.assignedTo} onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
+                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
+                                            <option value="">Assign To</option>
+                                            {filteredTeamByRole.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                                        </select>
+                                        <select value={newSubTask.priority || 'Medium'} onChange={e => setNewSubTask({ ...newSubTask, priority: e.target.value })}
+                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
+                                            <option value="Low">Low</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                        <input type="date" value={newSubTask.dueDate || ''} onChange={e => setNewSubTask({ ...newSubTask, dueDate: e.target.value })}
+                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none" />
+                                        <button type="submit" disabled={isSubmittingSubTask}
+                                            className="col-span-full bg-slate-900 text-white py-2.5 rounded-xl hover:bg-blue-600 transition font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50">
+                                            <Plus size={15} /> Add Subtask
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
                         </div>
 
                         <div className="pt-4 border-t border-slate-100 flex justify-end">
