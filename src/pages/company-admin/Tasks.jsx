@@ -231,8 +231,8 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         <select
                             value={status} onChange={e => setStatus(e.target.value)}
                             className={`text-[11px] font-black px-3 py-2 rounded-xl border shadow-sm outline-none cursor-pointer transition-colors ${status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                    status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                        'bg-white text-slate-700 border-slate-200'
+                                status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    'bg-white text-slate-700 border-slate-200'
                                 }`}
                         >
                             <option value="todo">Todo</option>
@@ -724,7 +724,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
 // ─── Main Tasks Page ───────────────────────────────────────────────────────────
 const Tasks = () => {
     const { user } = useAuth();
-    const [view, setView] = useState('kanban');
+    const [view, setView] = useState('list');
     const [tasks, setTasks] = useState([]);
     const [projects, setProjects] = useState([]);
     const [team, setTeam] = useState([]);
@@ -1122,11 +1122,11 @@ const Tasks = () => {
                         </span>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm">
-                        <button onClick={() => setView('kanban')} className={`p-2.5 rounded-xl transition-all ${view === 'kanban' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <LayoutGrid size={17} />
-                        </button>
                         <button onClick={() => setView('list')} className={`p-2.5 rounded-xl transition-all ${view === 'list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
                             <List size={17} />
+                        </button>
+                        <button onClick={() => setView('kanban')} className={`p-2.5 rounded-xl transition-all ${view === 'kanban' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
+                            <LayoutGrid size={17} />
                         </button>
                     </div>
                     {canManage && (
