@@ -275,9 +275,6 @@ const JobDetails = () => {
 
                 {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
                     <div className="flex gap-2">
-                        <button className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-tight text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-                            <Edit size={16} /> Edit Job
-                        </button>
                         <button
                             onClick={() => {
                                 setEditingTask(null);
