@@ -37,16 +37,16 @@ const FinancialCard = ({ label, value, icon: Icon, color, subtext }) => {
         red: 'bg-red-50 text-red-700 border-red-100',
     };
     return (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-sm flex items-center gap-4">
-            <div className={`p-3 rounded-2xl border ${colors[color] || colors.blue}`}>
-                <Icon size={20} />
+        <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-3.5">
+            <div className={`p-2 rounded-lg md:rounded-xl border transition-transform duration-300 ${colors[color] || colors.blue}`}>
+                <Icon size={18} />
             </div>
-            <div className="flex-1">
-                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{label}</p>
-                <div className="flex items-baseline gap-2">
-                    <p className="text-lg font-black text-slate-900 tracking-tight">{value}</p>
+            <div className="flex-1 min-w-0">
+                <p className="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">{label}</p>
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                    <p className="text-[17px] md:text-xl font-black text-slate-900 tracking-tight truncate leading-none">{value}</p>
                 </div>
-                {subtext && <p className="text-[9px] font-bold text-slate-400 mt-0.5">{subtext}</p>}
+                {subtext && <p className="text-[9px] font-bold text-slate-400 mt-0.5 truncate uppercase tracking-tighter leading-none">{subtext}</p>}
             </div>
         </div>
     );
@@ -344,7 +344,7 @@ const ProjectDetails = () => {
                                                     <div className="relative flex items-center">
                                                         <select
                                                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                                            value={typeof project?.pmId === 'object' ? project.pmId._id : (project?.pmId || '')}
+                                                            value={project?.pmId?._id || (typeof project?.pmId === 'string' ? project.pmId : '')}
                                                             onChange={(e) => handleAssignPM(e.target.value)}
                                                         >
                                                             <option value="">Change PM</option>
@@ -395,11 +395,11 @@ const ProjectDetails = () => {
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex items-center gap-2 justify-end shrink-0">
                             <button
                                 onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${projectId}`)}
-                                className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-3 border border-white/20">
-                                <FileText size={20} className="text-blue-400" />
+                                className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-3 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-2 border border-white/20">
+                                <FileText size={16} className="text-blue-400" />
                                 View Drawings
                             </button>
 
@@ -408,16 +408,16 @@ const ProjectDetails = () => {
                                 <>
                                     <button
                                         onClick={() => setIsPostingUpdate(true)}
-                                        className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-3 border border-white/20"
+                                        className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-3 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all backdrop-blur-md flex items-center gap-2 border border-white/20"
                                     >
-                                        <MessageSquare size={20} className="text-emerald-400" />
+                                        <MessageSquare size={16} className="text-emerald-400" />
                                         Client Update
                                     </button>
                                     <button
                                         onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/new`)}
-                                        className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-900/50 flex items-center gap-3 border border-blue-500/50">
-                                        <Plus size={20} />
-                                        Create Job
+                                        className="shrink-0 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-blue-900/50 flex items-center gap-2 border border-blue-500/50">
+                                        <Plus size={16} />
+                                        Create
                                     </button>
                                 </>
                             )}
@@ -703,7 +703,7 @@ const ProjectDetails = () => {
                                                         {(['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
                                                             <select
                                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                                                                value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}
+                                                                value={job.foremanId?._id || (typeof job.foremanId === 'string' ? job.foremanId : '')}
                                                                 onChange={(e) => handleAssignForeman(job._id, e.target.value)}
                                                             >
                                                                 <option value="">Assign {user?.role === 'PM' ? 'Foreman/Sub' : 'Project Manager'}</option>
@@ -754,9 +754,9 @@ const ProjectDetails = () => {
                                                                     <label key={u._id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
                                                                         <input
                                                                             type="checkbox"
-                                                                            checked={job.assignedWorkers?.some(w => (typeof w === 'object' ? w._id === u._id : w === u._id))}
+                                                                            checked={job.assignedWorkers?.some(w => (w && typeof w === 'object' ? w._id === u._id : w === u._id))}
                                                                             onChange={(e) => {
-                                                                                const currentIds = (job.assignedWorkers || []).map(w => typeof w === 'object' ? w._id : w);
+                                                                                const currentIds = (job.assignedWorkers || []).map(w => (w && typeof w === 'object') ? w._id : w);
                                                                                 const next = e.target.checked
                                                                                     ? [...currentIds, u._id]
                                                                                     : currentIds.filter(id => id !== u._id);
@@ -891,7 +891,7 @@ const ProjectDetails = () => {
                                                     <td className="px-6 py-4 text-slate-500 font-bold text-xs">{job.location || '—'}</td>
                                                     <td className="px-6 py-4 text-slate-600 font-bold text-xs">
                                                         {job.foremanId
-                                                            ? (typeof job.foremanId === 'object' ? job.foremanId.fullName : job.foremanId)
+                                                            ? (typeof job.foremanId === 'object' ? job.foremanId?.fullName : job.foremanId)
                                                             : <span className="text-slate-300 italic">Unassigned</span>}
                                                     </td>
                                                     <td className="px-6 py-4"><StatusBadge status={job.status} /></td>

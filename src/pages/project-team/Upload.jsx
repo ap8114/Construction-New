@@ -1,15 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Camera, MapPin, Upload, X, Check,
   Image as ImageIcon, RefreshCw, Layers,
   AlertCircle, ArrowRight, Trash2
 } from 'lucide-react';
+import api from '../../utils/api';
 
 const UploadPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [projects, setProjects] = useState([]);
   const [recentUploads, setRecentUploads] = useState([
     'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=300',
     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=300',
@@ -20,9 +22,24 @@ const UploadPage = () => {
 
   const [metadata, setMetadata] = useState({
     description: '',
-    project: 'Skyline Tower',
+    projectId: '',
     category: 'Inspection'
   });
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await api.get('/projects');
+        setProjects(res.data);
+        if (res.data.length > 0) {
+          setMetadata(prev => ({ ...prev, projectId: res.data[0]._id }));
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -56,7 +73,7 @@ const UploadPage = () => {
     setSelectedImage(null);
     setShowSuccess(false);
     setUploadProgress(0);
-    setMetadata({ description: '', project: 'Skyline Tower', category: 'Inspection' });
+    setMetadata({ description: '', projectId: projects.length > 0 ? projects[0]._id : '', category: 'Inspection' });
   };
 
   if (showSuccess) {
@@ -188,13 +205,14 @@ const UploadPage = () => {
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Project</label>
                 <select
-                  value={metadata.project}
-                  onChange={(e) => setMetadata({ ...metadata, project: e.target.value })}
+                  value={metadata.projectId}
+                  onChange={(e) => setMetadata({ ...metadata, projectId: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-100 text-slate-700 appearance-none cursor-pointer"
                 >
-                  <option>Skyline Tower</option>
-                  <option>Riverfront Park</option>
-                  <option>City Center Mall</option>
+                  {projects.length === 0 && <option value="">No projects available</option>}
+                  {projects.map(p => (
+                    <option key={p._id} value={p._id}>{p.name}</option>
+                  ))}
                 </select>
               </div>
 

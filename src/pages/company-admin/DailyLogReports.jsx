@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     FileText, Calendar, Download, Briefcase, Users,
     Sun, CloudRain, CloudSun, Wind, TrendingUp, Activity,
@@ -463,14 +463,14 @@ const WidgetCard = ({ label, value, icon, color, trend }) => {
         violet: 'text-violet-600', orange: 'text-orange-600'
     };
     return (
-        <div className="bg-white p-8 rounded-[40px] border border-slate-200/60 shadow-sm relative overflow-hidden group">
-            <div className={`absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform ${colorText[color]}`}>
-                {icon}
+        <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden group">
+            <div className={`absolute top-0 right-0 p-4 md:p-5 opacity-5 group-hover:scale-110 transition-transform ${colorText[color]}`}>
+                {React.cloneElement(icon, { size: 40 })}
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-            <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{value}</h3>
-            <div className={`mt-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-tight ${colorText[color]}`}>
-                <Activity size={12} /> {trend}
+            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter leading-none">{value}</h3>
+            <div className={`mt-3 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tight ${colorText[color]}`}>
+                <Activity size={11} /> {trend}
             </div>
         </div>
     );

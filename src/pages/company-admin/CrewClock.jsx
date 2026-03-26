@@ -12,10 +12,11 @@ import { useAuth } from '../../context/AuthContext';
 const CrewClock = () => {
     const { user } = useAuth();
     const [workers, setWorkers] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [activeJobId, setActiveJobId] = useState('');
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedWorkers, setSelectedWorkers] = useState([]);
-    const [activeJob, setActiveJob] = useState('North Tower Construction');
     const [stats, setStats] = useState({
         onSite: 0,
         offClock: 0,
@@ -27,10 +28,16 @@ const CrewClock = () => {
         try {
             setLoading(true);
             // Fetch all workers and their current clock status
-            const [usersRes, logsRes] = await Promise.all([
+            const [usersRes, logsRes, projectsRes] = await Promise.all([
                 api.get('/auth/users'),
-                api.get('/timelogs')
+                api.get('/timelogs'),
+                api.get('/projects')
             ]);
+
+            setProjects(projectsRes.data);
+            if (projectsRes.data.length > 0 && !activeJobId) {
+                setActiveJobId(projectsRes.data[0]._id);
+            }
 
             // Filter for workers only
             const workerList = usersRes.data.filter(u => u.role === 'WORKER');
@@ -95,6 +102,11 @@ const CrewClock = () => {
 
     const handleBulkClockIn = async () => {
         if (selectedWorkers.length === 0) return;
+        if (!activeJobId) {
+            alert('Please select a project first.');
+            return;
+        }
+
         try {
             setLoading(true);
             // In a real app, this would be an API call to bulk clock in
@@ -104,7 +116,7 @@ const CrewClock = () => {
                 if (!worker.isClockedIn) {
                     return api.post('/timelogs', {
                         userId: wid,
-                        projectId: '65d1a5e5e4b0c5d1a5e5e4b0', // Mock project ID
+                        projectId: activeJobId,
                         clockIn: new Date().toISOString()
                     });
                 }
@@ -199,15 +211,30 @@ const CrewClock = () => {
 
             {/* Main Action Bar */}
             <div className="bg-white p-5 rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-slate-100 flex flex-col md:flex-row gap-6 items-center">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search crew members by name..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500/50 transition-all font-bold text-slate-800"
-                    />
+                <div className="relative flex-1 w-full flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search crew members by name..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500/50 transition-all font-bold text-slate-800"
+                        />
+                    </div>
+                    <div className="relative w-full md:w-64 shrink-0">
+                        <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <select
+                            value={activeJobId}
+                            onChange={(e) => setActiveJobId(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500/50 transition-all font-bold text-slate-800 appearance-none cursor-pointer"
+                        >
+                            <option value="">Select Target Site...</option>
+                            {projects.map(p => (
+                                <option key={p._id} value={p._id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="flex gap-3 w-full md:w-auto">

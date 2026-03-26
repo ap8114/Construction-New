@@ -5,7 +5,7 @@ import {
     Hash, Target, Edit, Trash2,
     AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag,
     ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
-    ChevronUp, Settings, ChevronRight, Check
+    ChevronUp, Settings, ChevronRight, Check, GripVertical
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
@@ -77,7 +77,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
             {...attributes}
             {...listeners}
             onClick={() => onClick(task)}
-            className={`p-5 rounded-3xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''}`}
+            className={`p-3.5 md:p-4 rounded-xl md:rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''}`}
         >
             {/* Urgency strip */}
             {urgency !== 'normal' && (
@@ -85,14 +85,21 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
             )}
 
             <div className="flex justify-between items-start mb-3">
-                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
-                    {task.priority}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
+                        {task.priority}
+                    </span>
+                    {task.category === 'TODO' && (
+                        <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-600">
+                            Todo
+                        </span>
+                    )}
+                </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-                    className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-xl transition-colors"
+                    className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg transition-colors"
                 >
-                    <MoreVertical size={15} />
+                    <MoreVertical size={14} />
                 </button>
                 {menuOpen && (
                     <div className="absolute right-4 top-12 w-40 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
@@ -106,8 +113,8 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
                 )}
             </div>
 
-            <div className="space-y-1 mb-4">
-                <h4 className="font-black text-slate-900 leading-tight text-sm group-hover:text-blue-600 transition-colors">{task.title}</h4>
+            <div className="space-y-0.5 mb-3">
+                <h4 className="font-black text-slate-900 leading-tight text-[13px] md:text-sm group-hover:text-blue-600 transition-colors">{task.title}</h4>
                 <div className="flex items-center gap-1.5">
                     <Hash size={9} className="text-blue-500" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{task.projectId?.name || '—'}</span>
@@ -115,14 +122,14 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
             </div>
 
             {/* Progress / Sub-task count */}
-            <div className="mb-4">
-                <div className="flex justify-between items-center mb-1.5">
+            <div className="mb-3">
+                <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
                         <Layers size={10} /> {task.subTaskCount || 0} Sub-tasks
                     </span>
                     <span className="text-[10px] font-black text-blue-600">{task.progress || 0}%</span>
                 </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-blue-500 rounded-full transition-all duration-500"
                         style={{ width: `${task.progress || 0}%` }}
@@ -132,16 +139,16 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
 
             {/* Assignee row */}
             {task.assignedTo?.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                    <div className="flex -space-x-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="flex -space-x-1.5">
                         {task.assignedTo.slice(0, 3).map((u, i) => (
-                            <div key={i} className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white text-[9px] font-black text-slate-500 flex items-center justify-center" title={u.fullName}>
+                            <div key={i} className="w-5 h-5 rounded-full bg-slate-100 border border-white text-[8px] font-black text-slate-500 flex items-center justify-center shadow-sm" title={u.fullName}>
                                 {u.fullName?.charAt(0)}
                             </div>
                         ))}
                     </div>
                     {task.assignedRoleType && (
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'} uppercase tracking-tighter`}>
                             {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
                         </span>
                     )}
@@ -175,7 +182,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
                         <div className={`w-2.5 h-2.5 rounded-full ${style.dot}`} />
                         <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">{style.label}</h3>
                     </div>
-                    <span className="bg-white border border-slate-200 text-slate-400 px-2.5 py-0.5 rounded-xl text-[10px] font-black">
+                    <span className="bg-white border border-slate-200 text-slate-400 px-2.5 py-1 rounded-xl text-[10px] font-black">
                         {colTasks.length}
                     </span>
                 </div>
@@ -197,6 +204,124 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
     );
 };
 
+// ─── Sortable List Row wrapper ────────────────────────────────────────────────
+const SortableTaskRow = ({ task, ...props }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+        position: isDragging ? 'relative' : 'static',
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    return (
+        <React.Fragment>
+            <tr
+                ref={setNodeRef}
+                style={style}
+                onClick={() => props.onTaskClick(task)}
+                className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''}`}
+            >
+                <td className="w-10 px-4 py-2.5">
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        onClick={e => e.stopPropagation()} 
+                        className="p-1 hover:bg-slate-200 rounded-md text-slate-300 hover:text-slate-600 transition-colors cursor-grab active:cursor-grabbing"
+                    >
+                        <GripVertical size={14} />
+                    </div>
+                </td>
+                <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); props.onToggleExpansion(task._id); }}
+                            className="p-1 hover:bg-slate-200 rounded-md text-slate-400 transition-transform duration-200"
+                            style={{ transform: props.isExpanded ? 'rotate(90deg)' : 'none' }}
+                        >
+                            <ChevronRight size={12} />
+                        </button>
+                        {props.urgency === 'overdue' && <div className="w-1 h-6 bg-red-500 rounded-full shrink-0" />}
+                        {props.urgency === 'due-soon' && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
+                        {props.urgency === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <p className="font-black text-slate-900 text-[13px]">{task.title}</p>
+                                {task.subTaskCount > 0 && (
+                                    <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1 py-0.5 rounded-md">
+                                        {task.subTaskCount}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-500 transition-all" style={{ width: `${task.progress || 0}%` }} />
+                                </div>
+                                <span className="text-[8px] font-bold text-slate-400">{task.progress || 0}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td className="px-4 py-2.5 text-xs font-bold text-slate-500">{task.projectId?.name || '—'}</td>
+                <td className="px-4 py-2.5">
+                    {task.assignedTo?.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[9px] border border-blue-100">
+                                {task.assignedTo[0]?.fullName?.charAt(0) || '?'}
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-black text-slate-700">{task.assignedTo[0]?.fullName}</p>
+                                {task.assignedTo.length > 1 && <p className="text-[9px] font-bold text-slate-400">+{task.assignedTo.length - 1} more</p>}
+                            </div>
+                        </div>
+                    ) : <span className="text-slate-300 text-[11px] font-bold">Unassigned</span>}
+                </td>
+                <td className="px-4 py-2.5">
+                    {task.assignedRoleType ? (
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                            {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
+                        </span>
+                    ) : <span className="text-slate-300 text-[9px] font-bold">—</span>}
+                </td>
+                <td className="px-4 py-2.5">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest
+                        ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                    'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                        {task.status?.replace('_', ' ')}
+                    </span>
+                </td>
+                <td className="px-4 py-2.5">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
+                        {task.priority}
+                    </span>
+                </td>
+                <td className="px-4 py-2.5 text-[11px] font-black text-slate-800">
+                    {task.startDate ? new Date(task.startDate).toLocaleDateString() : '—'}
+                </td>
+                <td className={`px-4 py-2.5 text-[11px] font-black ${props.urgency === 'overdue' ? 'text-red-600' : props.urgency === 'due-soon' ? 'text-yellow-600' : 'text-slate-800'}`}>
+                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}
+                </td>
+                {props.canManage && (
+                    <td className="px-4 py-2.5 text-right">
+                        <div className="flex justify-end gap-1">
+                            <button onClick={(e) => { e.stopPropagation(); props.onEdit(task); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                                <Edit size={13} />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); props.onDelete(task); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                <Trash2 size={13} />
+                            </button>
+                        </div>
+                    </td>
+                )}
+            </tr>
+            {props.isExpanded && props.renderChildren()}
+        </React.Fragment>
+    );
+};
+
 
 // ─── Quick Add Sub-task form (Root level) ───────────────────────────────────
 const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
@@ -204,20 +329,31 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [status, setStatus] = useState('todo');
+    const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!title.trim()) return;
-        onSave(taskId, { title, assignedTo, priority, status, dueDate });
-        setTitle(''); setAssignedTo(''); setPriority('Medium'); setStatus('todo'); setDueDate('');
+        onSave(taskId, { title, assignedTo, priority, status, startDate, dueDate });
+        setTitle(''); setAssignedTo(''); setPriority('Medium'); setStatus('todo'); setStartDate(''); setDueDate('');
     };
 
     return (
-        <tr className="bg-slate-50/10 border-l-[3px] border-slate-300">
-            <td className="py-3 pr-6 pl-14" colSpan={8}>
-                <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3">
-                    <div className="flex-1 min-w-[220px] relative">
+        <tr className="bg-slate-50/10 border-l-[3px] border-slate-300 relative group">
+            {/* First empty column to match table structure */}
+            <td className="w-10 px-4 py-2.5" />
+            
+            {/* Main content column with tree lines and form */}
+            <td className="py-3 pr-6 pl-4 relative" colSpan={9} style={{ paddingLeft: '58px' }}>
+                {/* Tree Connector for root subtask (child of main task) */}
+                <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                    <div className="absolute top-0 h-1/2 w-[1.5px] bg-slate-200/60" style={{ left: '26px' }} />
+                    <div className="absolute top-1/2 h-[1.5px] bg-slate-200/60" style={{ left: '26px', width: '18px' }} />
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 relative z-10">
+                    <div className="flex-1 min-w-[200px] relative">
                         <Plus size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             required type="text"
@@ -257,19 +393,31 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                             {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
                         </select>
 
-                        <div className="relative">
-                            <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                            <input
-                                type="date"
-                                value={dueDate} onChange={e => setDueDate(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[11px] font-black text-slate-700 outline-none shadow-sm w-[130px]"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">Start</span>
+                                <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="date"
+                                    value={startDate} onChange={e => setStartDate(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[10px] font-black text-slate-700 outline-none shadow-sm w-[115px]"
+                                />
+                            </div>
+                            <div className="relative">
+                                <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">End</span>
+                                <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="date"
+                                    value={dueDate} onChange={e => setDueDate(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[10px] font-black text-slate-700 outline-none shadow-sm w-[115px]"
+                                />
+                            </div>
                         </div>
 
                         <button
                             type="submit"
                             disabled={!title.trim() || isSubmitting}
-                            className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[11px] font-black hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-30 flex items-center gap-1.5 uppercase tracking-wider"
+                            className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[11px] font-black hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-30 flex items-center gap-1.5 uppercase tracking-tight"
                         >
                             {isSubmitting ? <Loader size={12} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
                             Add
@@ -283,14 +431,15 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
-const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren }) => {
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines }) => {
     const [childrenOpen, setChildrenOpen] = useState(true);
-    const [addingChild, setAddingChild] = useState(false);
+    const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(subTask.title || '');
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
+    const [childStartDate, setChildStartDate] = useState('');
     const [childDueDate, setChildDueDate] = useState('');
     const [savingChild, setSavingChild] = useState(false);
 
@@ -298,7 +447,11 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
         st.parentSubTaskId === subTask._id || st.parentSubTaskId?._id === subTask._id
     );
     const hasChildren = directChildren.length > 0;
-    const indentPx = 28 + depth * 20;
+    
+    // Adjusted Indentation & Tree logic
+    const baseOffset = 26; // Align with main task toggle center (relative to second td)
+    const step = 32;
+    const indentPx = (depth + 1) * step + 16; // 16px is px-4 padding
 
     const handleAddChild = async (e) => {
         e.preventDefault();
@@ -308,11 +461,12 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
             title: childTitle,
             assignedTo: childAssigned || undefined,
             priority: childPriority,
+            startDate: childStartDate || undefined,
             dueDate: childDueDate || undefined,
             parentSubTaskId: subTask._id
         });
-        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildDueDate('');
-        setAddingChild(false);
+        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildStartDate(''); setChildDueDate('');
+        setAddingHere(false);
         setSavingChild(false);
     };
 
@@ -329,30 +483,56 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     const depthColor = ['border-blue-200', 'border-violet-200', 'border-emerald-200', 'border-amber-200'][depth % 4];
 
     return (
-        <>
+        <React.Fragment>
             {/* ── Subtask Row ── */}
-            <tr className={`bg-white hover:bg-slate-50/60 border-l-[3px] ${depthColor} transition-colors border-b border-slate-50`}>
-                {/* Task — indent + toggle + checkbox + title */}
-                <td className="py-2.5 pr-3" style={{ paddingLeft: `${indentPx}px` }}>
-                    <div className="flex items-center gap-2.5">
+            <tr className={`bg-white hover:bg-slate-50/60 border-l-[3px] ${depthColor} transition-colors border-b border-slate-100 relative group`}>
+                {/* Grip placeholder column (Column 1) */}
+                <td className="w-10 px-4 py-2.5" />
+
+                {/* Task — indent + toggle + checkbox + title (Column 2) */}
+                <td className="py-2.5 px-4 relative" style={{ paddingLeft: `${indentPx}px` }}>
+                    {/* Tree Connectors */}
+                    <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                        {levelLines.map((hasLine, i) => (
+                            hasLine && (
+                                <div 
+                                    key={i} 
+                                    className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" 
+                                    style={{ left: `${baseOffset + i * step}px` }} 
+                                />
+                            )
+                        ))}
+                        {/* Current branch vertical line */}
+                        <div 
+                            className={`absolute w-[1.5px] bg-slate-200/60 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`} 
+                            style={{ left: `${baseOffset + depth * step}px` }} 
+                        />
+                        {/* Current branch horizontal line */}
+                        <div 
+                            className="absolute top-1/2 h-[1.5px] bg-slate-200/60" 
+                            style={{ left: `${baseOffset + depth * step}px`, width: '18px' }} 
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 relative z-10">
                         {/* Expand/Collapse children toggle */}
                         <button
                             onClick={() => setChildrenOpen(!childrenOpen)}
                             className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all ${hasChildren
-                                ? 'text-slate-600 bg-slate-100 hover:bg-blue-100 hover:text-blue-600 shadow-sm'
+                                ? 'text-slate-500 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 shadow-sm border border-slate-100'
                                 : 'invisible'
                                 }`}
                             style={{ transform: childrenOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
                         >
-                            <ChevronRight size={11} />
+                            <ChevronRight size={10} />
                         </button>
 
                         {/* Status checkbox */}
                         <button
                             onClick={() => onToggle(subTask)}
-                            className={`shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shadow-sm ${subTask.status === 'completed'
+                            className={`shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all shadow-sm ${subTask.status === 'completed'
                                 ? 'bg-emerald-500 border-emerald-500 text-white'
-                                : 'border-slate-400 hover:border-blue-500 hover:bg-blue-50'
+                                : 'bg-white border-slate-300 hover:border-blue-500 hover:bg-blue-50'
                                 }`}
                         >
                             {subTask.status === 'completed' && <Check size={10} strokeWidth={3} />}
@@ -362,14 +542,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                         {isEditing ? (
                             <input
                                 autoFocus
-                                className="text-sm font-bold text-slate-800 bg-white border-2 border-blue-400 rounded-lg px-2 py-0.5 outline-none shadow-sm min-w-[150px]"
+                                className="text-[13px] font-black text-slate-800 bg-white border-2 border-blue-400 rounded-lg px-2 py-0.5 outline-none shadow-sm min-w-[150px]"
                                 value={editTitle}
                                 onChange={e => setEditTitle(e.target.value)}
                                 onBlur={handleEditSave}
                                 onKeyDown={e => e.key === 'Enter' && handleEditSave()}
                             />
                         ) : (
-                            <span className={`text-sm font-bold truncate max-w-[200px] ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800'
+                            <span className={`text-[13px] font-black truncate max-w-[200px] ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 font-black'
                                 }`}>
                                 {subTask.title}
                             </span>
@@ -377,44 +557,44 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
                         {/* Children count badge */}
                         {hasChildren && (
-                            <span className="shrink-0 text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md shadow-sm">
+                            <span className="shrink-0 text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">
                                 {directChildren.length}
                             </span>
                         )}
                     </div>
                 </td>
 
-                {/* Project — just a dash for subtasks */}
-                <td className="px-3 py-2.5 text-[11px] text-slate-400 font-black">—</td>
+                {/* Project (Column 3) */}
+                <td className="px-4 py-2.5 text-xs font-bold text-slate-300">—</td>
 
-                {/* Assignee */}
-                <td className="px-3 py-2.5">
+                {/* Assigned To (Column 4) */}
+                <td className="px-4 py-2.5">
                     {subTask.assignedTo?.fullName ? (
                         <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-black border border-blue-200 shadow-sm">
+                            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[9px] font-black border border-blue-100 shadow-sm">
                                 {subTask.assignedTo.fullName.charAt(0)}
                             </div>
                             <span className="text-[11px] font-black text-slate-700">{subTask.assignedTo.fullName}</span>
                         </div>
-                    ) : <span className="text-[11px] text-slate-400 font-bold">—</span>}
+                    ) : <span className="text-[11px] text-slate-300 font-bold">Unassigned</span>}
                 </td>
 
-                {/* Role badge */}
-                <td className="px-3 py-2.5">
-                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border bg-violet-100 text-violet-700 border-violet-200 shadow-sm uppercase tracking-wider">
+                {/* Role (Column 5) */}
+                <td className="px-4 py-2.5">
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-violet-50 text-violet-600 border-violet-100 uppercase tracking-widest leading-none">
                         subtask
                     </span>
                 </td>
 
-                {/* Status */}
-                <td className="px-3 py-2.5">
+                {/* Status (Column 6) */}
+                <td className="px-4 py-2.5">
                     {canManage ? (
                         <select
                             value={subTask.status}
                             onChange={e => onUpdate(subTask, { status: e.target.value })}
-                            className={`text-[11px] font-black px-3 py-1.5 rounded-xl border-2 shadow-sm outline-none cursor-pointer transition-colors ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
-                                subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' :
-                                    'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            className={`text-[9px] font-black px-2 py-1 rounded-full border shadow-sm outline-none cursor-pointer transition-colors uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    'bg-slate-50 text-slate-500 border-slate-200'
                                 }`}
                         >
                             <option value="todo">Todo</option>
@@ -422,87 +602,96 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                             <option value="completed">Completed</option>
                         </select>
                     ) : (
-                        <span className={`text-[11px] font-black px-3 py-1 rounded-xl border-2 uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                'bg-slate-50 text-slate-700 border-slate-200'
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                'bg-slate-50 text-slate-500 border-slate-200'
                             }`}>{subTask.status.replace('_', ' ')}</span>
                     )}
                 </td>
 
-                {/* Priority */}
-                <td className="px-3 py-2.5">
+                {/* Priority (Column 7) */}
+                <td className="px-4 py-2.5">
                     {canManage ? (
                         <select
                             value={subTask.priority}
                             onChange={e => onUpdate(subTask, { priority: e.target.value })}
-                            className={`text-[11px] font-black px-3 py-1.5 rounded-xl border-2 shadow-sm outline-none cursor-pointer transition-colors ${priorityStyles[subTask.priority] || priorityStyles.Medium} hover:opacity-80`}
+                            className={`text-[9px] font-black px-2 py-1 rounded-full border shadow-sm outline-none cursor-pointer transition-colors uppercase tracking-widest ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}
                         >
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
                         </select>
                     ) : (
-                        <span className={`text-[11px] font-black px-3 py-1 rounded-xl border-2 ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
                             {subTask.priority}
                         </span>
                     )}
                 </td>
 
-                {/* Due Date */}
-                <td className="px-3 py-2.5 text-[11px] font-black text-slate-700">
+                {/* Start Date (Column 8) */}
+                <td className="px-4 py-2.5 text-[11px] font-black text-slate-500">
+                    {subTask.startDate ? (
+                        <div className="flex items-center gap-1.5 opacity-60">
+                            <Calendar size={11} />
+                            <span>{new Date(subTask.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                    ) : '—'}
+                </td>
+
+                {/* End Date (Column 9) */}
+                <td className="px-4 py-2.5 text-[11px] font-black text-slate-700">
                     {subTask.dueDate ? (
-                        <div className="flex items-center gap-1.5">
-                            <Calendar size={12} className="text-slate-400" />
+                        <div className="flex items-center gap-1.5 opacity-60">
+                            <Calendar size={11} />
                             <span>{new Date(subTask.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                         </div>
                     ) : '—'}
                 </td>
 
-                {/* Actions — always visible */}
+                {/* Actions (Column 9) */}
                 {canManage && (
-                    <td className="px-3 py-2.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                            {/* Add sub-subtask */}
+                    <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
                             <button
-                                onClick={() => setAddingChild(!addingChild)}
-                                title="Add subtask under this"
-                                className={`p-2 rounded-xl transition-all shadow-sm border-2 ${addingChild
-                                    ? 'bg-blue-600 text-white border-blue-700'
-                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200'
-                                    }`}
+                                onClick={() => setAddingHere(!addingHere)}
+                                title="Add subtask"
+                                className={`p-1.5 rounded-lg transition-all ${addingHere ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
                             >
-                                <Plus size={14} strokeWidth={3} />
+                                <Plus size={13} />
                             </button>
-                            {/* Edit title */}
                             <button
-                                onClick={() => { setIsEditing(!isEditing); setEditTitle(subTask.title); }}
-                                title="Edit title"
-                                className={`p-2 rounded-xl transition-all shadow-sm border-2 ${isEditing
-                                    ? 'bg-amber-500 text-white border-amber-600'
-                                    : 'bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-200'
-                                    }`}
+                                onClick={() => setIsEditing(!isEditing)}
+                                title="Edit"
+                                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
                             >
-                                <Edit size={14} strokeWidth={3} />
+                                <Edit size={13} />
                             </button>
-                            {/* Delete */}
                             <button
                                 onClick={() => onUpdate(subTask, { delete: true })}
-                                title="Delete subtask"
-                                className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border-2 border-red-200 shadow-sm transition-all"
+                                title="Delete"
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
                             >
-                                <Trash2 size={14} strokeWidth={3} />
+                                <Trash2 size={13} />
                             </button>
                         </div>
                     </td>
                 )}
             </tr>
 
-
             {/* ── Inline Add Child Row ── */}
-            {addingChild && (
-                <tr className="bg-blue-50/50 border-l-[3px] border-blue-400">
-                    <td colSpan={8} style={{ paddingLeft: `${indentPx + 28}px` }} className="py-2.5 pr-4">
-                        <form onSubmit={handleAddChild} className="flex flex-wrap items-center gap-2">
+            {addingHere && (
+                <tr className="bg-blue-50/20 border-l-[3px] border-blue-400 relative">
+                    <td className="w-10 px-4 py-2.5" />
+                    <td colSpan={9} style={{ paddingLeft: `${indentPx + step}px` }} className="py-2.5 px-4 relative">
+                         {/* Tree connector for adding child */}
+                         <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                            {levelLines.map((hasLine, i) => hasLine && <div key={i} className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + i * step}px` }} />)}
+                            <div className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + depth * step}px` }} />
+                            <div className="absolute top-0 h-1/2 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + (depth + 1) * step}px` }} />
+                            <div className="absolute top-1/2 h-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + (depth + 1) * step}px`, width: '18px' }} />
+                        </div>
+
+                        <form onSubmit={handleAddChild} className="flex flex-wrap items-center gap-2 relative z-10">
                             <input
                                 autoFocus required type="text"
                                 placeholder="New subtask title..."
@@ -520,13 +709,21 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
-                            <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm" />
+                            <div className="relative">
+                                <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">Start</span>
+                                <input type="date" value={childStartDate} onChange={e => setChildStartDate(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-[10px] font-bold text-slate-700 outline-none shadow-sm w-[105px]" />
+                            </div>
+                            <div className="relative">
+                                <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">End</span>
+                                <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-[10px] font-bold text-slate-700 outline-none shadow-sm w-[105px]" />
+                            </div>
                             <button type="submit" disabled={savingChild}
                                 className="bg-blue-600 text-white px-4 py-1.5 rounded-xl text-xs font-black hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
                                 <Plus size={12} /> Add
                             </button>
-                            <button type="button" onClick={() => setAddingChild(false)}
+                            <button type="button" onClick={() => setAddingHere(false)}
                                 className="p-1.5 text-slate-500 hover:text-slate-700 rounded-xl hover:bg-white transition border border-slate-200">
                                 <X size={14} />
                             </button>
@@ -536,10 +733,11 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
             )}
 
             {/* ── Recursive children ── */}
-            {childrenOpen && hasChildren && renderChildren(subTask._id, depth + 1)}
-        </>
+            {childrenOpen && hasChildren && renderChildren(subTask._id, depth + 1, [...levelLines, !isLast])}
+        </React.Fragment>
     );
 };
+
 
 // ─── Recursive SubTask Tree Node (ClickUp Style) ─────────────────────────────
 const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage, onToggle, onAddChild, onDelete }) => {
@@ -548,6 +746,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
+    const [childStartDate, setChildStartDate] = useState('');
     const [childDueDate, setChildDueDate] = useState('');
     const [savingChild, setSavingChild] = useState(false);
 
@@ -561,12 +760,14 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
             title: childTitle,
             assignedTo: childAssigned || undefined,
             priority: childPriority,
+            startDate: childStartDate || undefined,
             dueDate: childDueDate || undefined,
             parentSubTaskId: node._id
         });
         setChildTitle('');
         setChildAssigned('');
         setChildPriority('Medium');
+        setChildStartDate('');
         setChildDueDate('');
         setAddingHere(false);
         setSavingChild(false);
@@ -621,9 +822,14 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
                     </span>
                 )}
+                {node.startDate && (
+                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                        <Calendar size={10} className="text-blue-400" />{new Date(node.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                )}
                 {node.dueDate && (
                     <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                        <Clock size={10} className="text-orange-400" />{new Date(node.dueDate).toLocaleDateString()}
+                        <Clock size={10} className="text-orange-400" />{new Date(node.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                 )}
 
@@ -685,8 +891,16 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         <option value="Medium">Medium</option>
                         <option value="High">High</option>
                     </select>
-                    <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none" />
+                    <div className="relative">
+                        <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">Start</span>
+                        <input type="date" value={childStartDate} onChange={e => setChildStartDate(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-700 outline-none w-[100px]" />
+                    </div>
+                    <div className="relative">
+                        <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">End</span>
+                        <input type="date" value={childDueDate} onChange={e => setChildDueDate(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-700 outline-none w-[100px]" />
+                    </div>
                     <button type="submit" disabled={savingChild}
                         className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1">
                         <Plus size={12} /> Add
@@ -743,17 +957,24 @@ const Tasks = () => {
     const [expandedTasks, setExpandedTasks] = useState(new Set());
     const [subTasksMap, setSubTasksMap] = useState({});
 
-
+    // Task Templates State
+    const [templates, setTemplates] = useState([]);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+    const [newTemplateName, setNewTemplateName] = useState('');
+    const [subTasksList, setSubTasksList] = useState([]);
 
     // Filters
     const [filterStatus, setFilterStatus] = useState('');
     const [filterRole, setFilterRole] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
     const [filterDueFrom, setFilterDueFrom] = useState('');
     const [filterDueTo, setFilterDueTo] = useState('');
     const [filterProject, setFilterProject] = useState('');
     const [formData, setFormData] = useState({
         title: '', projectId: '', assignedTo: [], assignedRoleType: '',
-        priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: ''
+        priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: '',
+        category: 'TASK'
     });
 
     const [newSubTask, setNewSubTask] = useState({
@@ -794,11 +1015,26 @@ const Tasks = () => {
         setExpandedTasks(newExpanded);
     };
 
+    const fetchTemplates = async () => {
+        try {
+            const res = await api.get('/task-templates');
+            setTemplates(res.data);
+        } catch (error) { console.error('Error fetching templates:', error); }
+    };
+
     const fetchData = async () => {
         try {
             setLoading(true);
+            const params = {
+                status: filterStatus || undefined,
+                projectId: filterProject || undefined,
+                assignedRoleType: filterRole || undefined,
+                category: filterCategory || undefined,
+                dueFrom: filterDueFrom || undefined,
+                dueTo: filterDueTo || undefined
+            };
             const [tasksRes, projectsRes, usersRes] = await Promise.all([
-                api.get('/tasks'),
+                api.get('/tasks', { params }),
                 api.get('/projects'),
                 api.get('/auth/users')
             ]);
@@ -817,6 +1053,11 @@ const Tasks = () => {
 
     useEffect(() => {
         fetchData();
+    }, [filterStatus, filterProject, filterRole, filterCategory, filterDueFrom, filterDueTo]);
+
+    useEffect(() => {
+        fetchData();
+        fetchTemplates();
         // Default to list view for workers/subcontractors for better mobile experience
         if (['WORKER', 'SUBCONTRACTOR'].includes(user?.role)) {
             setView('list');
@@ -848,7 +1089,8 @@ const Tasks = () => {
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
-            const matchProject = !filterProject || task.projectId?._id === filterProject;
+            const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
+            const matchCategory = !filterCategory || task.category === filterCategory;
 
             let matchDue = true;
             if (task.dueDate) {
@@ -857,7 +1099,7 @@ const Tasks = () => {
                 if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
             }
 
-            return matchSearch && matchStatus && matchRole && matchProject && matchDue;
+            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory;
         });
     }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo]);
 
@@ -872,14 +1114,52 @@ const Tasks = () => {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (!over) return;
-        const taskId = active.id;
-        const newStatus = over.id;
-        const task = tasks.find(t => t._id === taskId);
-        if (!task || task.status === newStatus || !columns[newStatus]) return;
+        
+        const activeId = active.id;
+        const overId = over.id;
 
-        setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
+        const activeTaskIndex = tasks.findIndex(t => t._id === activeId);
+        if (activeTaskIndex === -1) return;
+        
+        const activeTask = tasks[activeTaskIndex];
+        let newStatus = activeTask.status;
+        let overTaskIndex = -1;
+
+        if (columns[overId]) {
+            // Dropped on an empty column
+            newStatus = overId;
+        } else {
+            // Dropped on another task
+            overTaskIndex = tasks.findIndex(t => t._id === overId);
+            if (overTaskIndex !== -1) {
+                newStatus = tasks[overTaskIndex].status;
+            }
+        }
+
+        let newTasks = [...tasks];
+
+        if (activeTask.status !== newStatus) {
+            newTasks[activeTaskIndex] = { ...activeTask, status: newStatus };
+        }
+
+        if (overTaskIndex !== -1 && activeId !== overId) {
+            const [movedTask] = newTasks.splice(activeTaskIndex, 1);
+            const adjustedOverIndex = activeTaskIndex < overTaskIndex ? overTaskIndex - 1 : overTaskIndex;
+            newTasks.splice(adjustedOverIndex, 0, movedTask);
+        }
+
+        setTasks(newTasks);
+
+        const updatedColumnTasks = newTasks
+            .filter(t => t.status === newStatus)
+            .map((t, index) => ({
+                id: t._id,
+                status: t.status,
+                position: index
+            }));
+
         try {
-            await api.patch(`/tasks/${taskId}`, { status: newStatus });
+            await api.patch('/tasks/reorder', { tasks: updatedColumnTasks });
         } catch {
             fetchData();
         }
@@ -901,7 +1181,7 @@ const Tasks = () => {
                 priority: newSubTask.priority || 'Medium'
             });
             setSubTasks(prev => [...prev, res.data]);
-            setNewSubTask({ title: '', assignedTo: '', dueDate: '', remarks: '', priority: 'Medium' });
+            setNewSubTask({ title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium' });
             fetchData();
         } catch (error) {
             console.error('Error adding subtask:', error);
@@ -963,7 +1243,8 @@ const Tasks = () => {
 
     const openCreate = () => {
         setEditingTask(null);
-        setFormData({ title: '', projectId: '', assignedTo: [], assignedRoleType: '', priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: '' });
+        setFormData({ title: '', projectId: '', assignedTo: [], assignedRoleType: '', priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: '', category: 'TASK' });
+        setSubTasksList([]);
         setIsModalOpen(true);
     };
 
@@ -979,6 +1260,7 @@ const Tasks = () => {
             dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
             startDate: task.startDate ? task.startDate.split('T')[0] : '',
             description: task.description || '',
+            category: task.category || 'TASK'
         });
         setIsModalOpen(true);
     };
@@ -990,6 +1272,7 @@ const Tasks = () => {
             const payload = {
                 ...formData,
                 assignedTo: formData.assignedTo.filter(Boolean),
+                subTasksList: subTasksList.length > 0 ? subTasksList : undefined
             };
             if (editingTask) {
                 await api.patch(`/tasks/${editingTask._id}`, payload);
@@ -1103,22 +1386,26 @@ const Tasks = () => {
             {/* ── Header ── */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Task Command Center</h1>
-                    <p className="text-slate-400 font-bold text-xs mt-1 uppercase tracking-widest flex items-center gap-2">
-                        <Layers size={13} className="text-blue-600" /> Task tracking & assignment
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">Task Command Center</h1>
+                    <p className="text-slate-400 font-bold text-[10px] mt-0.5 uppercase tracking-widest flex items-center gap-2">
+                        <Layers size={11} className="text-blue-600" /> Task tracking & assignment
                     </p>
                 </div>
                 <div className="flex gap-3">
                     {/* Stats pills */}
-                    <div className="hidden md:flex items-center gap-2">
-                        <span className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                            <AlertTriangle size={12} /> {stats.overdue} Overdue
+                    <div className="hidden md:flex items-center gap-1.5">
+                        <button 
+                            onClick={() => navigate('/company-admin#overdue')}
+                            className="bg-red-50 text-red-600 border border-red-100 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm active:scale-95"
+                            title="View Overdue Details in Dashboard"
+                        >
+                            <AlertTriangle size={10} /> {stats.overdue} Overdue
+                        </button>
+                        <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                            <Clock size={10} /> {stats.inProgress} Active
                         </span>
-                        <span className="bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                            <Clock size={12} /> {stats.inProgress} Active
-                        </span>
-                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                            <CheckCircle size={12} /> {stats.completed} Done
+                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                            <CheckCircle size={10} /> {stats.completed} Done
                         </span>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm">
@@ -1130,9 +1417,14 @@ const Tasks = () => {
                         </button>
                     </div>
                     {canManage && (
-                        <button onClick={openCreate} className="bg-blue-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-blue-700 transition shadow-xl shadow-blue-200 font-black text-sm uppercase tracking-tight">
-                            <Plus size={17} /> New Task
-                        </button>
+                        <>
+                            <button onClick={() => setIsTemplateModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition shadow-sm font-black text-[10px] uppercase tracking-tight">
+                                <Briefcase size={14} /> Templates
+                            </button>
+                            <button onClick={openCreate} className="bg-blue-600 text-white px-5 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-xs uppercase tracking-tight">
+                                <Plus size={15} /> New Task
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -1141,13 +1433,13 @@ const Tasks = () => {
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 space-y-3 shrink-0">
                 <div className="flex flex-col md:flex-row gap-3 items-center">
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input
                             type="text"
                             placeholder="Search tasks, projects, or assignees..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
                         />
                     </div>
                     <button
@@ -1168,6 +1460,11 @@ const Tasks = () => {
                             <option value="in_progress">In Progress</option>
                             <option value="review">In Review</option>
                             <option value="completed">Completed</option>
+                        </select>
+                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500">
+                            <option value="">All Types</option>
+                            <option value="TASK">Tasks</option>
+                            <option value="TODO">To-Dos</option>
                         </select>
                         <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500">
                             <option value="">All Roles</option>
@@ -1198,219 +1495,155 @@ const Tasks = () => {
                         <div className="w-12 h-12 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin" />
                         <p className="font-black text-slate-400 uppercase tracking-widest text-xs">Loading Tasks...</p>
                     </div>
-                ) : view === 'kanban' ? (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <div className="flex gap-5 h-full overflow-x-auto pb-4 custom-scrollbar">
-                            {Object.entries(columns).map(([status, style]) => (
-                                <DroppableColumn
-                                    key={status}
-                                    status={status}
-                                    style={style}
-                                    filteredTasks={filteredTasks}
-                                    onEdit={openEdit}
-                                    onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
-                                    onTaskClick={openDetails}
-                                />
-                            ))}
-                        </div>
-                    </DndContext>
                 ) : (
-                    /* ── List View ── */
-                    <div className="bg-white rounded-[36px] shadow-sm border border-slate-200/60 h-full overflow-hidden flex flex-col">
-                        <div className="overflow-auto flex-1 custom-scrollbar">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
-                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        <th className="px-6 py-4">Task</th>
-                                        <th className="px-6 py-4">Project</th>
-                                        <th className="px-6 py-4">Assigned To</th>
-                                        <th className="px-6 py-4">Role</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4">Priority</th>
-                                        <th className="px-6 py-4">Due Date</th>
-                                        {canManage && <th className="px-6 py-4 text-right">Actions</th>}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {filteredTasks.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={8} className="px-6 py-20 text-center">
-                                                <div className="flex flex-col items-center gap-3 text-slate-300">
-                                                    <Layers size={36} />
-                                                    <p className="font-black uppercase tracking-widest text-xs">No tasks found</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : filteredTasks.map(task => {
-                                        const urgency = getTaskUrgency(task);
-                                        const isExpanded = expandedTasks.has(task._id);
-                                        const taskSubTasks = subTasksMap[task._id] || [];
-
-                                        return (
-                                            <React.Fragment key={task._id}>
-                                                <tr
-                                                    onClick={() => openDetails(task)}
-                                                    className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${urgency === 'overdue' ? 'bg-red-50/30' : urgency === 'due-soon' ? 'bg-yellow-50/20' : ''}`}
-                                                >
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); toggleTaskExpansion(task._id); }}
-                                                                className="p-1 hover:bg-slate-200 rounded-md text-slate-400 transition-transform duration-200"
-                                                                style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
-                                                            >
-                                                                <ChevronRight size={14} />
-                                                            </button>
-                                                            {urgency === 'overdue' && <div className="w-1.5 h-8 bg-red-500 rounded-full shrink-0" />}
-                                                            {urgency === 'due-soon' && <div className="w-1.5 h-8 bg-yellow-400 rounded-full shrink-0" />}
-                                                            {urgency === 'completed' && <div className="w-1.5 h-8 bg-emerald-400 rounded-full shrink-0" />}
-                                                            <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="font-black text-slate-900 text-sm">{task.title}</p>
-                                                                    {task.subTaskCount > 0 && (
-                                                                        <span className="text-[9px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">
-                                                                            {task.subTaskCount}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                                                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${task.progress || 0}%` }} />
-                                                                    </div>
-                                                                    <span className="text-[9px] font-bold text-slate-400">{task.progress || 0}%</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-sm font-bold text-slate-500">{task.projectId?.name || '—'}</td>
-                                                    <td className="px-6 py-4">
-                                                        {task.assignedTo?.length > 0 ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
-                                                                    {task.assignedTo[0]?.fullName?.charAt(0) || '?'}
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-black text-slate-700">{task.assignedTo[0]?.fullName}</p>
-                                                                    {task.assignedTo.length > 1 && <p className="text-[10px] font-bold text-slate-400">+{task.assignedTo.length - 1} more</p>}
-                                                                </div>
-                                                            </div>
-                                                        ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        {task.assignedRoleType ? (
-                                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                                {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
-                                                            </span>
-                                                        ) : <span className="text-slate-300 text-[10px] font-bold">—</span>}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
-                                                            ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                                task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                    task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                        'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                            {task.status?.replace('_', ' ')}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
-                                                            {task.priority}
-                                                        </span>
-                                                    </td>
-                                                    <td className={`px-6 py-4 text-xs font-black ${urgency === 'overdue' ? 'text-red-600' : urgency === 'due-soon' ? 'text-yellow-600' : 'text-slate-800'}`}>
-                                                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}
-                                                    </td>
-                                                    {canManage && (
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex justify-end gap-1.5">
-                                                                <button onClick={(e) => { e.stopPropagation(); openEdit(task); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition">
-                                                                    <Edit size={15} />
-                                                                </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); setIsDeleteModalOpen(true); }} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition">
-                                                                    <Trash2 size={15} />
-                                                                </button>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        {view === 'kanban' ? (
+                            <div className="flex gap-5 h-full overflow-x-auto pb-4 custom-scrollbar">
+                                {Object.entries(columns).map(([status, style]) => (
+                                    <DroppableColumn
+                                        key={status}
+                                        status={status}
+                                        style={style}
+                                        filteredTasks={filteredTasks}
+                                        onEdit={openEdit}
+                                        onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
+                                        onTaskClick={openDetails}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            /* ── List View ── */
+                            <div className="bg-white rounded-[36px] shadow-sm border border-slate-200/60 h-full overflow-hidden flex flex-col">
+                                <div className="overflow-auto flex-1 custom-scrollbar">
+                                    <table className="w-full text-left border-separate border-spacing-0">
+                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+                                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                <th className="w-10 px-4 py-3"></th>
+                                                <th className="px-4 py-3">Task</th>
+                                                <th className="px-4 py-3">Project</th>
+                                                <th className="px-4 py-3">Assigned To</th>
+                                                <th className="px-4 py-3">Role</th>
+                                                <th className="px-4 py-3">Status</th>
+                                                <th className="px-4 py-3">Priority</th>
+                                                <th className="px-4 py-3">Start Date</th>
+                                                <th className="px-4 py-3">End Date</th>
+                                                {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            <SortableContext items={filteredTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                                                {filteredTasks.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={9} className="px-6 py-20 text-center">
+                                                            <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                                <Layers size={36} />
+                                                                <p className="font-black uppercase tracking-widest text-xs">No tasks found</p>
                                                             </div>
                                                         </td>
-                                                    )}
-                                                </tr>
-                                                {isExpanded && (() => {
-                                                    // Build + render recursive tree inline using SubTaskTableRows
-                                                    const renderSubTaskRows = (parentId, depth) => {
-                                                        const nodes = taskSubTasks.filter(st =>
-                                                            parentId === null
-                                                                ? !st.parentSubTaskId
-                                                                : (st.parentSubTaskId === parentId || st.parentSubTaskId?._id === parentId)
-                                                        );
-                                                        return nodes.map(st => (
-                                                            <SubTaskTableRow
-                                                                key={st._id}
-                                                                subTask={st}
-                                                                depth={depth}
-                                                                allSubTasks={taskSubTasks}
-                                                                taskId={task._id}
-                                                                team={filteredTeamByRole}
-                                                                canManage={canManage}
-                                                                onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
-                                                                onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
-                                                                onAddChild={handleQuickSubTaskSave}
-                                                                isSubmitting={isSubmittingSubTask}
-                                                                renderChildren={renderSubTaskRows}
-                                                            />
-                                                        ));
-                                                    };
-                                                    return (
-                                                        <>
-                                                            {renderSubTaskRows(null, 0)}
-                                                            {canManage && (
-                                                                <QuickAddSubTask
-                                                                    taskId={task._id}
-                                                                    onSave={handleQuickSubTaskSave}
-                                                                    team={filteredTeamByRole}
-                                                                    isSubmitting={isSubmittingSubTask}
-                                                                />
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
+                                                    </tr>
+                                                ) : filteredTasks.map(task => {
+                                                    const urgency = getTaskUrgency(task);
+                                                    const isExpanded = expandedTasks.has(task._id);
+                                                    const taskSubTasks = subTasksMap[task._id] || [];
 
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                                    return (
+                                                        <SortableTaskRow
+                                                            key={task._id}
+                                                            task={task}
+                                                            urgency={urgency}
+                                                            isExpanded={isExpanded}
+                                                            canManage={canManage}
+                                                            onTaskClick={openDetails}
+                                                            onToggleExpansion={toggleTaskExpansion}
+                                                            onEdit={openEdit}
+                                                            onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
+                                                            renderChildren={() => {
+                                                                const renderSubTaskRows = (parentId, depth, levelLines = []) => {
+                                                                    const nodes = taskSubTasks.filter(st =>
+                                                                        parentId === null
+                                                                            ? !st.parentSubTaskId
+                                                                            : (st.parentSubTaskId === parentId || st.parentSubTaskId?._id === parentId)
+                                                                    );
+                                                                    return nodes.map((st, index) => (
+                                                                        <SubTaskTableRow
+                                                                            key={st._id}
+                                                                            subTask={st}
+                                                                            depth={depth}
+                                                                            allSubTasks={taskSubTasks}
+                                                                            taskId={task._id}
+                                                                            team={filteredTeamByRole}
+                                                                            canManage={canManage}
+                                                                            onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
+                                                                            onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
+                                                                            onAddChild={handleQuickSubTaskSave}
+                                                                            isSubmitting={isSubmittingSubTask}
+                                                                            renderChildren={renderSubTaskRows}
+                                                                            isLast={index === nodes.length - 1}
+                                                                            levelLines={levelLines}
+                                                                        />
+                                                                    ));
+                                                                };
+                                                                return (
+                                                                    <>
+                                                                        {renderSubTaskRows(null, 0, [true])}
+                                                                        {canManage && (
+                                                                            <QuickAddSubTask
+                                                                                taskId={task._id}
+                                                                                onSave={handleQuickSubTaskSave}
+                                                                                team={filteredTeamByRole}
+                                                                                isSubmitting={isSubmittingSubTask}
+                                                                            />
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+                                            </SortableContext>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </DndContext>
                 )}
             </div>
 
             {/* ── Create / Edit Modal ── */}
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTask ? 'Edit Task' : 'Create New Task'}>
                 <form onSubmit={handleSave} className="space-y-5">
+                    {subTasksList.length > 0 && !editingTask && (
+                        <div className="bg-emerald-50 text-emerald-700 border border-emerald-100 p-4 rounded-2xl text-xs font-bold flex items-center justify-between shadow-sm">
+                            <span className="flex items-center gap-2"><Briefcase size={14} className="text-emerald-500" /> Template Applied: {subTasksList.length} sub-tasks will be generated.</span>
+                            <button type="button" onClick={() => setSubTasksList([])} className="text-red-500 hover:bg-red-50 p-2 rounded-xl border border-transparent hover:border-red-100 transition"><X size={14} /></button>
+                        </div>
+                    )}
                     {/* Title */}
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <Target size={13} className="text-blue-600" /> Task Title
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Target size={12} className="text-blue-600" /> Task Title
                         </label>
                         <input
                             required
                             type="text"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all text-sm"
                             placeholder="e.g. Install Safety Nets Level 3"
                         />
                     </div>
 
                     {/* Project */}
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <Briefcase size={13} className="text-blue-600" /> Project
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Briefcase size={12} className="text-blue-600" /> Project
                         </label>
                         <select
                             required
                             value={formData.projectId}
                             onChange={e => setFormData({ ...formData, projectId: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
                         >
                             <option value="">Select Project</option>
                             {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
@@ -1418,15 +1651,15 @@ const Tasks = () => {
                     </div>
 
                     {/* Role + Assignee row */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <UserCheck size={13} className="text-blue-600" /> Assign Role
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <UserCheck size={12} className="text-blue-600" /> Assign Role
                             </label>
                             <select
                                 value={formData.assignedRoleType}
                                 onChange={e => setFormData({ ...formData, assignedRoleType: e.target.value, assignedTo: [] })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
                             >
                                 <option value="">Any Role</option>
                                 {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role) || ['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) && (
@@ -1444,13 +1677,13 @@ const Tasks = () => {
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Users size={13} className="text-blue-600" /> Assign To
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Users size={12} className="text-blue-600" /> Assign To
                             </label>
                             <select
                                 value={formData.assignedTo[0] || ''}
                                 onChange={e => setFormData({ ...formData, assignedTo: e.target.value ? [e.target.value] : [] })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
                             >
                                 <option value="">Unassigned</option>
                                 {filteredTeamByRole.map(m => (
@@ -1460,61 +1693,70 @@ const Tasks = () => {
                         </div>
                     </div>
 
-                    {/* Priority + Status */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Category + Priority + Status */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Flag size={13} className="text-blue-600" /> Priority
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Layers size={12} className="text-blue-600" /> Category
                             </label>
-                            <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none">
+                            <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm">
+                                <option value="TASK">Task</option>
+                                <option value="TODO">To-Do</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Flag size={12} className="text-blue-600" /> Priority
+                            </label>
+                            <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm">
                                 <option value="Low">Low</option>
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</label>
-                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none">
-                                <option value="todo">To Do</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="review">In Review</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</label>
+                        <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm">
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">In Review</option>
+                            <option value="completed">Completed</option>
+                        </select>
                     </div>
 
                     {/* Dates */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-5">
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Calendar size={13} className="text-blue-600" /> Start Date
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Calendar size={12} className="text-blue-600" /> Start Date
                             </label>
-                            <input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500" />
+                            <input type="date" value={formData.startDate} onChange={e => setFormData({ ...formData, startDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 text-sm" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Calendar size={13} className="text-orange-500" /> Due Date
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Calendar size={12} className="text-orange-500" /> Due Date
                             </label>
-                            <input type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500" />
+                            <input type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 text-sm" />
                         </div>
                     </div>
 
                     {/* Description */}
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Description</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Description</label>
                         <textarea
-                            rows={3}
+                            rows={2}
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-bold text-slate-800 outline-none focus:border-blue-500/50 resize-none"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-800 outline-none focus:border-blue-500/50 resize-none text-sm"
                             placeholder="Task description or scope..."
                         />
                     </div>
 
-                    <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
-                        <button type="submit" disabled={isSubmitting} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-tight hover:bg-blue-700 transition shadow-xl shadow-blue-200 flex items-center gap-3 disabled:opacity-60">
-                            {isSubmitting ? <Loader size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
+                        <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-tight hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2 disabled:opacity-60">
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
                             {editingTask ? 'Save Changes' : 'Create Task'}
                         </button>
                     </div>
@@ -1613,7 +1855,7 @@ const Tasks = () => {
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                                         <Plus size={11} /> Add Root Subtask
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <input
                                             required
                                             type="text"
@@ -1633,8 +1875,16 @@ const Tasks = () => {
                                             <option value="Medium">Medium</option>
                                             <option value="High">High</option>
                                         </select>
-                                        <input type="date" value={newSubTask.dueDate || ''} onChange={e => setNewSubTask({ ...newSubTask, dueDate: e.target.value })}
-                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none" />
+                                        <div className="relative mt-3">
+                                            <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">Start Date</span>
+                                            <input type="date" value={newSubTask.startDate || ''} onChange={e => setNewSubTask({ ...newSubTask, startDate: e.target.value })}
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" />
+                                        </div>
+                                        <div className="relative mt-3">
+                                            <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">End Date</span>
+                                            <input type="date" value={newSubTask.dueDate || ''} onChange={e => setNewSubTask({ ...newSubTask, dueDate: e.target.value })}
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 outline-none" />
+                                        </div>
                                         <button type="submit" disabled={isSubmittingSubTask}
                                             className="col-span-full bg-slate-900 text-white py-2.5 rounded-xl hover:bg-blue-600 transition font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50">
                                             <Plus size={15} /> Add Subtask
@@ -1644,13 +1894,93 @@ const Tasks = () => {
                             )}
                         </div>
 
-                        <div className="pt-4 border-t border-slate-100 flex justify-end">
+                        <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                            {canManage && (
+                                <button onClick={() => { setNewTemplateName(selectedTask.title + ' Template'); setIsSaveTemplateModalOpen(true); }} className="px-6 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-xs uppercase tracking-widest hover:bg-blue-100 border border-blue-100">
+                                    Save as Template
+                                </button>
+                            )}
                             <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-2 rounded-xl bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-200">
                                 Close Details
                             </button>
                         </div>
                     </div>
                 )}
+            </Modal>
+            {/* ── Save Template Modal ── */}
+            <Modal isOpen={isSaveTemplateModalOpen} onClose={() => setIsSaveTemplateModalOpen(false)} title="Save Task as Template">
+                <div className="space-y-5">
+                    <p className="text-sm font-bold text-slate-500 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        This template will save the task details and its {subTasks.length} subtasks to be reused later.
+                    </p>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Template Name</label>
+                        <input
+                            type="text"
+                            value={newTemplateName}
+                            onChange={e => setNewTemplateName(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500"
+                            placeholder="e.g. Standard Foundation Pour"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                        <button onClick={() => setIsSaveTemplateModalOpen(false)} className="px-5 py-2.5 rounded-xl font-black text-xs uppercase text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
+                        <button onClick={async () => {
+                            if (!newTemplateName) return;
+                            try {
+                                setIsSubmitting(true);
+                                const outSteps = subTasks.map(st => ({ title: st.title, remarks: st.remarks, priority: st.priority }));
+                                await api.post('/task-templates', {
+                                    templateName: newTemplateName,
+                                    title: selectedTask.title, description: selectedTask.description, priority: selectedTask.priority,
+                                    steps: outSteps
+                                });
+                                setIsSaveTemplateModalOpen(false);
+                                fetchTemplates();
+                                alert('Template saved!');
+                            } catch (e) { alert('Error saving template'); } finally { setIsSubmitting(false); }
+                        }} disabled={isSubmitting || !newTemplateName} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition">Save Template</button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Templates Library Modal ── */}
+            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Templates Library">
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {templates.length === 0 ? (
+                        <div className="p-10 text-center"><p className="text-slate-400 font-bold text-xs">No templates found.</p></div>
+                    ) : templates.map(tmpl => (
+                        <div key={tmpl._id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center group">
+                            <div>
+                                <h4 className="font-black text-slate-800">{tmpl.templateName}</h4>
+                                <p className="text-[10px] font-bold text-slate-500">{tmpl.steps?.length || 0} sub-tasks included</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={async () => {
+                                    if(window.confirm('Delete this template?')){
+                                        await api.delete(`/task-templates/${tmpl._id}`);
+                                        fetchTemplates();
+                                    }
+                                }} className="p-2 text-slate-400 hover:text-red-500 rounded-xl hover:bg-red-50 hidden group-hover:block transition border border-transparent hover:border-red-100">
+                                    <Trash2 size={14}/>
+                                </button>
+                                <button onClick={() => {
+                                    setFormData({
+                                        title: tmpl.title,
+                                        description: tmpl.description || '',
+                                        priority: tmpl.priority || 'Medium',
+                                        projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: ''
+                                    });
+                                    setSubTasksList(tmpl.steps || []);
+                                    setIsTemplateModalOpen(false);
+                                    setIsModalOpen(true);
+                                }} className="px-5 py-2.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-md shadow-slate-200">
+                                    Use Template
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </Modal>
         </div>
     );

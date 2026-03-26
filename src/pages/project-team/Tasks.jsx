@@ -1,9 +1,25 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Search, CheckCircle2, Clock, AlertCircle,
-    ChevronRight, Calendar, Flag, User, Loader,
-    Layers, AlertTriangle, TrendingUp, CheckCheck
+    Calendar, User, Loader,
+    Layers, AlertTriangle, CheckCheck, GripVertical, TrendingUp
 } from 'lucide-react';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -26,12 +42,29 @@ const priorityColors = {
 const statusConfig = {
     todo: { label: 'Pending', icon: AlertCircle, color: 'text-slate-400 bg-slate-50', border: 'border-slate-200' },
     in_progress: { label: 'In Progress', icon: Clock, color: 'text-blue-600 bg-blue-50', border: 'border-blue-100' },
-    review: { label: 'In Review', icon: TrendingUp, color: 'text-orange-600 bg-orange-50', border: 'border-orange-100' },
+    review: { label: 'In Review', icon: TrendingUp, color: 'text-orange-600 bg-orange-50', border: 'border-orange-100' }, // Added icon back
     completed: { label: 'Completed', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50', border: 'border-emerald-100' },
 };
 
-// ─── Task Card ─────────────────────────────────────────────────────────────────
-const TaskCard = ({ task, onMarkComplete, canComplete }) => {
+
+// ─── Sortable Task Card ──────────────────────────────────────────────────────
+const SortableTaskCard = ({ id, task, onMarkComplete, canComplete }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        opacity: isDragging ? 0.5 : 1,
+    };
+
     const urgency = getUrgency(task);
     const pStyle = priorityColors[task.priority] || priorityColors.Medium;
     const sConfig = statusConfig[task.status] || statusConfig.todo;
@@ -46,14 +79,26 @@ const TaskCard = ({ task, onMarkComplete, canComplete }) => {
     };
 
     return (
-        <div className={`bg-white border rounded-3xl p-5 transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/60 relative overflow-hidden
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className={`bg-white border rounded-3xl p-5 transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/60 relative overflow-hidden group
             ${urgency === 'overdue' ? 'border-red-200 bg-red-50/20' : urgency === 'due-soon' ? 'border-yellow-200 bg-yellow-50/10' : urgency === 'completed' ? 'border-emerald-100 bg-emerald-50/10' : 'border-slate-200/60'}`}>
+
+            {/* Drag Handle */}
+            <div 
+                {...attributes} 
+                {...listeners} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-600 transition-colors opacity-0 group-hover:opacity-100"
+            >
+                <GripVertical size={20} />
+            </div>
 
             {/* Left urgency bar */}
             <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-3xl
                 ${urgency === 'overdue' ? 'bg-red-500' : urgency === 'due-soon' ? 'bg-yellow-400' : urgency === 'completed' ? 'bg-emerald-500' : 'bg-transparent'}`} />
 
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 pr-10">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                     {/* Status icon */}
                     <div className={`mt-0.5 p-2 rounded-xl border ${sConfig.color} ${sConfig.border} shrink-0`}>
@@ -128,6 +173,17 @@ const Tasks = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const canComplete = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM', 'ENGINEER'].includes(user?.role);
 
     const fetchTasks = async () => {
@@ -150,6 +206,31 @@ const Tasks = () => {
             setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: 'completed' } : t));
         } catch (err) {
             console.error('Error completing task:', err);
+        }
+    };
+
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+
+        if (active.id !== over.id) {
+            setTasks((items) => {
+                const oldIndex = items.findIndex(t => t._id === active.id);
+                const newIndex = items.findIndex(t => t._id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+                
+                // Update positions in backend
+                const updates = newItems.map((task, index) => ({
+                    id: task._id,
+                    status: task.status,
+                    position: index
+                }));
+
+                api.patch('/tasks/reorder', { tasks: updates }).catch(err => {
+                    console.error('Failed to persist task order:', err);
+                });
+
+                return newItems;
+            });
         }
     };
 
@@ -266,16 +347,28 @@ const Tasks = () => {
                     )}
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {filtered.map(task => (
-                        <TaskCard
-                            key={task._id}
-                            task={task}
-                            onMarkComplete={handleMarkComplete}
-                            canComplete={canComplete}
-                        />
-                    ))}
-                </div>
+                <DndContext 
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext 
+                        items={filtered.map(t => t._id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-3">
+                            {filtered.map(task => (
+                                <SortableTaskCard
+                                    key={task._id}
+                                    id={task._id}
+                                    task={task}
+                                    onMarkComplete={handleMarkComplete}
+                                    canComplete={canComplete}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             )}
         </div>
     );

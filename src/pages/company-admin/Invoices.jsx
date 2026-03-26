@@ -294,31 +294,31 @@ const Invoices = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-                        <DollarSign size={24} />
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <DollarSign size={18} />
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">Total Revenue (Paid)</p>
-                        <p className="text-xl font-bold text-slate-800">${stats.totalRevenue.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Total Revenue (Paid)</p>
+                        <p className="text-xl font-black text-slate-800 leading-none">${stats.totalRevenue.toLocaleString()}</p>
                     </div>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
-                        <FileText size={24} />
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl">
+                        <FileText size={18} />
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">Outstanding</p>
-                        <p className="text-xl font-bold text-slate-800">${stats.outstanding.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Outstanding</p>
+                        <p className="text-xl font-black text-slate-800 leading-none">${stats.outstanding.toLocaleString()}</p>
                     </div>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-                        <CreditCard size={24} />
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
+                        <CreditCard size={18} />
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase font-bold">Overdue</p>
-                        <p className="text-xl font-bold text-slate-800">${stats.overdue.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Overdue</p>
+                        <p className="text-xl font-black text-slate-800 leading-none">${stats.overdue.toLocaleString()}</p>
                     </div>
                 </div>
             </div>

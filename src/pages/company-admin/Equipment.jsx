@@ -16,18 +16,18 @@ import logo from '../../assets/images/Logo.png';
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, sub, icon: Icon, color, trend }) => (
-    <div className="bg-white p-6 rounded-[28px] shadow-sm border border-slate-200/60 flex items-center gap-5 hover:shadow-lg transition-all duration-300 group">
-        <div className={`p-4 rounded-2xl ${color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-            <Icon size={26} className="text-white" />
+    <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center gap-4 hover:shadow-md transition-all duration-300 group">
+        <div className={`p-2.5 rounded-lg md:rounded-xl ${color} shadow-sm group-hover:scale-105 transition-transform duration-300`}>
+            <Icon size={18} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">{title}</p>
-            <p className="text-2xl font-black text-slate-900 leading-tight tracking-tighter">{value}</p>
-            {sub && <p className="text-[11px] font-bold text-slate-400 mt-0.5">{sub}</p>}
+            <p className="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">{title}</p>
+            <p className="text-xl md:text-2xl font-black text-slate-900 leading-none tracking-tighter">{value}</p>
+            {sub && <p className="text-[11px] font-bold text-slate-400 mt-0.5 leading-none">{sub}</p>}
         </div>
         {trend && (
-            <div className="flex items-center gap-1 text-xs font-black px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600">
-                <ArrowUpRight size={14} />{trend}
+            <div className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600">
+                <ArrowUpRight size={12} />{trend}
             </div>
         )}
     </div>
@@ -67,9 +67,9 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
     const emoji = icons[item.type?.toLowerCase()] || (isSmallTool ? '🛠️' : '🚜');
 
     return (
-        <div className={`bg-white rounded-[28px] shadow-sm border ${isJobCompleted ? 'border-red-200 bg-red-50/10' : 'border-slate-200/60'} overflow-hidden hover:shadow-xl hover:shadow-slate-100 transition-all duration-300 group`}>
+        <div className={`bg-white rounded-xl md:rounded-2xl shadow-sm border ${isJobCompleted ? 'border-red-200 bg-red-50/10' : 'border-slate-200/60'} overflow-hidden hover:shadow-xl hover:shadow-slate-100 transition-all duration-300 group`}>
             {/* Card Header */}
-            <div className={`relative h-32 flex items-center justify-center overflow-hidden ${!item.imageUrl ? (isSmallTool ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-slate-800 to-slate-900') : ''}`}>
+            <div className={`relative h-28 flex items-center justify-center overflow-hidden ${!item.imageUrl ? (isSmallTool ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-slate-800 to-slate-900') : ''}`}>
                 {item.imageUrl ? (
                     <img
                         src={getServerUrl(item.imageUrl)}
@@ -90,7 +90,7 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
             </div>
 
             {/* Card Body */}
-            <div className="p-5">
+            <div className="p-3.5 md:p-4">
                 <div className="flex justify-between items-start mb-3">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">

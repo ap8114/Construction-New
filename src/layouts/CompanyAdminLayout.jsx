@@ -28,6 +28,10 @@ const CompanyAdminLayout = () => {
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const socketRef = useRef();
 
+  // Determine current project for dynamic header label
+  const currentProjectId = location.pathname.split('/projects/')[1]?.split('/')[0];
+  const activeProject = projectsList.find(p => p._id === currentProjectId);
+
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
@@ -46,10 +50,20 @@ const CompanyAdminLayout = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/projects');
+      setProjectsList(res.data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
       fetchUnreadCount();
+      fetchProjects();
 
       const token = localStorage.getItem('token');
       const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
@@ -69,6 +83,7 @@ const CompanyAdminLayout = () => {
       const interval = setInterval(() => {
         fetchNotifications();
         fetchUnreadCount();
+        fetchProjects();
       }, 60000); // Pulse every minute for safety
 
       return () => {
@@ -151,15 +166,15 @@ const CompanyAdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-50 w-52 h-screen bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
+        <div className="px-4 py-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
           <img
             src={sidebarlogo}
             alt="KAAL Logo"
-            className="h-12 w-auto opacity-100"
+            className="h-14 w-auto opacity-100"
           />
           <div className="text-center">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
@@ -175,7 +190,7 @@ const CompanyAdminLayout = () => {
               <Link
                 key={item.label}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-sm font-semibold
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-semibold
                   ${isActive
                     ? 'bg-[#3f4759] text-white'
                     : 'text-slate-400 hover:bg-[#3f4759] hover:text-white'
@@ -201,21 +216,21 @@ const CompanyAdminLayout = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-white">{user?.fullName || 'John Doe'}</p>
+              <p className="text-sm font-bold truncate text-white">{user?.fullName || ''}</p>
               <p className={`text-[10px] uppercase tracking-wider font-extrabold truncate ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-400' :
                 user?.role === 'WORKER' ? 'text-emerald-400' :
                   user?.role === 'FOREMAN' ? 'text-blue-400' :
                     user?.role === 'PM' ? 'text-violet-400' :
                       'text-slate-400'
                 }`}>
-                {user?.role?.replace('_', ' ') || 'Owner Demo'}
+                {user?.role?.replace(/_/g, ' ') || ''}
               </p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition text-sm font-bold uppercase tracking-tight bg-slate-700/30"
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition text-sm font-bold uppercase tracking-tight bg-slate-700/30"
           >
             <LogOut size={18} /> Log Out
           </button>
@@ -241,14 +256,16 @@ const CompanyAdminLayout = () => {
                 className="flex items-center gap-3 bg-[#f8fafc] border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:border-slate-300 transition-all w-64"
               >
                 <Search size={16} className="text-slate-400" />
-                <span className="flex-1 text-left truncate">Quick Select Job</span>
+                <span className="flex-1 text-left truncate">
+                  {activeProject ? activeProject.name : 'Quick Select Job'}
+                </span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${isJobSelectorOpen ? 'rotate-180' : ''}`} />
               </button>
               {isJobSelectorOpen && (
                 <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-64 overflow-y-auto custom-scrollbar">
                   <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Active Projects</div>
-                  {projectsList.length > 0 ? (
-                    projectsList.map((project) => (
+                  {projectsList.filter(p => ['active', 'planning'].includes(p.status)).length > 0 ? (
+                    projectsList.filter(p => ['active', 'planning'].includes(p.status)).map((project) => (
                       <button
                         key={project._id}
                         onClick={() => {
@@ -257,8 +274,13 @@ const CompanyAdminLayout = () => {
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
                       >
-                        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shrink-0"></div>
-                        <span className="truncate">{project.name}</span>
+                        <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${project.status === 'active' ? 'bg-emerald-500' : 'bg-orange-500'}`}></div>
+                        <span className="truncate flex-1">{project.name}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                          project.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'
+                        }`}>
+                          {project.status === 'active' ? 'Active' : 'Planning'}
+                        </span>
                       </button>
                     ))
                   ) : (
@@ -282,7 +304,7 @@ const CompanyAdminLayout = () => {
             <div className="text-right hidden md:block">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Organization</span>
               <div className="text-sm font-black text-slate-900 leading-none">
-                {user?.company?.name || 'KAAL Construction'}
+                {user?.company?.name || ''}
               </div>
             </div>
 
@@ -414,7 +436,7 @@ const CompanyAdminLayout = () => {
                 </div>
                 <div className="text-left hidden lg:block">
                   <p className="text-sm font-bold text-slate-900 leading-tight">
-                    {user?.fullName || 'Owner Demo'}
+                    {user?.fullName || ''}
                   </p>
                   <p className={`text-[10px] font-bold uppercase tracking-widest ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-500' :
                     user?.role === 'WORKER' ? 'text-emerald-500' :
@@ -422,7 +444,7 @@ const CompanyAdminLayout = () => {
                         user?.role === 'PM' ? 'text-violet-500' :
                           'text-slate-400'
                     }`}>
-                    {user?.role?.replace('_', ' ') || 'Company Owner'}
+                    {user?.role?.replace(/_/g, ' ') || ''}
                   </p>
                 </div>
                 <ChevronDown size={14} className="text-slate-400" />
@@ -449,7 +471,7 @@ const CompanyAdminLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto bg-[#f3f4f7] scroll-smooth p-6">
+        <main className="flex-1 overflow-auto bg-[#f3f4f7] scroll-smooth p-4">
           <Outlet />
         </main>
       </div>

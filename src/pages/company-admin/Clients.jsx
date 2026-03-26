@@ -13,7 +13,7 @@ const Clients = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', address: '', company: '' });
+    const [formData, setFormData] = useState({ fullName: '', email: '', phone: '', address: '', company: '', password: '' });
 
     const fetchClients = async () => {
         try {
@@ -38,15 +38,18 @@ const Clients = () => {
     }, [user, isModalOpen]);
 
     const handleCreate = async () => {
+        if (!formData.password) {
+            alert('Password is required');
+            return;
+        }
         try {
             await api.post('/auth/users', {
                 ...formData,
-                role: 'CLIENT',
-                password: 'Client@123' // Default password
+                role: 'CLIENT'
             });
             fetchClients();
             setIsModalOpen(false);
-            setFormData({ fullName: '', email: '', phone: '', address: '', company: user?.companyId || '' });
+            setFormData({ fullName: '', email: '', phone: '', address: '', company: user?.companyId || '', password: '' });
             alert('Client added successfully!');
         } catch (error) {
             console.error('Error creating client:', error);
@@ -88,17 +91,17 @@ const Clients = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase font-bold">Total Clients</p>
-                    <p className="text-2xl font-bold text-slate-800 mt-1">{stats.total}</p>
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Total Clients</p>
+                    <p className="text-xl font-black text-slate-800 leading-none">{stats.total}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase font-bold">Active</p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.active}</p>
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Active</p>
+                    <p className="text-xl font-black text-emerald-600 leading-none">{stats.active}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase font-bold">Inactive</p>
-                    <p className="text-2xl font-bold text-slate-400 mt-1">{stats.inactive}</p>
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Inactive</p>
+                    <p className="text-xl font-black text-slate-400 leading-none">{stats.inactive}</p>
                 </div>
             </div>
 
@@ -123,42 +126,42 @@ const Clients = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {clients.filter(c => c.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || c.email?.toLowerCase().includes(searchTerm.toLowerCase())).map(client => (
-                        <div key={client._id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition group">
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                                        <Building size={24} />
+                        <div key={client._id} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition group">
+                            <div className="p-3.5 md:p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                        <Building size={18} />
                                     </div>
                                     <button onClick={() => handleDelete(client._id)} className="text-slate-400 hover:text-red-600">
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-800 mb-1">{client.fullName}</h3>
-                                <div className="flex items-center gap-2 text-sm text-slate-500 mb-4">
-                                    <MapPin size={14} /> {client.address || 'No address'}
+                                <h3 className="text-base font-black text-slate-800 tracking-tight leading-none mb-1">{client.fullName}</h3>
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 mb-3">
+                                    <MapPin size={12} className="text-slate-400" /> {client.address || 'No address'}
                                 </div>
 
-                                <div className="space-y-3 pt-4 border-t border-slate-50">
+                                <div className="space-y-2.5 pt-3.5 border-t border-slate-50">
                                     {client.company && (
-                                        <div className="flex items-center gap-3 text-sm">
-                                            <Building size={16} className="text-slate-400" />
-                                            <span className="font-medium text-slate-700">{client.company}</span>
+                                        <div className="flex items-center gap-2.5 text-xs font-bold text-slate-600">
+                                            <Building size={14} className="text-slate-400" />
+                                            <span className="truncate">{client.company}</span>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Mail size={16} className="text-slate-400" />
+                                    <div className="flex items-center gap-2.5 text-xs font-bold">
+                                        <Mail size={14} className="text-slate-400" />
                                         <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline truncate">{client.email}</a>
                                     </div>
                                     {client.phone && (
-                                        <div className="flex items-center gap-3 text-sm">
-                                            <Phone size={16} className="text-slate-400" />
-                                            <span className="text-slate-600">{client.phone}</span>
+                                        <div className="flex items-center gap-2.5 text-xs font-bold text-slate-600">
+                                            <Phone size={14} className="text-slate-400" />
+                                            <span className="truncate">{client.phone}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-between items-center text-sm">
-                                <span className={`font-medium ${client.isActive !== false ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className="bg-slate-50/50 px-3.5 md:px-4 py-2 border-t border-slate-100 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                                <span className={client.isActive !== false ? 'text-emerald-600' : 'text-slate-400'}>
                                     {client.isActive !== false ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
@@ -224,6 +227,16 @@ const Clients = () => {
                             onChange={e => setFormData({ ...formData, address: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
                             placeholder="123 Main St, City, State"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input
+                            type="password"
+                            value={formData.password}
+                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
+                            placeholder="******"
                         />
                     </div>
 

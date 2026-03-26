@@ -16,28 +16,28 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import CancellationModal from '../../components/jobs/CancellationModal';
 
-const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
-    <div className="flex-1">
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2.5 rounded-xl ${color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-          <Icon size={22} className="text-white" />
+const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true, extraValue }) => (
+  <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`p-2 rounded-lg md:rounded-xl ${color} shadow-sm group-hover:scale-105 transition-transform duration-300 shrink-0`}>
+          <Icon size={18} className="text-white" />
         </div>
-        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-tight">{title}</h3>
+        <h3 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest truncate">{title}</h3>
       </div>
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-1.5 min-w-0">
         {loading ? (
-          <div className="h-9 w-16 bg-slate-100 animate-pulse rounded-lg"></div>
+          <div className="h-7 w-12 bg-slate-100 animate-pulse rounded-lg"></div>
         ) : (
-          <span className="text-3xl font-black text-slate-900 leading-none">{value}</span>
+          <span className="text-xl md:text-2xl font-black text-slate-900 leading-none truncate">{value}</span>
         )}
-        {subtext && <span className="text-xs font-bold text-slate-400">{subtext}</span>}
+        {subtext && <span className="text-[9px] md:text-[10px] font-bold text-slate-400 truncate tracking-tight">{subtext}</span>}
       </div>
     </div>
     {title === "Open POs" && showFinancials && (
-      <div className="text-right">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1 leading-none">Total: <CheckCircle size={10} className="inline text-emerald-500" /></p>
-        <p className="text-sm font-black text-slate-900">${(value * 2500).toLocaleString()}</p> {/* Simulated total value if specific field missing, or just value if already calculated */}
+      <div className="text-right pl-3 border-l border-slate-100 ml-3">
+        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">Total Value</p>
+        <p className="text-[11px] md:text-xs font-black text-slate-900 leading-none">${(extraValue || 0).toLocaleString()}</p>
       </div>
     )}
   </div>
@@ -46,12 +46,12 @@ const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFi
 const QuickActionButton = ({ label, icon: Icon, color, bg, onClick }) => (
   <button
     onClick={onClick}
-    className={`${bg} ${color} flex items-center gap-3 px-6 py-4 rounded-xl font-bold text-sm shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all w-full md:w-auto border border-white/20`}
+    className={`${bg} ${color} flex items-center gap-2.5 px-4 md:px-5 py-3 md:py-3.5 rounded-lg md:rounded-xl font-black text-[11px] md:text-xs uppercase tracking-tight shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all w-full md:w-auto border border-white/10`}
   >
-    <div className={`p-2 rounded-lg bg-white/20`}>
-      <Icon size={20} />
+    <div className={`p-1.5 rounded-lg bg-white/20 shrink-0`}>
+      <Icon size={16} />
     </div>
-    {label}
+    <span className="truncate">{label}</span>
   </button>
 );
 
@@ -71,22 +71,179 @@ const AlertItem = ({ count, label, color, onClick }) => (
 );
 
 const DailyLogCard = ({ job, date, foreman, foremanRole, photos }) => (
-  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 hover:border-slate-200 bg-white sm:bg-transparent">
-    <div className="flex items-center gap-4 flex-1 min-w-0">
-      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-slate-200 overflow-hidden flex-shrink-0 shadow-sm border border-slate-200">
-        <img src={`https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=200`} alt="Job" className="w-full h-full object-cover" />
+  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 md:p-3.5 rounded-xl md:rounded-2xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 hover:border-slate-200 bg-white sm:bg-transparent">
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg md:rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 shadow-sm border border-slate-200 flex items-center justify-center">
+        <Briefcase className="text-slate-300" size={20} />
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-black text-slate-900 truncate tracking-tight uppercase">{job}</h4>
-        <p className="text-[11px] font-bold text-slate-500 mt-0.5">{date}</p>
-        <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
-          {foremanRole === 'PM' ? 'Project Manager' : 'Site Foreman'}: {foreman}
-        </p>
+        <h4 className="text-[11px] md:text-xs font-black text-slate-900 truncate tracking-tight uppercase leading-tight">{job}</h4>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+          <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight">{date}</p>
+          <span className="w-0.5 h-0.5 rounded-full bg-slate-300 hidden sm:block"></span>
+          <p className="text-[9px] md:text-[10px] text-slate-500 truncate font-black uppercase tracking-tighter">
+            {foremanRole === 'PM' ? 'PM' : 'Foreman'}: {foreman}
+          </p>
+        </div>
       </div>
     </div>
-    {/* <button className="w-full sm:w-auto px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-black hover:bg-blue-600 hover:text-white transition-all whitespace-nowrap border border-blue-100">
-      View Log
-    </button> */}
+  </div>
+);
+
+const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
+  const [todo, setTodo] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Auto-set assignedTo for workers/subcontractors
+  useEffect(() => {
+    if (['WORKER', 'SUBCONTRACTOR'].includes(currentUser?.role)) {
+      setAssignedTo(currentUser?._id);
+    }
+  }, [currentUser]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!todo.trim()) return;
+    try {
+      setSubmitting(true);
+      
+      const isManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
+      
+      const reqAssignedTo = assignedTo || (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(currentUser?.role) ? currentUser?._id : undefined);
+
+      if (isManagement && !assignedTo) {
+          alert('Please select a worker to assign this task.');
+          setSubmitting(false);
+          return;
+      }
+      
+      await api.post('/todos', {
+        title: todo,
+        assignedTo: reqAssignedTo,
+        priority: 'Medium'
+      });
+      setTodo('');
+      if (!['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(currentUser?.role)) {
+        setAssignedTo('');
+      }
+      onTaskCreated();
+    } catch (err) {
+      console.error('Failed to create todo:', err);
+      alert(err.response?.data?.message || 'Failed to create To-Do');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const showAssignTo = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(currentUser?.role);
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-[2rem] shadow-xl shadow-indigo-900/10 text-white mb-8">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-white/20 rounded-xl">
+          <ClipboardList size={20} />
+        </div>
+        <h3 className="text-lg font-black tracking-tight">Daily Quick To-Do</h3>
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1.5 block px-1">What needs to be done? (Non-Project Task)</label>
+            <input
+              type="text"
+              placeholder="e.g. Pick up supplies, call site manager..."
+              value={todo}
+              onChange={(e) => setTodo(e.target.value)}
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm font-bold placeholder:text-indigo-100 outline-none focus:bg-white/20 transition-all font-sans"
+            />
+          </div>
+          
+          {showAssignTo && (
+            <div className="md:w-64">
+              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1.5 block px-1">Assign To Worker</label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:bg-white/20 transition-all appearance-none"
+              >
+                {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role) ? (
+                  <option value="" className="text-slate-900">Assign to Myself</option>
+                ) : (
+                  <option value="" className="text-slate-900">Select Worker...</option>
+                )}
+                {users
+                  .filter(u => u.role === 'WORKER')
+                  .filter(u => u._id !== currentUser?._id)
+                  .map(u => (
+                    <option key={u._id} value={u._id} className="text-slate-900">
+                      {u.fullName}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            disabled={submitting || !todo.trim()}
+            className="md:self-end bg-white text-indigo-600 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-tight hover:bg-slate-50 transition-all disabled:opacity-50 h-[46px] shadow-lg active:scale-95 whitespace-nowrap"
+          >
+            {submitting ? 'Adding...' : showAssignTo ? 'Assign Item' : 'Add My Todo'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks" }) => (
+  <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
+    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
+      <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-black">{todos.length}</span>
+    </div>
+    <div className="p-2 space-y-1">
+      {todos.length === 0 ? (
+        <div className="py-8 text-center text-slate-400 font-bold text-xs">No pending todos</div>
+      ) : (
+        todos.map(todo => (
+          <div key={todo._id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+            <div className="flex items-center gap-3 min-w-0">
+              <button 
+                onClick={() => onUpdate(todo._id, { status: todo.status === 'completed' ? 'pending' : 'completed' })}
+                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                  todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
+                }`}
+              >
+                <Check size={14} />
+              </button>
+              <div className="min-w-0">
+                <p className={`text-xs font-bold truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                  {todo.title}
+                </p>
+                {todo.assignedBy && todo.assignedBy._id !== todo.assignedTo && typeof todo.assignedBy === 'object' && (
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                    Assigned by: {todo.assignedBy.fullName}
+                  </p>
+                )}
+                {todo.assignedTo && typeof todo.assignedTo === 'object' && todo.assignedTo._id !== currentUser?._id && (
+                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
+                    Assigned to: {todo.assignedTo.fullName}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={() => onDelete(todo._id)}
+              className="p-2 text-slate-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 shrink-0"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))
+      )}
+    </div>
   </div>
 );
 
@@ -120,16 +277,19 @@ const CompanyAdminDashboard = () => {
   });
   const [myRecentActivity, setMyRecentActivity] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
+  const [myTodos, setMyTodos] = useState([]);
+  const [assignedByMeTodos, setAssignedByMeTodos] = useState([]);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
   const [taskToCancel, setTaskToCancel] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [overdueTasksList, setOverdueTasksList] = useState([]);
   const socketRef = useRef();
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [selectedAssignment, setSelectedAssignment] = useState('');
+  const [teamMembers, setTeamMembers] = useState([]);
 
   const fetchDashboardData = async () => {
     try {
@@ -181,10 +341,64 @@ const CompanyAdminDashboard = () => {
       const alertsCount = equipRes.data?.filter(e => e.assignedJob?.status === 'completed').length || 0;
       setMetrics(prev => ({ ...prev, equipmentAlerts: alertsCount }));
 
+      // Fetch team for assignment if Admin/PM
+      if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
+        try {
+          const teamRes = await api.get('/auth/users');
+          setTeamMembers(Array.isArray(teamRes.data) ? teamRes.data : []);
+        } catch (err) {
+          console.error('Error fetching team for dashboard:', err);
+        }
+      }
+
+      // Fetch Todos
+      try {
+        const [todosRes, assignedRes] = await Promise.all([
+          api.get('/todos'),
+          api.get('/todos/assigned-by')
+        ]);
+        setMyTodos(Array.isArray(todosRes.data) ? todosRes.data : []);
+        setAssignedByMeTodos(Array.isArray(assignedRes.data) ? assignedRes.data : []);
+      } catch (err) {
+        console.error('Error fetching todos:', err);
+      }
+
+      // Fetch all overdue tasks for Admin/PM to show in alerts details
+      if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role)) {
+        try {
+          const tasksRes = await api.get('/tasks');
+          const allTasks = Array.isArray(tasksRes.data) ? tasksRes.data : [];
+          const overdue = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed');
+          setOverdueTasksList(overdue);
+        } catch (err) {
+          console.error('Error fetching overdue tasks for dashboard:', err);
+        }
+      }
+
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTodoUpdate = async (id, data) => {
+    try {
+      await api.patch(`/todos/${id}`, data);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Failed to update todo:', err);
+    }
+  };
+
+  const handleTodoDelete = async (id) => {
+    try {
+      if (window.confirm('Delete this todo?')) {
+        await api.delete(`/todos/${id}`);
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error('Failed to delete todo:', err);
     }
   };
 
@@ -205,6 +419,20 @@ const CompanyAdminDashboard = () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
+
+  // Handle anchor scrolling for #overdue
+  useEffect(() => {
+    if (window.location.hash === '#overdue') {
+      const element = document.getElementById('overdue-tasks-section');
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+          element.classList.add('ring-2', 'ring-red-500', 'ring-offset-4', 'rounded-3xl');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-red-500', 'ring-offset-4'), 3000);
+        }, 500);
+      }
+    }
+  }, [window.location.hash, loading]);
 
   useEffect(() => {
     let interval;
@@ -445,14 +673,14 @@ const CompanyAdminDashboard = () => {
       )}
 
       {/* Summary Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
         {(isOwner || isPM) && (
           <>
             <SummaryCard title="Active Jobs" value={metrics.activeJobs} icon={Briefcase} color="bg-orange-400" loading={loading} />
             <SummaryCard title="Crew On Site" value={metrics.crewOnSiteCount} subtext={`of ${metrics.totalCrew}`} icon={Users} color="bg-emerald-400" loading={loading} />
             <SummaryCard title="Hours Today" value={`${metrics.hoursToday}h`} subtext="crew total" icon={Clock} color="bg-blue-500" loading={loading} />
             <SummaryCard title="Equipment Running" value={metrics.equipmentRunning} icon={Wrench} color="bg-indigo-500" loading={loading} />
-            <SummaryCard title="Open POs" value={metrics.openPos} icon={ClipboardList} color="bg-blue-600" loading={loading} showFinancials={isOwner} />
+            <SummaryCard title="Open POs" value={metrics.openPos} icon={ClipboardList} color="bg-blue-600" loading={loading} showFinancials={isOwner} extraValue={metrics.openPosValue} />
             <SummaryCard title="Pending Approvals" value={metrics.pendingApprovals} icon={AlertCircle} color="bg-slate-400" loading={loading} />
           </>
         )}
@@ -526,6 +754,37 @@ const CompanyAdminDashboard = () => {
             </div>
           </div>
 
+          {/* Quick To-Do Section - Independent of Projects */}
+          <QuickTodoWidget 
+            users={teamMembers}
+            currentUser={user}
+            onTaskCreated={fetchDashboardData} 
+          />
+
+           {/* Dynamic To-Do Lists Layout */}
+          <div className={`grid grid-cols-1 ${(!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role)) ? 'md:grid-cols-2' : ''} gap-8 mb-8`}>
+            {/* Show My Daily Todos ONLY for personnel who actually create them for themselves (Workers, Foremen) */}
+            {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && (
+              <TodoList 
+                title="My Daily Todos" 
+                todos={myTodos.filter(t => t.status === 'pending')} 
+                onUpdate={handleTodoUpdate}
+                onDelete={handleTodoDelete}
+                currentUser={user}
+              />
+            )}
+            
+            {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+              <TodoList 
+                title="Assigned By Me" 
+                todos={assignedByMeTodos.filter(t => t.status === 'pending')} 
+                onUpdate={handleTodoUpdate}
+                onDelete={handleTodoDelete}
+                currentUser={user}
+              />
+            )}
+          </div>
+
           {/* Assigned Jobs - For Subcontractors & Foremen */}
           {(isForeman || isSubcontractor) && metrics.myJobs?.length > 0 && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
@@ -592,6 +851,7 @@ const CompanyAdminDashboard = () => {
                           ${task.status === 'completed' ? 'text-slate-400 line-through' :
                             task.status === 'cancelled' ? 'text-red-500' : ''}`}>
                           {task.title}
+                          {task.category === 'TODO' && <span className="ml-2 text-[8px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-100 uppercase">Todo</span>}
                           {task.isGlobal && <span className="ml-2 text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100">Global</span>}
                         </p>
                         {task.status === 'cancelled' && task.cancellationReason && (
@@ -604,8 +864,9 @@ const CompanyAdminDashboard = () => {
                             <Briefcase size={10} /> {task.jobId?.name || task.projectId?.name || 'Project Assignment'}
                           </span>
                           {task.dueDate && (
-                            <span className={`text-[10px] font-bold flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-500' : 'text-slate-400'}`}>
+                            <span className={`text-[10px] font-bold flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-500 bg-red-50 px-1.5 py-0.5 rounded-md' : 'text-slate-400'}`}>
                               <Calendar size={10} /> {new Date(task.dueDate).toLocaleDateString()}
+                              {new Date(task.dueDate) < new Date() && <span className="ml-1 font-black underline uppercase">Overdue</span>}
                             </span>
                           )}
                         </div>
@@ -837,8 +1098,12 @@ const CompanyAdminDashboard = () => {
                   </button> */}
                 </div>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-slate-200 overflow-hidden border border-slate-300">
-                    <img src={topProject?.image || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=200"} className="w-full h-full object-cover" />
+                  <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-200 flex items-center justify-center">
+                    {topProject?.image ? (
+                        <img src={topProject.image} className="w-full h-full object-cover" />
+                    ) : (
+                        <TrendingUp className="text-blue-500" size={32} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-black text-slate-900 tracking-tight truncate">{topProject?.name || "No Active Project"}</h4>
@@ -866,7 +1131,7 @@ const CompanyAdminDashboard = () => {
                   <h3 className="text-lg font-black text-slate-800 tracking-tight">7-day Hours Trend</h3>
                 </div>
                 <div className="flex items-center gap-2 mb-6">
-                  <span className="text-xs font-bold text-slate-400">112h</span>
+                  <span className="text-xs font-bold text-slate-400">{trendData.reduce((acc, curr) => acc + (curr.hours || 0), 0)}h total</span>
                   <div className="w-full h-px bg-slate-100"></div>
                 </div>
                 <div className="h-56 w-full">
@@ -889,16 +1154,42 @@ const CompanyAdminDashboard = () => {
         <div className="space-y-8">
           {/* Attention & Alerts */}
           {!isWorker && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+            <div id="overdue-tasks-section" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 transition-all duration-500">
               <h3 className="text-lg font-black text-slate-800 mb-6 tracking-tight">Attention & Alerts</h3>
               <div className="space-y-3">
                 {metrics.overdueTasks > 0 && (
-                  <AlertItem
-                    label="Overdue Tasks"
-                    count={metrics.overdueTasks}
-                    color="bg-red-500/90 text-white"
-                    onClick={() => navigate('/company-admin/tasks')}
-                  />
+                  <div className="space-y-2">
+                    <AlertItem
+                      label="Overdue Tasks"
+                      count={metrics.overdueTasks}
+                      color="bg-red-500/90 text-white"
+                      onClick={() => navigate('/company-admin/tasks')}
+                    />
+                    {overdueTasksList.length > 0 && (
+                      <div className="bg-red-50/50 rounded-2xl p-3 border border-red-100 flex flex-col gap-2">
+                        <p className="text-[9px] font-black text-red-600 uppercase tracking-widest px-1">Overdue Details:</p>
+                        {overdueTasksList.slice(0, 5).map(task => (
+                          <div key={task._id} className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-red-100/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/company-admin/tasks')}>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-slate-800 truncate">{task.title}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{task.projectId?.name || 'Project'}</p>
+                            </div>
+                            <span className="text-[9px] font-black text-red-600 shrink-0 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 whitespace-nowrap">
+                              DUE: {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                        ))}
+                        {overdueTasksList.length > 5 && (
+                          <button 
+                            onClick={() => navigate('/company-admin/tasks')}
+                            className="text-[10px] font-black text-red-600 hover:text-red-700 uppercase tracking-widest pt-1 text-center"
+                          >
+                            + {overdueTasksList.length - 5} more in Tasks
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {metrics.equipmentAlerts > 0 && (
                   <AlertItem

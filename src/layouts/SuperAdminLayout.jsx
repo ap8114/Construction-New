@@ -70,15 +70,15 @@ const SuperAdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-64 bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-50 w-52 h-screen bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
+        <div className="px-4 py-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
           <img
             src={sidebarlogo}
             alt="KAAL Logo"
-            className="h-12 w-auto opacity-100"
+            className="h-14 w-auto opacity-100"
           />
           <div className="text-center">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Super Admin</p>
@@ -92,7 +92,7 @@ const SuperAdminLayout = () => {
               <Link
                 key={item.label}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-sm font-semibold
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-semibold
                   ${isActive
                     ? 'bg-[#3f4759] text-white'
                     : 'text-slate-400 hover:bg-[#3f4759] hover:text-white'
@@ -128,15 +128,15 @@ const SuperAdminLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-30 shrink-0">
-          <div className="flex items-center gap-6 flex-1">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-4 z-30 shrink-0">
+          <div className="flex items-center gap-4 flex-1">
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden text-slate-600 hover:text-slate-900"
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
-            <h2 className="text-lg font-black text-slate-800 tracking-tight">{getHeaderTitle()}</h2>
+            <h2 className="text-base font-black text-slate-800 tracking-tight">{getHeaderTitle()}</h2>
           </div>
 
           <div className="flex items-center gap-4 relative" ref={profileMenuRef}>
@@ -184,7 +184,7 @@ const SuperAdminLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-8 bg-[#f3f4f7] scroll-smooth relative custom-scrollbar">
+        <main className="flex-1 overflow-auto p-4 bg-[#f3f4f7] scroll-smooth relative custom-scrollbar">
           <Outlet />
         </main>
       </div>

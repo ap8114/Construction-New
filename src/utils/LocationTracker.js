@@ -5,14 +5,18 @@ class LocationTracker {
         this.socket = null;
         this.watchId = null;
         this.user = null;
-        this.socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        this.socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-production-b18f.up.railway.app';
     }
 
     init(user) {
         if (!user || this.socket) return;
         this.user = user;
 
-        this.socket = io(this.socketUrl);
+        const token = localStorage.getItem('token');
+        this.socket = io(this.socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
 
         this.socket.on('connect', () => {
             console.log('Location tracker connected to socket');

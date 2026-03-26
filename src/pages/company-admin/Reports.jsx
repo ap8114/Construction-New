@@ -138,28 +138,28 @@ const Reports = () => {
             </div>
 
             {/* Core Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Total Revenue', value: financials.totalRevenue, sub: 'Confirmed Earnings', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50', unit: '$' },
-                    { label: 'Active Sites', value: projects.activeSites, sub: `${projects.total} Total Projects`, icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Active Sites', value: projects.activeSites, sub: `${projects.total} Projects`, icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
                     { label: 'Resource Time', value: labor.totalHours, sub: 'Total Man-Hours', icon: Clock, color: 'text-violet-500', bg: 'bg-violet-50', unitAfter: 'h' },
-                    { label: 'Safety Index', value: safety.daysIncidentFree, sub: `${safety.totalIncidents} Incidents Logged`, icon: Shield, color: 'text-amber-500', bg: 'bg-amber-50', unitAfter: 'd' },
+                    { label: 'Safety Index', value: safety.daysIncidentFree, sub: `${safety.totalIncidents} Incidents`, icon: Shield, color: 'text-amber-500', bg: 'bg-amber-50', unitAfter: 'd' },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white p-7 rounded-[32px] shadow-sm border border-slate-200/50 relative overflow-hidden group hover:shadow-xl hover:shadow-slate-100 transition-all duration-500">
-                        <div className={`absolute top-0 right-0 w-24 h-24 ${stat.bg} -mr-8 -mt-8 rounded-full blur-2xl opacity-40 group-hover:scale-150 transition-transform duration-700`}></div>
+                    <div key={i} className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/50 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+                        <div className={`absolute top-0 right-0 w-16 h-16 ${stat.bg} -mr-4 -mt-4 rounded-full blur-xl opacity-20 group-hover:scale-150 transition-transform duration-700`}></div>
                         <div className="relative z-10">
-                            <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center mb-5 shadow-inner`}>
-                                <stat.icon size={22} />
+                            <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-3 shadow-inner`}>
+                                <stat.icon size={18} />
                             </div>
-                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-[0.1em] mb-1">{stat.label}</p>
+                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">{stat.label}</p>
                             <div className="flex items-baseline gap-1">
-                                {stat.unit && <span className="text-lg font-black text-slate-400 tracking-tighter">{stat.unit}</span>}
-                                <h3 className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{stat.value.toLocaleString()}</h3>
-                                {stat.unitAfter && <span className="text-sm font-black text-slate-400 ml-1">{stat.unitAfter}</span>}
+                                {stat.unit && <span className="text-sm font-black text-slate-400 tracking-tighter">{stat.unit}</span>}
+                                <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tighter leading-none">{stat.value.toLocaleString()}</h3>
+                                {stat.unitAfter && <span className="text-xs font-black text-slate-400 ml-0.5">{stat.unitAfter}</span>}
                             </div>
-                            <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
-                                <p className="text-[11px] font-bold text-slate-400 tracking-tight">{stat.sub}</p>
-                                <ArrowUpRight size={14} className="text-slate-300" />
+                            <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+                                <p className="text-[10px] font-bold text-slate-400 tracking-tight">{stat.sub}</p>
+                                <ArrowUpRight size={12} className="text-slate-300" />
                             </div>
                         </div>
                     </div>
@@ -167,54 +167,54 @@ const Reports = () => {
             </div>
 
             {/* Sub Metrics Area */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 bg-white border border-slate-200/50 rounded-3xl flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
-                        <CheckSquare size={26} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-white border border-slate-200/50 rounded-2xl flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+                        <CheckSquare size={18} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Job Completion</p>
-                        <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-slate-900">{jobCompletionRate.toFixed(1)}%</span>
-                            <div className="flex-1 w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Job Completion</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg font-black text-slate-900 leading-none">{jobCompletionRate.toFixed(1)}%</span>
+                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${jobCompletionRate}%` }}></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="p-6 bg-white border border-slate-200/50 rounded-3xl flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                        <Wrench size={26} />
+                <div className="p-4 bg-white border border-slate-200/50 rounded-2xl flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
+                        <Wrench size={18} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Equipment Health</p>
-                        <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-slate-900">{equipmentHealth.toFixed(1)}%</span>
-                            <div className="flex-1 w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Equipment Health</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg font-black text-slate-900 leading-none">{equipmentHealth.toFixed(1)}%</span>
+                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-blue-500 rounded-full" style={{ width: `${equipmentHealth}%` }}></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="p-6 bg-white border border-slate-200/50 rounded-3xl flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
-                        <DollarSign size={26} />
+                <div className="p-4 bg-white border border-slate-200/50 rounded-2xl flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
+                        <DollarSign size={18} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Budget Allocation</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Budget Allocation</p>
                         <div className="flex items-center gap-2">
-                            <span className="text-2xl font-black text-slate-900">${(financials.projectBudget > 999999 ? (financials.projectBudget / 1000000).toFixed(1) + 'M' : (financials.projectBudget / 1000).toFixed(0) + 'K')}</span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg">Total</span>
+                            <span className="text-lg font-black text-slate-900 leading-none">${(financials.projectBudget > 999999 ? (financials.projectBudget / 1000000).toFixed(1) + 'M' : (financials.projectBudget / 1000).toFixed(0) + 'K')}</span>
+                            <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md uppercase tracking-widest">Total</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Detailed Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* 1. Financial Velocity Area Chart */}
-                <div className="lg:col-span-2 bg-white p-8 rounded-[40px] shadow-sm border border-slate-200/50">
+                <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-200/50">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -255,7 +255,7 @@ const Reports = () => {
                 </div>
 
                 {/* 2. Project Portfolio Pie */}
-                <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200/50 flex flex-col">
+                <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-slate-200/50 flex flex-col">
                     <div className="mb-0">
                         <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
                             <PieIcon size={20} className="text-indigo-600" /> Project Status Feed
@@ -301,7 +301,7 @@ const Reports = () => {
             </div>
 
             {/* Productivity WaveSection */}
-            <div className="bg-slate-900 p-10 rounded-[48px] shadow-2xl shadow-slate-200/50">
+            <div className="bg-slate-900 p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl shadow-slate-200/50">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                     <div>
                         <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
@@ -362,7 +362,7 @@ const Reports = () => {
             </div>
 
             {/* Operational Summary */}
-            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-200/60">
+            <div className="bg-slate-50 p-4 md:p-6 rounded-[32px] border border-slate-200/60">
                 <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4">Operational Summary</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 bg-white rounded-2xl border border-slate-200/40">

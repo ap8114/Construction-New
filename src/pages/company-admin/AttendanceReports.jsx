@@ -163,25 +163,25 @@ const AttendanceReports = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-[32px] border border-slate-200/60 shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                        <Clock size={80} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 md:p-5 opacity-5 group-hover:scale-110 transition-transform">
+                        <Clock size={64} />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Hours Logged</p>
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{totalHours.toFixed(1)}h</h3>
-                    <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-emerald-600">
-                        <TrendingUp size={14} /> System Total
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Hours Logged</p>
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter leading-none">{totalHours.toFixed(1)}h</h3>
+                    <div className="mt-3 flex items-center gap-1.5 text-[9px] font-bold text-emerald-600 uppercase tracking-tight">
+                        <TrendingUp size={11} /> System Total
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-[32px] border border-slate-200/60 shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                        <Users size={80} />
+                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 md:p-5 opacity-5 group-hover:scale-110 transition-transform">
+                        <Users size={64} />
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Resources</p>
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{totalCount}</h3>
-                    <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-blue-600">
-                        <Activity size={14} /> Active Entries
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Resources</p>
+                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter leading-none">{totalCount}</h3>
+                    <div className="mt-3 flex items-center gap-1.5 text-[9px] font-bold text-blue-600 uppercase tracking-tight">
+                        <Activity size={11} /> Active Entries
                     </div>
                 </div>
             </div>

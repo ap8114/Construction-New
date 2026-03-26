@@ -216,12 +216,12 @@ const InsightCard = ({ title, value, subtext, icon: Icon, color }) => {
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
   };
   return (
-    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200/60 flex items-center gap-5 hover:shadow-xl hover:shadow-slate-100 transition-all duration-300">
-      <div className={`p-4 rounded-2xl border ${colors[color]}`}><Icon size={28} /></div>
+    <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-200/60 flex items-center gap-3 md:gap-5 hover:shadow-xl hover:shadow-slate-100 transition-all duration-300">
+      <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl border ${colors[color]}`}><Icon size={20} md:size={28} /></div>
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{title}</p>
-        <p className="text-2xl font-black text-slate-900 leading-tight tracking-tighter">{value}</p>
-        <p className="text-[10px] font-bold text-slate-500 italic mt-0.5">{subtext}</p>
+        <p className="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest">{title}</p>
+        <p className="text-lg md:text-2xl font-black text-slate-900 leading-tight tracking-tighter">{value}</p>
+        <p className="text-[9px] md:text-[10px] font-bold text-slate-500 italic mt-0.5">{subtext}</p>
       </div>
     </div>
   );
@@ -376,37 +376,37 @@ const Projects = () => {
           'bg-slate-500/90   text-white border-slate-400';
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+    <div className="space-y-4 md:space-y-6 animate-fade-in max-w-[1600px] mx-auto pb-8">
 
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-6">
+        <div className="w-full md:w-auto">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">
             {isJobView ? 'My Job Assignments' : 'Projects'}
           </h1>
-          <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
+          <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
             <Globe size={14} className="text-blue-600" />
             {isJobView ? 'View your assigned jobs and their tasks' : 'Click a project card to manage jobs'}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           {isWorker ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-1 flex shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-xl p-1 flex shadow-sm w-full md:w-auto">
               <button
                 onClick={() => setWorkerTab('planning')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'planning' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'planning' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 Pending
               </button>
               <button
                 onClick={() => setWorkerTab('active')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 In Progress
               </button>
               <button
                 onClick={() => setWorkerTab('completed')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'completed' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'completed' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 Complete
               </button>
@@ -416,17 +416,17 @@ const Projects = () => {
               <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
                 <button onClick={() => setView('grid')}
                   className={`p-2 rounded-lg transition-all ${view === 'grid' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>
-                  <LayoutGrid size={18} />
+                  <LayoutGrid size={16} md:size={18} />
                 </button>
                 <button onClick={() => setView('table')}
                   className={`p-2 rounded-lg transition-all ${view === 'table' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>
-                  <List size={18} />
+                  <List size={16} md:size={18} />
                 </button>
               </div>
               {user?.role === 'COMPANY_OWNER' && (
                 <button onClick={() => { setFormData(EMPTY); setIsCreateOpen(true); }}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight">
-                  <Plus size={18} /> Create Project
+                  className="bg-blue-600 text-white px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-[11px] md:text-sm uppercase tracking-tight ml-auto md:ml-0">
+                  <Plus size={16} /> <span className="hidden sm:inline">Create Project</span><span className="sm:hidden">Create</span>
                 </button>
               )}
             </>
@@ -446,20 +446,20 @@ const Projects = () => {
       )}
 
       {/* ── Toolbar ── */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center shrink-0">
+      <div className="bg-white p-3 md:p-4 rounded-[24px] md:rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-3 md:gap-4 items-center shrink-0">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
-            placeholder={isWorker ? "Search objectives or site names..." : "Search projects or locations..."}
+            placeholder={isWorker ? "Search objectives..." : "Search projects..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400"
+            className="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400 transition-all"
           />
         </div>
         {!isWorker && (
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="px-6 py-3 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-slate-600 outline-none hover:bg-slate-50 transition-all appearance-none">
+            className="w-full md:w-auto px-4 md:px-6 py-2.5 bg-white border border-slate-200 rounded-xl md:rounded-2xl font-bold text-sm text-slate-600 outline-none hover:bg-slate-50 transition-all appearance-none cursor-pointer">
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
             <option value="planning">Pre-Con</option>
@@ -545,38 +545,38 @@ const Projects = () => {
                   : `/company-admin/projects/${project._id}`;
                 navigate(path);
               }}
-              className="group bg-white rounded-[40px] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500 overflow-hidden flex flex-col cursor-pointer">
+              className="group bg-white rounded-[28px] md:rounded-[36px] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden flex flex-col cursor-pointer">
 
               {/* Image */}
-              <div className="relative h-56 overflow-hidden">
+              <div className="relative h-44 md:h-56 overflow-hidden">
                 <img
                   src={project.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800'}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   alt={project.name}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
-                <div className="absolute top-5 left-5">
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-lg backdrop-blur-md ${statusColor(project.status)}`}>
+                <div className="absolute top-4 left-4">
+                  <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-lg backdrop-blur-md ${statusColor(project.status)}`}>
                     {statusLabel(project.status)}
                   </span>
                 </div>
                 {/* "View Jobs" hint on hover */}
-                <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 hidden md:block">
                   <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
                     <ArrowRight size={12} className="text-white" />
                     <span className="text-white text-[10px] font-black uppercase tracking-widest">View Jobs</span>
                   </div>
                 </div>
-                <div className="absolute bottom-5 left-5 right-5">
-                  <div className="flex items-center gap-2 text-white/80 mb-1">
-                    <MapPin size={13} className="text-blue-400" />
-                    <span className="text-[10px] font-black uppercase tracking-widest truncate">
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-2 text-white/80 mb-0.5">
+                    <MapPin size={11} className="text-blue-400" />
+                    <span className="text-[9px] font-black uppercase tracking-widest truncate">
                       {getLocationStr(project.location) || 'Location TBD'}
                     </span>
                   </div>
-                  <h3 className="text-xl font-black text-white tracking-tight drop-shadow-md">{project.name}</h3>
-                  <div className="flex items-center gap-2 text-white/60 mt-1">
-                    <Users size={12} className="text-blue-400" />
+                  <h3 className="text-lg md:text-xl font-black text-white tracking-tight drop-shadow-md truncate">{project.name}</h3>
+                  <div className="flex items-center gap-2 text-white/60 mt-0.5">
+                    <Users size={11} className="text-blue-400" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate">
                       PM: {project.pmId?.fullName || (projectManagers?.find(u => u._id === (project.pmId?._id || project.pmId))?.fullName || 'Unassigned')}
                     </span>
@@ -585,107 +585,107 @@ const Projects = () => {
               </div>
 
               {/* Body */}
-              <div className="p-6 space-y-4 flex-1">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 group/progress relative">
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</p>
-                      {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
-                        <div className="flex items-center gap-1">
-                          <select
-                            value={project.progress || 0}
-                            onClick={e => e.stopPropagation()}
-                            onChange={(e) => handleQuickProgressUpdate(project._id, parseInt(e.target.value), e)}
-                            className="bg-white border border-slate-200 rounded text-[9px] font-black text-slate-600 px-1 py-0.5 outline-none hover:border-blue-500 transition-all cursor-pointer appearance-none"
-                          >
-                            {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
-                              <option key={val} value={val}>{val}%</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+              <div className="p-4 md:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                {/* Progress Section - Integrated and Slim */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5 text-[8.5px] md:text-[9.5px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                      <TrendingUp size={11} className="text-blue-500" />
+                      <span>Progress</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 flex-1 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full transition-all duration-700"
-                          style={{ width: `${project.progress || 0}%` }} />
-                      </div>
-                      <span className="text-sm font-black text-slate-900 w-10 text-right">{project.progress || 0}%</span>
+                      {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                        <select
+                          value={project.progress || 0}
+                          onClick={e => e.stopPropagation()}
+                          onChange={(e) => handleQuickProgressUpdate(project._id, parseInt(e.target.value), e)}
+                          className="bg-slate-50 border border-slate-200 rounded text-[8.5px] font-bold text-blue-600 px-1 py-0.5 outline-none hover:border-blue-500 transition-all cursor-pointer appearance-none"
+                        >
+                          {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+                            <option key={val} value={val}>{val}%</option>
+                          ))}
+                        </select>
+                      )}
+                      <span className="text-[10px] md:text-xs font-black text-slate-900">{project.progress || 0}%</span>
                     </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/30">
+                    <div className="h-full bg-blue-600 rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(37,99,235,0.3)]"
+                      style={{ width: `${project.progress || 0}%` }} />
                   </div>
                 </div>
 
-                {/* Client + Budget */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-slate-400">
-                      <Users size={11} />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Client</p>
+                {/* Client + Budget - Compact Row */}
+                <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-100/50">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-slate-50 rounded-lg shrink-0"><Users size={11} className="text-slate-400" /></div>
+                    <div className="min-w-0">
+                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1">Client</p>
+                      <p className="text-[10px] md:text-[11px] font-bold text-slate-700 truncate leading-none">
+                        {project.clientId?.fullName || '—'}
+                      </p>
                     </div>
-                    <p className="text-xs font-bold text-slate-800 truncate">
-                      {project.clientId?.fullName || <span className="text-slate-300 italic">—</span>}
-                    </p>
                   </div>
                   {showBudget && (
-                    <div className="space-y-1 text-right">
-                      <div className="flex items-center gap-1.5 text-slate-400 justify-end">
-                        <DollarSign size={11} />
-                        <p className="text-[10px] font-black uppercase tracking-widest">Budget</p>
+                    <div className="flex items-center gap-2 justify-end text-right">
+                      <div className="min-w-0">
+                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1">Budget</p>
+                        <p className="text-[10px] md:text-[11px] font-black text-slate-900 leading-none">${(Number(project.budget) || 0).toLocaleString()}</p>
                       </div>
-                      <p className="text-xs font-black text-slate-900">${(Number(project.budget) || 0).toLocaleString()}</p>
+                      <div className="p-1.5 bg-emerald-50 rounded-lg shrink-0"><DollarSign size={11} className="text-emerald-500" /></div>
                     </div>
                   )}
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex flex-wrap items-center gap-2 pt-1" onClick={e => e.stopPropagation()}>
+                {/* Action buttons - Refined and Slim */}
+                <div className="flex items-center gap-1.5 pt-1" onClick={e => e.stopPropagation()}>
                   {user?.role !== 'CLIENT' && (
                     <button onClick={(e) => openEdit(project, e)}
-                      className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-200/50 flex items-center justify-center"
+                      className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-lg md:rounded-xl transition-all border border-slate-200/50 flex items-center justify-center shrink-0 shadow-sm"
                       title="Edit Project"
                     >
-                      <Edit size={14} />
+                      <Edit size={13} />
                     </button>
                   )}
 
                   <button
                     onClick={() => navigate(`${user?.role === 'CLIENT' ? '/client-portal' : '/company-admin'}/drawings?projectId=${project._id}`)}
-                    className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all border border-slate-200 flex items-center justify-center gap-2"
+                    className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[8.5px] md:text-[9.5px] uppercase tracking-wide py-1.5 md:py-2 rounded-lg md:rounded-xl transition-all border border-slate-200 flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm"
                   >
-                    <FileText size={14} className="text-blue-600" /> Drawings
+                    <FileText size={13} className="text-blue-600" /> <span className="hidden sm:inline">Drawings</span><span className="sm:hidden">Docs</span>
                   </button>
 
                   {user?.role === 'CLIENT' && (
                     <button
                       onClick={() => navigate(`/client-portal/progress/${project._id}`)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[8.5px] md:text-[9.5px] uppercase tracking-wide py-1.5 md:py-2 rounded-lg md:rounded-xl transition-all shadow-[0_4px_12px_rgba(37,99,235,0.2)] flex items-center justify-center gap-1.5 whitespace-nowrap"
                     >
-                      <TrendingUp size={14} /> Work Progress
+                      <TrendingUp size={13} /> <span className="hidden sm:inline">Progress</span><span className="sm:hidden">View</span>
                     </button>
                   )}
 
                   {user?.role !== 'CLIENT' && (
                     <button
                       onClick={() => navigate(`/company-admin/projects/${project._id}`)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[8.5px] md:text-[9.5px] uppercase tracking-wide py-1.5 md:py-2 rounded-lg md:rounded-xl transition-all shadow-[0_4px_12px_rgba(37,99,235,0.2)] flex items-center justify-center gap-1.5 whitespace-nowrap"
                     >
-                      <Briefcase size={14} /> View Jobs
+                      <Briefcase size={13} /> <span className="hidden sm:inline">View Jobs</span><span className="sm:hidden">Jobs</span>
                     </button>
                   )}
 
                   {user?.role !== 'CLIENT' && (
                     <button onClick={(e) => handleDelete(project._id, e)}
-                      className="p-3 flex items-center justify-center bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 rounded-2xl transition-all border border-red-100"
+                      className="p-2 md:p-2.5 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-300 hover:text-red-500 rounded-lg md:rounded-xl transition-all border border-red-100/50 shrink-0 shadow-sm"
                       title="Delete Project"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   )}
                 </div>
               </div>
-            </div >
+            </div>
           ))}
-        </div >
+        </div>
       ) : (
         /* ── Table View ── */
         <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
@@ -805,7 +805,7 @@ const Projects = () => {
             submitLabel="Save Changes" clients={clients} projectManagers={projectManagers} />
         )}
       </Modal>
-    </div >
+    </div>
   );
 };
 

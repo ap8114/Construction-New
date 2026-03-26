@@ -83,15 +83,15 @@ const ProjectTeamLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-30 w-52 h-screen bg-slate-900 text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="p-8 flex flex-col items-center justify-center border-b border-slate-700/50 space-y-3 bg-slate-800/20">
+        <div className="px-4 py-8 flex flex-col items-center justify-center border-b border-slate-700/50 space-y-3 bg-slate-800/20">
           <img
             src={sidebarlogo}
             alt="KAAL Logo"
-            className="h-12 w-auto opacity-100"
+            className="h-14 w-auto opacity-100"
           />
           <div className="text-center">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
@@ -110,7 +110,7 @@ const ProjectTeamLayout = () => {
               <Link
                 key={item.label}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm font-medium
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -135,15 +135,15 @@ const ProjectTeamLayout = () => {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 shrink-0">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-4 shadow-sm z-10 shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden text-slate-600 hover:text-slate-900"
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
-            <h2 className="text-lg font-semibold text-slate-800">{getHeaderTitle()}</h2>
+            <h2 className="text-base font-semibold text-slate-800">{getHeaderTitle()}</h2>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative" ref={profileMenuRef}>
@@ -198,7 +198,7 @@ const ProjectTeamLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6 bg-slate-50 scroll-smooth">
+        <main className="flex-1 overflow-auto p-4 bg-slate-50 scroll-smooth">
           <Outlet />
         </main>
 

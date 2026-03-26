@@ -314,14 +314,14 @@ const POStatCard = ({ title, value, subtext, icon: Icon, color }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200/60 flex items-center gap-6 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 cursor-default group">
-            <div className={`p-5 rounded-2xl border transition-transform duration-500 group-hover:scale-110 ${colors[color]}`}>
-                <Icon size={24} strokeWidth={2.5} />
+        <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center gap-4 hover:shadow-md transition-all duration-300 cursor-default group">
+            <div className={`p-2 rounded-lg md:rounded-xl border transition-transform duration-300 group-hover:scale-105 ${colors[color]}`}>
+                <Icon size={18} strokeWidth={2.5} />
             </div>
-            <div className="space-y-1">
-                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{title}</p>
-                <p className="text-2xl font-black text-slate-900 leading-none tracking-tighter">{value}</p>
-                <p className="text-[10px] font-black text-slate-400/60 uppercase tracking-tight">{subtext}</p>
+            <div className="space-y-0.5">
+                <p className="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">{title}</p>
+                <p className="text-xl md:text-2xl font-black text-slate-900 leading-none tracking-tighter">{value}</p>
+                <p className="text-[9px] font-black text-slate-400/60 uppercase tracking-tight leading-none truncate">{subtext}</p>
             </div>
         </div>
     );

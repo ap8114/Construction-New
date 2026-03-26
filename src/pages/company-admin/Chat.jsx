@@ -56,7 +56,7 @@ const Chat = () => {
                         ...r,
                         lastMessage: {
                             text: payload.message,
-                            sender: payload.sender.fullName,
+                            sender: payload.sender?.fullName || 'Unknown',
                             time: payload.createdAt
                         },
                         // Only increment unread if not actively viewing this room
@@ -74,11 +74,11 @@ const Chat = () => {
 
                     return [...prev, {
                         id: payload._id,
-                        sender: payload.sender.fullName,
-                        role: payload.sender.role,
+                        sender: payload.sender?.fullName || 'Unknown',
+                        role: payload.sender?.role || 'System',
                         text: payload.message,
                         time: new Date(payload.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        isMe: payload.sender._id === user?._id || payload.sender === user?._id
+                        isMe: payload.sender?._id === user?._id || payload.sender === user?._id
                     }];
                 });
 
@@ -133,20 +133,35 @@ const Chat = () => {
             const res = await api.post('/chat/direct', { targetUserId });
             const room = res.data;
 
-            // Format room for display if not already in rooms list
-            if (!rooms.find(r => r.id === room.id)) {
-                setRooms(prev => [room, ...prev]);
-            }
+            // Format room for display
+            const formattedRoom = {
+                ...room,
+                id: room.id || room._id
+            };
 
-            setActiveRoom(room);
+            // Update rooms list if not already present
+            setRooms(prev => {
+                const exists = prev.find(r => r.id === formattedRoom.id);
+                if (exists) return prev;
+                return [formattedRoom, ...prev];
+            });
+
+            setActiveRoom(formattedRoom);
             setShowDirectory(false);
 
-            // Auto-switch tab based on target user's role
-            if (room.otherRole === 'CLIENT') setActiveTab('CLIENT');
-            else if (room.otherRole === 'SUBCONTRACTOR') setActiveTab('SUB');
+            // Auto-switch tab based on target user's role to keep focus
+            const role = formattedRoom.otherRole?.toUpperCase();
+            if (role === 'CLIENT') setActiveTab('CLIENT');
+            else if (role === 'SUBCONTRACTOR') setActiveTab('SUB');
             else setActiveTab('INTERNAL');
+
+            console.log('START_DIRECT_CHAT: Success for', formattedRoom.name);
         } catch (error) {
-            console.error('Error starting direct chat:', error);
+            console.error('START_DIRECT_CHAT: Error:', error);
+            const errMsg = error.response?.data?.message || 'Permission Denied: You cannot initiate a channel with this user role.';
+            alert(errMsg);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -178,6 +193,7 @@ const Chat = () => {
 
     useEffect(() => {
         fetchRooms();
+        fetchDirectoryUsers();
     }, [user?._id]);
 
     // Fetch Messages for Active Room
@@ -185,6 +201,7 @@ const Chat = () => {
         if (!activeRoom?.id) return;
 
         const fetchMessages = async () => {
+            setMessages([]); // Clear previous messages immediately
             try {
                 const res = await api.get(`/chat/${activeRoom.id}`);
                 const formattedMessages = res.data.map(msg => ({
@@ -265,10 +282,8 @@ const Chat = () => {
     const filterRoomsByTab = (allRooms, tab) => {
         return allRooms.filter(room => {
             if (tab === 'INTERNAL') {
-                // Return internal group rooms, project rooms, or direct messages with internal staff
                 if (room.roomType === 'INTERNAL' || room.roomType === 'PROJECT_GROUP') return true;
                 if (room.roomType === 'DIRECT') {
-                    // Internal staff roles
                     const internalRoles = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'];
                     return internalRoles.includes(room.otherRole);
                 }
@@ -287,13 +302,54 @@ const Chat = () => {
         });
     };
 
-    const displayRooms = (['COMPANY_OWNER', 'SUPER_ADMIN', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role)
-        ? filterRoomsByTab(rooms, activeTab)
-        : rooms
-    ).filter(room =>
-        room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (room.projectName && room.projectName.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+
+    const getItemsForDisplay = (tab = activeTab) => {
+        const internalRoles = ['SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'];
+
+        // 1. Get filtered rooms
+        const tabRooms = filterRoomsByTab(rooms, tab);
+
+        // 2. Get directory users for THIS tab who don't have a room yet
+        const tabUsers = directoryUsers.filter(u => {
+            // Role matching for tab
+            if (tab === 'INTERNAL' && !internalRoles.includes(u.role)) return false;
+            if (tab === 'CLIENT' && u.role !== 'CLIENT') return false;
+            if (tab === 'SUB' && u.role !== 'SUBCONTRACTOR') return false;
+
+            // Visibility restrictions (matching backend)
+            const admins = ['COMPANY_OWNER', 'SUPER_ADMIN'];
+            if (['CLIENT', 'SUBCONTRACTOR'].includes(user?.role) && !admins.includes(u.role)) return false;
+            if (['FOREMAN', 'WORKER'].includes(user?.role) && !internalRoles.includes(u.role)) return false;
+
+            // Deduplicate: Check if a direct room already exists with this user
+            const hasRoom = rooms.some(r =>
+                r.roomType === 'DIRECT' &&
+                (r.otherUserId === u._id || (r.name && r.name.toLowerCase() === u.fullName.toLowerCase()))
+            );
+            return !hasRoom;
+        });
+
+        // 3. Convert users to "virtual rooms" for uniform rendering
+        const userItems = tabUsers.map(u => ({
+            id: `temp_${u._id}`,
+            name: u.fullName,
+            roomType: 'DIRECT',
+            isUser: true,
+            targetUserId: u._id,
+            avatar: u.avatar,
+            role: u.role,
+            isGroup: false,
+            unreadCount: 0
+        }));
+
+        // 4. Combine and Filter by Search Term
+        return [...tabRooms, ...userItems].filter(item =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.projectName && item.projectName.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    };
+
+    const displayItems = getItemsForDisplay(activeTab);
 
     if (loading) return <div className="p-10 text-center">Loading encrypted frequencies...</div>;
 
@@ -303,10 +359,10 @@ const Chat = () => {
             <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/50">
                 <div className="p-4 border-b border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="font-black text-slate-800 uppercase tracking-tighter text-lg flex items-center gap-2">
+                        <h2 className="font-black text-slate-800 uppercase tracking-tighter text-lg flex items-center gap-2 leading-none">
                             COMMUNICATIONS
                         </h2>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                             <button
                                 onClick={() => {
                                     setShowDirectory(true);
@@ -315,10 +371,10 @@ const Chat = () => {
                                 className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
                                 title="New Chat"
                             >
-                                <UsersIcon size={16} />
+                                <UsersIcon size={15} />
                             </button>
-                            <div className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold flex items-center gap-1 uppercase tracking-widest shadow-sm border border-emerald-200">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                            <div className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black flex items-center gap-1 uppercase tracking-widest shadow-sm border border-emerald-200">
+                                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
                                 {onlineCount} ACTIVE
                             </div>
                         </div>
@@ -337,7 +393,7 @@ const Chat = () => {
                                 }
                                 return true;
                             }).map(tab => {
-                                const count = filterRoomsByTab(rooms, tab.id).length;
+                                const count = getItemsForDisplay(tab.id).length;
                                 return (
                                     <button
                                         key={tab.id}
@@ -370,46 +426,54 @@ const Chat = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {displayRooms.length > 0 ? displayRooms.map(room => (
+                    {displayItems.length > 0 ? displayItems.map(item => (
                         <div
-                            key={room.id}
-                            onClick={() => setActiveRoom(room)}
+                            key={item.id}
+                            onClick={() => {
+                                if (item.isUser) {
+                                    startDirectChat(item.targetUserId);
+                                } else {
+                                    setActiveRoom(item);
+                                }
+                            }}
                             className={`p-4 border-b border-slate-50 cursor-pointer hover:bg-white transition-all flex gap-3 group relative
-                        ${activeRoom?.id === room.id ? 'bg-white border-l-4 border-l-blue-600 shadow-sm' : ''}
+                        ${activeRoom?.id === item.id ? 'bg-white border-l-4 border-l-blue-600 shadow-sm' : ''}
                     `}
                         >
                             <div className="relative">
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all shadow-sm
-                                    ${activeRoom?.id === room.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 group-hover:bg-slate-50 text-slate-500'}
+                                    ${activeRoom?.id === item.id ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 group-hover:bg-slate-50 text-slate-500'}
                                 `}>
-                                    {room.avatar ? (
-                                        <img src={room.avatar} className="w-full h-full object-cover rounded-2xl" alt="" />
-                                    ) : (room.name?.[0] || '?')}
+                                    {item.avatar ? (
+                                        <img src={item.avatar} className="w-full h-full object-cover rounded-2xl" alt="" />
+                                    ) : (item.name?.[0] || '?')}
                                 </div>
-                                {room.unreadCount > 0 && (
+                                {item.unreadCount > 0 && (
                                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black shadow-lg animate-bounce">
-                                        {room.unreadCount}
+                                        {item.unreadCount}
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-0.5">
-                                    <h4 className={`font-bold text-sm truncate transition-colors ${activeRoom?.id === room.id ? 'text-blue-600' : 'text-slate-700'}`}>
-                                        {room.name}
+                                    <h4 className={`font-bold text-sm truncate transition-colors ${activeRoom?.id === item.id ? 'text-blue-600' : 'text-slate-700'}`}>
+                                        {item.name}
                                     </h4>
-                                    {room.lastMessage && (
+                                    {item.lastMessage ? (
                                         <span className="text-[8px] font-bold text-slate-400">
-                                            {new Date(room.lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(item.lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
+                                    ) : item.isUser && (
+                                        <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1 rounded">New</span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1.5 overflow-hidden">
                                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 shrink-0">
-                                        {room.projectId ? room.projectName : (room.roomType === 'DIRECT' ? 'Private' : room.roomType)}
+                                        {item.isUser ? (item.role?.replace(/_/g, ' ')) : (item.projectId ? item.projectName : (item.roomType === 'DIRECT' ? 'Private' : item.roomType))}
                                     </span>
-                                    {room.lastMessage && (
+                                    {item.lastMessage && (
                                         <p className="text-[10px] text-slate-400 truncate font-medium border-l border-slate-200 pl-1.5 italic">
-                                            {room.lastMessage.sender}: {room.lastMessage.text}
+                                            {item.lastMessage.sender}: {item.lastMessage.text}
                                         </p>
                                     )}
                                 </div>

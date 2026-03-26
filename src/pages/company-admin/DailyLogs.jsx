@@ -25,13 +25,29 @@ const DailyLogs = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const getLocalDateString = () => {
+        const d = new Date();
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    };
+
+    const formatSafeDate = (dateString, options) => {
+        if (!dateString) return '';
+        const parts = dateString.split('T')[0].split('-');
+        const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        return dateObj.toLocaleDateString(undefined, options);
+    };
+
     const [formData, setFormData] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
         projectId: '',
         weather: { status: 'Sunny', temperature: '' },
         manpower: [{ role: 'General', count: 0, hours: 8 }],
-        workPerformed: ''
+        workPerformed: '',
+        location: null
     });
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [isCapturingLocation, setIsCapturingLocation] = useState(false);
     const [filters, setFilters] = useState({
         projectId: '',
         date: ''
@@ -64,22 +80,84 @@ const DailyLogs = () => {
 
     const handleCreate = () => {
         setFormData({
-            date: new Date().toISOString().split('T')[0],
+            date: getLocalDateString(),
             projectId: '',
             weather: { status: 'Sunny', temperature: '' },
             manpower: [{ role: 'General', count: 0, hours: 8 }],
-            workPerformed: ''
+            workPerformed: '',
+            location: null
         });
+        setSelectedFiles([]);
         setIsModalOpen(true);
+    };
+
+    const handleLocationCapture = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsCapturingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                setFormData(prev => ({
+                    ...prev,
+                    location: { latitude, longitude, address: 'Captured from GPS' }
+                }));
+                setIsCapturingLocation(false);
+            },
+            (error) => {
+                console.error("Error capturing location:", error);
+                alert("Unable to retrieve your location");
+                setIsCapturingLocation(false);
+            }
+        );
+    };
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length + selectedFiles.length > 5) {
+            alert('Maximum 5 photos allowed');
+            return;
+        }
+        setSelectedFiles(prev => [...prev, ...files]);
     };
 
     const handleSave = async () => {
         try {
-            await api.post('/dailylogs', formData);
+            const data = new FormData();
+            data.append('date', formData.date);
+            data.append('projectId', formData.projectId);
+            data.append('workPerformed', formData.workPerformed);
+            data.append('weather', JSON.stringify({
+                ...formData.weather,
+                temperature: formData.weather.temperature === '' ? null : Number(formData.weather.temperature)
+            }));
+            data.append('manpower', JSON.stringify(formData.manpower.map(m => ({
+                role: m.role,
+                count: parseInt(m.count) || 0,
+                hours: parseFloat(m.hours) || 0
+            }))));
+            
+            if (formData.location) {
+                data.append('location', JSON.stringify(formData.location));
+            }
+
+            selectedFiles.forEach(file => {
+                data.append('photos', file);
+            });
+
+            await api.post('/dailylogs', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             fetchData();
             setIsModalOpen(false);
+            setSelectedFiles([]);
         } catch (error) {
             console.error('Error saving log:', error);
+            alert('Failed to save log. Please check the inputs.');
         }
     };
 
@@ -200,15 +278,26 @@ const DailyLogs = () => {
                     viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredLogs.map(log => (
-                                <div key={log._id} className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                                <div key={log._id} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                                     {/* Card Header Illustration/Image Placeholder */}
                                     <div className="h-28 bg-slate-100 relative overflow-hidden">
                                         <img
-                                            src={`https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400`}
-                                            className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700"
+                                            src={log.photos?.[0] || `https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400`}
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             alt="Site"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-transparent"></div>
+                                        {log.photos?.length > 1 && (
+                                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-lg backdrop-blur text-xs font-black">
+                                                +{log.photos.length - 1} photos
+                                            </div>
+                                        )}
+                                        {log.location && (
+                                            <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1 rounded-lg border border-white/50 shadow-sm">
+                                                <MapPin size={10} className="text-red-500" />
+                                                <span className="text-[9px] font-black text-slate-700">GPS Captured</span>
+                                            </div>
+                                        )}
                                         <div className="absolute top-4 left-4">
                                             <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-xl border border-white/50 shadow-sm flex items-center gap-2">
                                                 <Hash size={12} className="text-blue-600" />
@@ -225,16 +314,16 @@ const DailyLogs = () => {
                                         </button>
                                     </div>
 
-                                    <div className="p-6 pt-0 space-y-5 flex-1 flex flex-col -mt-4 relative z-10">
+                                    <div className="p-3.5 md:p-4 pt-0 space-y-3.5 flex-1 flex flex-col -mt-3 relative z-10">
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 text-slate-400 mb-1">
                                                     <Calendar size={14} />
                                                     <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        {new Date(log.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                                                        {formatSafeDate(log.date, { weekday: 'long', month: 'short', day: 'numeric' })}
                                                     </span>
                                                 </div>
-                                                <h3 className="text-lg font-black text-slate-900 tracking-tight leading-none">
+                                                <h3 className="text-[15px] md:text-base font-black text-slate-900 tracking-tight leading-none">
                                                     Daily Summary
                                                 </h3>
                                             </div>
@@ -244,7 +333,7 @@ const DailyLogs = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-100">
+                                        <div className="grid grid-cols-2 gap-3 pb-3.5 border-b border-slate-100">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                                                     <Users size={16} />
@@ -274,12 +363,12 @@ const DailyLogs = () => {
                                                 <Check size={14} className="text-blue-600" />
                                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Work Performed</span>
                                             </div>
-                                            <p className="text-sm font-bold text-slate-700 leading-relaxed line-clamp-4 italic bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
+                                            <p className="text-[13px] font-bold text-slate-700 leading-relaxed line-clamp-3 italic bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
                                                 "{log.workPerformed}"
                                             </p>
                                         </div>
 
-                                        <div className="pt-4 mt-auto border-t border-slate-50 flex items-center justify-between">
+                                        <div className="pt-3.5 mt-auto border-t border-slate-50 flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-7 h-7 rounded-full bg-slate-200 border border-white flex items-center justify-center text-[10px] font-black text-slate-600">
                                                     {log.reportedBy?.fullName?.charAt(0) || 'U'}
@@ -338,10 +427,10 @@ const DailyLogs = () => {
                                         <tr key={log._id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <p className="text-sm font-black text-slate-900 leading-none">
-                                                    {new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    {formatSafeDate(log.date, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </p>
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-                                                    {new Date(log.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                                                    {formatSafeDate(log.date, { weekday: 'short' })}
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4">
@@ -506,6 +595,62 @@ const DailyLogs = () => {
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 italic">HRS/EA</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Media & Location Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-slate-100">
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <ImageIcon size={14} className="text-blue-600" /> Photo Upload (Max 5)
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedFiles.map((file, i) => (
+                                    <div key={i} className="w-16 h-16 rounded-xl bg-slate-200 overflow-hidden relative group border border-slate-300">
+                                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="" />
+                                        <button 
+                                            onClick={() => setSelectedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                            className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {selectedFiles.length < 5 && (
+                                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-blue-500 hover:text-blue-500 cursor-pointer transition-all">
+                                        <Plus size={20} />
+                                        <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <MapPin size={14} className="text-red-500" /> Site Location
+                            </label>
+                            <button
+                                onClick={handleLocationCapture}
+                                disabled={isCapturingLocation}
+                                className={`w-full p-4 rounded-2xl border flex items-center justify-center gap-3 font-black text-xs uppercase tracking-widest transition-all
+                                    ${formData.location 
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                {isCapturingLocation ? (
+                                    <>
+                                        <Loader size={16} className="animate-spin" /> Capturing...
+                                    </>
+                                ) : formData.location ? (
+                                    <>
+                                        <Check size={16} /> Location Captured
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapPin size={16} /> Capture GPS Location
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
 
