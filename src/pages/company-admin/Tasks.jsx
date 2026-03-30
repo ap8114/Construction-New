@@ -5,7 +5,7 @@ import {
     Hash, Target, Edit, Trash2, Info, Save, Tag,
     AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag,
     ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
-    ChevronUp, Settings, ChevronRight, Check, GripVertical
+    ChevronUp, Settings, ChevronRight, Check, GripVertical, CalendarDays, KanbanSquare, AlignLeft, CalendarRange
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
@@ -13,6 +13,10 @@ import { useAuth } from '../../context/AuthContext';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+import TimelineView from '../../components/tasks/TimelineView';
+import GanttView from '../../components/tasks/GanttView';
+import CalendarView from '../../components/tasks/CalendarView';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const ROLE_LABELS = {
@@ -224,10 +228,10 @@ const SortableTaskRow = ({ task, ...props }) => {
                 className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''}`}
             >
                 <td className="w-10 px-4 py-2.5">
-                    <div 
-                        {...attributes} 
-                        {...listeners} 
-                        onClick={e => e.stopPropagation()} 
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        onClick={e => e.stopPropagation()}
                         className="p-1 hover:bg-slate-200 rounded-md text-slate-300 hover:text-slate-600 transition-colors cursor-grab active:cursor-grabbing"
                     >
                         <GripVertical size={14} />
@@ -343,7 +347,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
         <tr className="bg-slate-50/10 border-l-[3px] border-slate-300 relative group">
             {/* First empty column to match table structure */}
             <td className="w-10 px-4 py-2.5" />
-            
+
             {/* Main content column with tree lines and form */}
             <td className="py-3 pr-6 pl-4 relative" colSpan={9} style={{ paddingLeft: '58px' }}>
                 {/* Tree Connector for root subtask (child of main task) */}
@@ -447,7 +451,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
         st.parentSubTaskId === subTask._id || st.parentSubTaskId?._id === subTask._id
     );
     const hasChildren = directChildren.length > 0;
-    
+
     // Adjusted Indentation & Tree logic
     const baseOffset = 26; // Align with main task toggle center (relative to second td)
     const step = 32;
@@ -495,22 +499,22 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                     <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
                         {levelLines.map((hasLine, i) => (
                             hasLine && (
-                                <div 
-                                    key={i} 
-                                    className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" 
-                                    style={{ left: `${baseOffset + i * step}px` }} 
+                                <div
+                                    key={i}
+                                    className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60"
+                                    style={{ left: `${baseOffset + i * step}px` }}
                                 />
                             )
                         ))}
                         {/* Current branch vertical line */}
-                        <div 
-                            className={`absolute w-[1.5px] bg-slate-200/60 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`} 
-                            style={{ left: `${baseOffset + depth * step}px` }} 
+                        <div
+                            className={`absolute w-[1.5px] bg-slate-200/60 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`}
+                            style={{ left: `${baseOffset + depth * step}px` }}
                         />
                         {/* Current branch horizontal line */}
-                        <div 
-                            className="absolute top-1/2 h-[1.5px] bg-slate-200/60" 
-                            style={{ left: `${baseOffset + depth * step}px`, width: '18px' }} 
+                        <div
+                            className="absolute top-1/2 h-[1.5px] bg-slate-200/60"
+                            style={{ left: `${baseOffset + depth * step}px`, width: '18px' }}
                         />
                     </div>
 
@@ -683,8 +687,8 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 <tr className="bg-blue-50/20 border-l-[3px] border-blue-400 relative">
                     <td className="w-10 px-4 py-2.5" />
                     <td colSpan={9} style={{ paddingLeft: `${indentPx + step}px` }} className="py-2.5 px-4 relative">
-                         {/* Tree connector for adding child */}
-                         <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                        {/* Tree connector for adding child */}
+                        <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
                             {levelLines.map((hasLine, i) => hasLine && <div key={i} className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + i * step}px` }} />)}
                             <div className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + depth * step}px` }} />
                             <div className="absolute top-0 h-1/2 w-[1.5px] bg-slate-200/60" style={{ left: `${baseOffset + (depth + 1) * step}px` }} />
@@ -956,6 +960,7 @@ const Tasks = () => {
     const [isSubmittingSubTask, setIsSubmittingSubTask] = useState(false);
     const [expandedTasks, setExpandedTasks] = useState(new Set());
     const [subTasksMap, setSubTasksMap] = useState({});
+    const [scheduleTasks, setScheduleTasks] = useState([]);
 
     // Task Templates State
     const [templates, setTemplates] = useState([]);
@@ -998,6 +1003,7 @@ const Tasks = () => {
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
     const fetchSubTasks = async (taskId, viewUpdate = true) => {
+        if (!taskId || taskId === 'undefined') return [];
         try {
             const res = await api.get(`/tasks/${taskId}/subtasks`);
             const data = res.data || [];
@@ -1087,12 +1093,12 @@ const Tasks = () => {
         return list;
     }, [team, formData.assignedRoleType, user?.role]);
 
-    // Apply all filters
+    // Apply all filters to general task list
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
-            const matchSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                task.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                task.assignedTo?.some(u => u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()));
+            const matchSearch = String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
@@ -1108,7 +1114,85 @@ const Tasks = () => {
 
             return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory;
         });
-    }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo]);
+    }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory]);
+
+    // Apply all filters to specialized schedule data
+    const filteredScheduleTasks = useMemo(() => {
+        return scheduleTasks.filter(task => {
+            const matchSearch = String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+            const matchStatus = !filterStatus || task.status === filterStatus;
+            const matchRole = !filterRole || task.assignedRoleType === filterRole;
+            const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
+            const matchCategory = !filterCategory || task.category === filterCategory;
+
+            let matchDue = true;
+            if (task.dueDate) {
+                const due = new Date(task.dueDate);
+                if (filterDueFrom) matchDue = matchDue && due >= new Date(filterDueFrom);
+                if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
+            }
+
+            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory;
+        });
+    }, [scheduleTasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory]);
+
+    const handleTaskUpdate = async (taskId, updates, isSubTask = false) => {
+        try {
+            if (isSubTask) {
+                // Find parent taskId for the URL
+                const parentTask = scheduleTasks.find(t => (t.subTasks || []).some(st => (st._id || st.id) === taskId));
+                const pId = parentTask?.id || parentTask?._id;
+                if (pId) {
+                    await api.patch(`/tasks/${pId}/subtasks/${taskId}`, updates);
+                } else {
+                    // Fallback to direct patch if parent not found (might be a sub-subtask)
+                    await api.patch(`/tasks/subtasks/${taskId}`, updates);
+                }
+            } else {
+                // Check if it's a JobTask (Unified View) with robust ID normalization
+                const isJobTask = (scheduleTasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask) || 
+                                 (tasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask);
+                
+                const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
+                
+                // JobTask expects single ID for assignedTo
+                const finalUpdates = isJobTask && updates.assignedTo ? {
+                    ...updates,
+                    assignedTo: Array.isArray(updates.assignedTo) ? (updates.assignedTo[0] || null) : updates.assignedTo
+                } : updates;
+
+                await api.patch(endpoint, finalUpdates);
+            }
+            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
+            fetchData();
+        } catch (error) {
+            console.error('Failed to update task:', error);
+        }
+    };
+
+    const fetchScheduleData = async () => {
+        try {
+            const params = {
+                projectId: filterProject || undefined,
+                status: filterStatus || undefined,
+                assignedRoleType: filterRole || undefined,
+                category: filterCategory || undefined
+            };
+            const res = await api.get('/tasks/schedule', { params });
+            setScheduleTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (error) {
+            console.error('Error fetching schedule data:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (['schedule', 'gantt', 'calendar'].includes(view)) {
+            fetchScheduleData();
+        }
+    }, [view, filterProject, filterStatus, filterRole, filterCategory]);
 
     // Stats
     const stats = useMemo(() => ({
@@ -1121,13 +1205,13 @@ const Tasks = () => {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (!over) return;
-        
+
         const activeId = active.id;
         const overId = over.id;
 
         const activeTaskIndex = tasks.findIndex(t => t._id === activeId);
         if (activeTaskIndex === -1) return;
-        
+
         const activeTask = tasks[activeTaskIndex];
         let newStatus = activeTask.status;
         let overTaskIndex = -1;
@@ -1173,8 +1257,13 @@ const Tasks = () => {
     };
 
     const openDetails = (task) => {
+        const taskId = task?._id || task?.id;
         setSelectedTask(task);
-        fetchSubTasks(task._id);
+        if (taskId && !task.isSubTask) {
+            fetchSubTasks(taskId);
+        } else {
+            setSubTasks([]);
+        }
         setIsDetailModalOpen(true);
     };
 
@@ -1282,10 +1371,20 @@ const Tasks = () => {
                 subTasksList: subTasksList.length > 0 ? subTasksList : undefined
             };
             if (editingTask) {
-                await api.patch(`/tasks/${editingTask._id}`, payload);
+                const isJobTask = editingTask.isJobTask;
+                const endpoint = isJobTask ? `/job-tasks/${editingTask._id}` : `/tasks/${editingTask._id}`;
+                
+                // If it's a JobTask, we may need to adjust the payload (JobTask expects single assignedTo)
+                const finalPayload = isJobTask ? {
+                    ...payload,
+                    assignedTo: payload.assignedTo[0] || undefined
+                } : payload;
+
+                await api.patch(endpoint, finalPayload);
             } else {
                 await api.post('/tasks', payload);
             }
+            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             await fetchData();
             setIsModalOpen(false);
         } catch (error) {
@@ -1299,8 +1398,10 @@ const Tasks = () => {
         if (!taskToDelete) return;
         try {
             setIsSubmitting(true);
-            await api.delete(`/tasks/${taskToDelete._id}`);
-            setTasks(prev => prev.filter(t => t._id !== taskToDelete._id));
+            const endpoint = taskToDelete.isJobTask ? `/job-tasks/${taskToDelete._id}` : `/tasks/${taskToDelete._id}`;
+            await api.delete(endpoint);
+            setTasks(prev => prev.filter(t => (t._id || t.id) !== taskToDelete._id));
+            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             setIsDeleteModalOpen(false);
             setTaskToDelete(null);
         } catch (error) {
@@ -1391,17 +1492,17 @@ const Tasks = () => {
         <div className="space-y-4 animate-fade-in h-[calc(100vh-80px)] flex flex-col">
 
             {/* ── Header ── */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
-                <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter">Task Command Center</h1>
-                    <p className="text-slate-400 font-bold text-[10px] mt-0.5 uppercase tracking-widest flex items-center gap-2">
+            <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 shrink-0 w-full">
+                <div className="shrink-0">
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter whitespace-nowrap">Task Command Center</h1>
+                    <p className="text-slate-400 font-bold text-[10px] mt-0.5 uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
                         <Layers size={11} className="text-blue-600" /> Task tracking & assignment
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
                     {/* Stats pills */}
-                    <div className="hidden md:flex items-center gap-1.5">
-                        <button 
+                    <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                        <button
                             onClick={() => navigate('/company-admin#overdue')}
                             className="bg-red-50 text-red-600 border border-red-100 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm active:scale-95"
                             title="View Overdue Details in Dashboard"
@@ -1415,23 +1516,33 @@ const Tasks = () => {
                             <CheckCircle size={10} /> {stats.completed} Done
                         </span>
                     </div>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm">
-                        <button onClick={() => setView('list')} className={`p-2.5 rounded-xl transition-all ${view === 'list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <List size={17} />
+                    <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm shrink-0">
+                        <button onClick={() => setView('list')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'list' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
+                            <AlignLeft size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">List</span>
                         </button>
-                        <button onClick={() => setView('kanban')} className={`p-2.5 rounded-xl transition-all ${view === 'kanban' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <LayoutGrid size={17} />
+                        <button onClick={() => setView('kanban')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'kanban' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
+                            <KanbanSquare size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Board</span>
+                        </button>
+                        <div className="w-px bg-slate-200/60 my-1.5 mx-1" />
+                        <button onClick={() => setView('schedule')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'schedule' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
+                            <Clock size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Schedule</span>
+                        </button>
+                        <button onClick={() => setView('gantt')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'gantt' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
+                            <CalendarRange size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Gantt</span>
+                        </button>
+                        <button onClick={() => setView('calendar')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'calendar' ? 'bg-orange-500 text-white shadow-lg shadow-orange-200/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
+                            <CalendarDays size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Calendar</span>
                         </button>
                     </div>
                     {canManage && (
-                        <>
-                            <button onClick={() => setIsTemplateModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition shadow-sm font-black text-[10px] uppercase tracking-tight">
-                                <Briefcase size={14} /> Templates
+                        <div className="flex gap-2 shrink-0">
+                            <button onClick={() => setIsTemplateModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-black text-[10px] uppercase tracking-tight">
+                                <Briefcase size={14} /> <span className="hidden sm:inline">Templates</span>
                             </button>
-                            <button onClick={openCreate} className="bg-blue-600 text-white px-5 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-xs uppercase tracking-tight">
-                                <Plus size={15} /> New Task
+                            <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-xs uppercase tracking-tight">
+                                <Plus size={15} /> <span className="hidden sm:inline">New Task</span>
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
@@ -1504,7 +1615,13 @@ const Tasks = () => {
                     </div>
                 ) : (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        {view === 'kanban' ? (
+                        {view === 'schedule' ? (
+                            <TimelineView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
+                        ) : view === 'gantt' ? (
+                            <GanttView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
+                        ) : view === 'calendar' ? (
+                            <CalendarView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
+                        ) : view === 'kanban' ? (
                             <div className="flex gap-5 h-full overflow-x-auto pb-4 custom-scrollbar">
                                 {Object.entries(columns).map(([status, style]) => (
                                     <DroppableColumn
@@ -1903,17 +2020,17 @@ const Tasks = () => {
 
                         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                             {canManage && (
-                                <button 
-                                    onClick={() => { 
-                                        setTemplateFormData({ 
-                                            templateName: selectedTask.title + ' Template', 
-                                            title: selectedTask.title, 
-                                            description: selectedTask.description || '', 
+                                <button
+                                    onClick={() => {
+                                        setTemplateFormData({
+                                            templateName: selectedTask.title + ' Template',
+                                            title: selectedTask.title,
+                                            description: selectedTask.description || '',
                                             priority: selectedTask.priority || 'Medium',
-                                            steps: [] 
-                                        }); 
-                                        setIsSaveTemplateModalOpen(true); 
-                                    }} 
+                                            steps: []
+                                        });
+                                        setIsSaveTemplateModalOpen(true);
+                                    }}
                                     className="px-6 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-xs uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2"
                                 >
                                     <Save size={14} /> Save as Template
@@ -1928,7 +2045,7 @@ const Tasks = () => {
             </Modal>
             {/* ── Save Template Modal ── */}
             <Modal isOpen={isSaveTemplateModalOpen} onClose={() => setIsSaveTemplateModalOpen(false)} title="Save Task as Template">
-                <form 
+                <form
                     onSubmit={async (e) => {
                         e.preventDefault();
                         if (!templateFormData.templateName || !templateFormData.title) {
@@ -1937,25 +2054,25 @@ const Tasks = () => {
                         }
                         try {
                             setIsSubmitting(true);
-                            const outSteps = subTasks.map(st => ({ 
-                                title: st.title || 'Untitled Step', 
-                                remarks: st.remarks || '', 
-                                priority: st.priority || 'Medium' 
+                            const outSteps = subTasks.map(st => ({
+                                title: st.title || 'Untitled Step',
+                                remarks: st.remarks || '',
+                                priority: st.priority || 'Medium'
                             }));
-                            
+
                             await api.post('/task-templates', {
                                 ...templateFormData,
                                 steps: outSteps
                             });
-                            
+
                             setIsSaveTemplateModalOpen(false);
                             await fetchTemplates();
                             alert('Template saved successfully!');
-                        } catch (err) { 
+                        } catch (err) {
                             console.error('Save template error:', err);
-                            alert(err.response?.data?.message || 'Error saving template. Please ensure all required fields are filled.'); 
-                        } finally { 
-                            setIsSubmitting(false); 
+                            alert(err.response?.data?.message || 'Error saving template. Please ensure all required fields are filled.');
+                        } finally {
+                            setIsSubmitting(false);
                         }
                     }}
                     className="space-y-5"
@@ -2009,9 +2126,9 @@ const Tasks = () => {
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                         <button type="button" onClick={() => setIsSaveTemplateModalOpen(false)} className="px-5 py-2.5 rounded-xl font-black text-xs uppercase text-slate-500 hover:bg-slate-50">Cancel</button>
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting} 
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
                             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                         >
                             {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Save size={15} />}
@@ -2029,14 +2146,14 @@ const Tasks = () => {
                             <Briefcase size={16} />
                             <span className="text-[10px] font-black uppercase tracking-widest">{templates.length} Saved Templates</span>
                         </div>
-                        <button 
+                        <button
                             onClick={() => {
                                 setTemplateFormData({ templateName: '', title: '', description: '', priority: 'Medium', steps: [] });
                                 setIsSaveTemplateModalOpen(true);
                             }}
                             className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition"
                         >
-                             + Create New
+                            + Create New
                         </button>
                     </div>
 
@@ -2061,20 +2178,20 @@ const Tasks = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <button 
+                                    <button
                                         onClick={async () => {
-                                            if(window.confirm('Delete this template?')){
+                                            if (window.confirm('Delete this template?')) {
                                                 try {
                                                     await api.delete(`/task-templates/${tmpl._id}`);
                                                     fetchTemplates();
                                                 } catch (err) { alert('Failed to delete template'); }
                                             }
-                                        }} 
+                                        }}
                                         className="p-2 text-slate-300 hover:text-red-500 rounded-xl hover:bg-red-50 transition border border-transparent hover:border-red-100"
                                     >
-                                        <Trash2 size={15}/>
+                                        <Trash2 size={15} />
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setFormData({
                                                 title: tmpl.title,
@@ -2085,7 +2202,7 @@ const Tasks = () => {
                                             setSubTasksList(tmpl.steps || []);
                                             setIsTemplateModalOpen(false);
                                             setIsModalOpen(true);
-                                        }} 
+                                        }}
                                         className="px-5 py-2.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95"
                                     >
                                         Use Template
