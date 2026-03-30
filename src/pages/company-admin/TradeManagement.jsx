@@ -3,8 +3,9 @@ import {
     Users, Plus, Search, Filter, Mail, Phone, MoreVertical,
     Trash2, Edit2, CheckCircle, XCircle, Loader, Save, X
 } from 'lucide-react';
-import api from '../../utils/api';
+import api, { getServerUrl } from '../../utils/api';
 import emailjs from '@emailjs/browser';
+import { FileText, Paperclip, ExternalLink } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
@@ -42,6 +43,7 @@ const TradeManagement = () => {
         phone: '',
         status: 'active'
     });
+    const [taskAttachments, setTaskAttachments] = useState([]); // Pending new attachments
 
     const [filters, setFilters] = useState({
         category: 'All Categories',
@@ -82,19 +84,36 @@ const TradeManagement = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...formData };
-            if (formData.category === 'Other' && formData.customCategory) {
-                payload.category = formData.customCategory;
-            }
+            setLoading(true);
+            const data = new FormData();
+            
+            // Map form data to FormData
+            Object.keys(formData).forEach(key => {
+                if (key === 'category' && formData.category === 'Other' && formData.customCategory) {
+                    data.append('category', formData.customCategory);
+                } else {
+                    data.append(key, formData[key]);
+                }
+            });
+
+            // Append files
+            taskAttachments.forEach(file => {
+                data.append('files', file);
+            });
 
             if (editingId) {
-                await api.patch(`/vendors/${editingId}`, payload);
+                await api.patch(`/vendors/${editingId}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             } else {
-                await api.post('/vendors', payload);
+                await api.post('/vendors', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
             }
 
             setIsModalOpen(false);
             setEditingId(null);
+            setTaskAttachments([]);
             setFormData({
                 name: '', category: 'Flooring', customCategory: '',
                 contactPerson: '', email: '', phone: '', status: 'active'
@@ -102,6 +121,9 @@ const TradeManagement = () => {
             fetchTrades();
         } catch (err) {
             console.error('Error saving trade:', err);
+            alert('Error saving trade.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -319,6 +341,7 @@ const TradeManagement = () => {
                                     <th className="px-6 py-4">Trade Name</th>
                                     <th className="px-6 py-4">Project / Drawing</th>
                                     <th className="px-6 py-4">Amount</th>
+                                    <th className="px-6 py-4">Attachments</th>
                                     <th className="px-6 py-4">Date</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
@@ -333,6 +356,23 @@ const TradeManagement = () => {
                                                 <div className="text-slate-800 font-medium">{bid.drawingId?.title || 'Unknown'}</div>
                                             </td>
                                             <td className="px-6 py-4 text-emerald-600 font-black">${bid.bidAmount.toLocaleString()}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {bid.attachments && bid.attachments.map((file, idx) => (
+                                                        <a 
+                                                            key={idx}
+                                                            href={getServerUrl(file.url)} 
+                                                            target="_blank" 
+                                                            rel="noreferrer"
+                                                            className="p-1 px-2 bg-blue-50 text-blue-600 rounded border border-blue-100 flex items-center gap-1 text-[10px] font-bold hover:bg-blue-100 transition"
+                                                            title={file.name}
+                                                        >
+                                                            <Paperclip size={10} /> {file.name.slice(0, 10)}...
+                                                        </a>
+                                                    ))}
+                                                    {(!bid.attachments || bid.attachments.length === 0) && <span className="text-slate-300 italic text-xs">No files</span>}
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 text-slate-500">{new Date(bid.createdAt).toLocaleDateString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase
@@ -460,6 +500,47 @@ const TradeManagement = () => {
                                 placeholder="+1"
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:border-blue-500 outline-none transition"
                             />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5 flex justify-between">
+                            Attachments <span>(Insurance, License, etc.)</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {/* Existing Files if editing */}
+                            {editingId && trades.find(t => t._id === editingId)?.attachments?.map((file, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+                                    <FileText size={14} className="text-blue-500" />
+                                    <span className="font-bold text-slate-600 truncate max-w-[100px]">{file.name}</span>
+                                    <a href={getServerUrl(file.url)} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
+                                        <ExternalLink size={14} />
+                                    </a>
+                                </div>
+                            ))}
+                            
+                            {/* Pending uploads */}
+                            {taskAttachments.map((file, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 text-xs">
+                                    <FileText size={14} className="text-blue-600" />
+                                    <span className="font-bold text-blue-700 truncate max-w-[100px]">{file.name}</span>
+                                    <button type="button" onClick={() => setTaskAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-red-500">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+
+                            <label className="cursor-pointer">
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    className="hidden" 
+                                    onChange={(e) => setTaskAttachments([...taskAttachments, ...Array.from(e.target.files)])} 
+                                />
+                                <div className="p-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center gap-2 text-xs font-bold">
+                                    <Plus size={14} /> Add Files
+                                </div>
+                            </label>
                         </div>
                     </div>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Plus, Search, Filter, Calendar, MoreVertical,
     CheckCircle, Clock, AlertCircle, LayoutGrid, List, Loader,
-    Hash, Target, Edit, Trash2,
+    Hash, Target, Edit, Trash2, Info, Save, Tag,
     AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag,
     ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
     ChevronUp, Settings, ChevronRight, Check, GripVertical
@@ -961,7 +961,14 @@ const Tasks = () => {
     const [templates, setTemplates] = useState([]);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
-    const [newTemplateName, setNewTemplateName] = useState('');
+    const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+    const [templateFormData, setTemplateFormData] = useState({
+        templateName: '',
+        title: '',
+        description: '',
+        priority: 'Medium',
+        steps: []
+    });
     const [subTasksList, setSubTasksList] = useState([]);
 
     // Filters
@@ -1381,7 +1388,7 @@ const Tasks = () => {
     const canManage = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-[1600px] mx-auto pb-12 h-[calc(100vh-140px)] flex flex-col">
+        <div className="space-y-4 animate-fade-in h-[calc(100vh-80px)] flex flex-col">
 
             {/* ── Header ── */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
@@ -1513,7 +1520,7 @@ const Tasks = () => {
                             </div>
                         ) : (
                             /* ── List View ── */
-                            <div className="bg-white rounded-[36px] shadow-sm border border-slate-200/60 h-full overflow-hidden flex flex-col">
+                            <div className="bg-white h-full overflow-hidden flex flex-col">
                                 <div className="overflow-auto flex-1 custom-scrollbar">
                                     <table className="w-full text-left border-separate border-spacing-0">
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
@@ -1896,8 +1903,20 @@ const Tasks = () => {
 
                         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                             {canManage && (
-                                <button onClick={() => { setNewTemplateName(selectedTask.title + ' Template'); setIsSaveTemplateModalOpen(true); }} className="px-6 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-xs uppercase tracking-widest hover:bg-blue-100 border border-blue-100">
-                                    Save as Template
+                                <button 
+                                    onClick={() => { 
+                                        setTemplateFormData({ 
+                                            templateName: selectedTask.title + ' Template', 
+                                            title: selectedTask.title, 
+                                            description: selectedTask.description || '', 
+                                            priority: selectedTask.priority || 'Medium',
+                                            steps: [] 
+                                        }); 
+                                        setIsSaveTemplateModalOpen(true); 
+                                    }} 
+                                    className="px-6 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-xs uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2"
+                                >
+                                    <Save size={14} /> Save as Template
                                 </button>
                             )}
                             <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-2 rounded-xl bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-200">
@@ -1909,77 +1928,172 @@ const Tasks = () => {
             </Modal>
             {/* ── Save Template Modal ── */}
             <Modal isOpen={isSaveTemplateModalOpen} onClose={() => setIsSaveTemplateModalOpen(false)} title="Save Task as Template">
-                <div className="space-y-5">
-                    <p className="text-sm font-bold text-slate-500 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        This template will save the task details and its {subTasks.length} subtasks to be reused later.
-                    </p>
+                <form 
+                    onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!templateFormData.templateName || !templateFormData.title) {
+                            alert('Template Name and Task Title are required');
+                            return;
+                        }
+                        try {
+                            setIsSubmitting(true);
+                            const outSteps = subTasks.map(st => ({ 
+                                title: st.title || 'Untitled Step', 
+                                remarks: st.remarks || '', 
+                                priority: st.priority || 'Medium' 
+                            }));
+                            
+                            await api.post('/task-templates', {
+                                ...templateFormData,
+                                steps: outSteps
+                            });
+                            
+                            setIsSaveTemplateModalOpen(false);
+                            await fetchTemplates();
+                            alert('Template saved successfully!');
+                        } catch (err) { 
+                            console.error('Save template error:', err);
+                            alert(err.response?.data?.message || 'Error saving template. Please ensure all required fields are filled.'); 
+                        } finally { 
+                            setIsSubmitting(false); 
+                        }
+                    }}
+                    className="space-y-5"
+                >
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                        <Info size={18} className="text-blue-500 mt-0.5" />
+                        <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
+                            This template will store the task structure and its {subTasks.length} subtasks. When used later, it will pre-fill these details for new tasks.
+                        </p>
+                    </div>
+
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Template Name</label>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Tag size={12} className="text-blue-500" /> Template Identifier
+                        </label>
                         <input
+                            required
                             type="text"
-                            value={newTemplateName}
-                            onChange={e => setNewTemplateName(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500"
-                            placeholder="e.g. Standard Foundation Pour"
+                            value={templateFormData.templateName}
+                            onChange={e => setTemplateFormData({ ...templateFormData, templateName: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500"
+                            placeholder="e.g. Standard Foundation Check"
                         />
                     </div>
-                    <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                        <button onClick={() => setIsSaveTemplateModalOpen(false)} className="px-5 py-2.5 rounded-xl font-black text-xs uppercase text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
-                        <button onClick={async () => {
-                            if (!newTemplateName) return;
-                            try {
-                                setIsSubmitting(true);
-                                const outSteps = subTasks.map(st => ({ title: st.title, remarks: st.remarks, priority: st.priority }));
-                                await api.post('/task-templates', {
-                                    templateName: newTemplateName,
-                                    title: selectedTask.title, description: selectedTask.description, priority: selectedTask.priority,
-                                    steps: outSteps
-                                });
-                                setIsSaveTemplateModalOpen(false);
-                                fetchTemplates();
-                                alert('Template saved!');
-                            } catch (e) { alert('Error saving template'); } finally { setIsSubmitting(false); }
-                        }} disabled={isSubmitting || !newTemplateName} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition">Save Template</button>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Target size={12} className="text-blue-500" /> Default Task Title
+                            </label>
+                            <input
+                                required
+                                type="text"
+                                value={templateFormData.title}
+                                onChange={e => setTemplateFormData({ ...templateFormData, title: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500"
+                                placeholder="Main task name when applied"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Default Description</label>
+                            <textarea
+                                rows={2}
+                                value={templateFormData.description}
+                                onChange={e => setTemplateFormData({ ...templateFormData, description: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-800 outline-none focus:border-blue-500 resize-none"
+                            />
+                        </div>
                     </div>
-                </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onClick={() => setIsSaveTemplateModalOpen(false)} className="px-5 py-2.5 rounded-xl font-black text-xs uppercase text-slate-500 hover:bg-slate-50">Cancel</button>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Save size={15} />}
+                            Save Template
+                        </button>
+                    </div>
+                </form>
             </Modal>
 
             {/* ── Templates Library Modal ── */}
             <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Templates Library">
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                    {templates.length === 0 ? (
-                        <div className="p-10 text-center"><p className="text-slate-400 font-bold text-xs">No templates found.</p></div>
-                    ) : templates.map(tmpl => (
-                        <div key={tmpl._id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center group">
-                            <div>
-                                <h4 className="font-black text-slate-800">{tmpl.templateName}</h4>
-                                <p className="text-[10px] font-bold text-slate-500">{tmpl.steps?.length || 0} sub-tasks included</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={async () => {
-                                    if(window.confirm('Delete this template?')){
-                                        await api.delete(`/task-templates/${tmpl._id}`);
-                                        fetchTemplates();
-                                    }
-                                }} className="p-2 text-slate-400 hover:text-red-500 rounded-xl hover:bg-red-50 hidden group-hover:block transition border border-transparent hover:border-red-100">
-                                    <Trash2 size={14}/>
-                                </button>
-                                <button onClick={() => {
-                                    setFormData({
-                                        title: tmpl.title,
-                                        description: tmpl.description || '',
-                                        priority: tmpl.priority || 'Medium',
-                                        projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: ''
-                                    });
-                                    setSubTasksList(tmpl.steps || []);
-                                    setIsTemplateModalOpen(false);
-                                    setIsModalOpen(true);
-                                }} className="px-5 py-2.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-md shadow-slate-200">
-                                    Use Template
-                                </button>
-                            </div>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-200/60">
+                        <div className="flex items-center gap-2 text-slate-500">
+                            <Briefcase size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{templates.length} Saved Templates</span>
                         </div>
-                    ))}
+                        <button 
+                            onClick={() => {
+                                setTemplateFormData({ templateName: '', title: '', description: '', priority: 'Medium', steps: [] });
+                                setIsSaveTemplateModalOpen(true);
+                            }}
+                            className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition"
+                        >
+                             + Create New
+                        </button>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+                        {templates.length === 0 ? (
+                            <div className="p-12 text-center rounded-3xl border-2 border-dashed border-slate-100">
+                                <Layers size={32} className="mx-auto text-slate-200 mb-3" />
+                                <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">No templates found.</p>
+                                <p className="text-slate-300 text-[9px] mt-1">Save a task as a template or create one from scratch.</p>
+                            </div>
+                        ) : templates.map(tmpl => (
+                            <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all">
+                                <div>
+                                    <h4 className="font-black text-slate-800 text-sm tracking-tight">{tmpl.templateName}</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                            {tmpl.steps?.length || 0} sub-tasks
+                                        </span>
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter border ${priorityStyles[tmpl.priority]}`}>
+                                            {tmpl.priority}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={async () => {
+                                            if(window.confirm('Delete this template?')){
+                                                try {
+                                                    await api.delete(`/task-templates/${tmpl._id}`);
+                                                    fetchTemplates();
+                                                } catch (err) { alert('Failed to delete template'); }
+                                            }
+                                        }} 
+                                        className="p-2 text-slate-300 hover:text-red-500 rounded-xl hover:bg-red-50 transition border border-transparent hover:border-red-100"
+                                    >
+                                        <Trash2 size={15}/>
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            setFormData({
+                                                title: tmpl.title,
+                                                description: tmpl.description || '',
+                                                priority: tmpl.priority || 'Medium',
+                                                projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: '', category: 'TASK'
+                                            });
+                                            setSubTasksList(tmpl.steps || []);
+                                            setIsTemplateModalOpen(false);
+                                            setIsModalOpen(true);
+                                        }} 
+                                        className="px-5 py-2.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95"
+                                    >
+                                        Use Template
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </Modal>
         </div>

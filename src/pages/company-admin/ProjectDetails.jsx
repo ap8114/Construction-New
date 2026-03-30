@@ -470,73 +470,47 @@ const ProjectDetails = () => {
 
             {activeTab === 'overview' && (
                 <div className="space-y-8 animate-fade-in">
-                    <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-5">
-                        {[
-                            { label: 'Start Date', value: project?.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar, color: 'blue' },
-                            { label: 'End Date', value: project?.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar, color: 'orange' },
-                            { label: 'Current Progress', value: `${project?.progress || 0}%`, icon: TrendingUp, isProgress: true, color: 'emerald' },
-                            showBudget ? { label: 'Project Budget', value: `$${(Number(project?.budget) || 0).toLocaleString()}`, icon: DollarSign, color: 'blue' } : null,
-                        ].filter(Boolean).map((item, i) => (
-                            <div key={i} className="bg-white border border-slate-200/60 rounded-[28px] p-6 shadow-sm hover:shadow-lg hover:shadow-slate-100 transition-all duration-300 relative group/meta">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`p-2 rounded-lg 
-                                ${item.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                            item.color === 'orange' ? 'bg-orange-50 text-orange-600' :
-                                                'bg-emerald-50 text-emerald-600'}`}>
-                                        <item.icon size={14} />
+                    {/* ── Compact Project & Job Stats Strip ── */}
+                    <div className="mt-8 bg-white border border-slate-200/60 rounded-[28px] shadow-sm p-3 md:p-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-row lg:items-stretch gap-3">
+                            {[
+                                { label: 'Start Date', value: project?.startDate ? new Date(project.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar, color: 'blue' },
+                                { label: 'End Date', value: project?.endDate ? new Date(project.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', icon: Calendar, color: 'orange' },
+                                showBudget ? { label: 'Project Budget', value: `$${(Number(project?.budget) || 0).toLocaleString()}`, icon: DollarSign, color: 'emerald' } : null,
+                                { label: 'Total Jobs', value: jobStats.total, color: 'blue', icon: Briefcase },
+                                { label: 'In Planning', value: jobStats.planning, color: 'orange', icon: Clock },
+                                { label: 'Completed', value: jobStats.completed, color: 'slate', icon: CheckCircle2 },
+                            ].filter(Boolean).map((item, i) => (
+                                <div key={i} className="flex-1 bg-slate-50/50 hover:bg-slate-100/80 border border-slate-100 rounded-2xl p-4 flex flex-col justify-center items-center transition-all relative group/meta">
+                                    <div className={`mb-2 shrink-0
+                                        ${item.color === 'blue' ? 'text-blue-500' :
+                                            item.color === 'orange' ? 'text-orange-500' :
+                                                item.color === 'emerald' ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                        <item.icon size={18} />
                                     </div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
-                                </div>
-                                <p className="text-xl font-black text-slate-900">{item.value}</p>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center leading-tight mb-1">{item.label}</p>
+                                    <p className="text-sm font-black text-slate-900 text-center leading-none truncate w-full">{item.value}</p>
 
-                                {item.isProgress && ['COMPANY_OWNER', 'PM'].includes(user?.role) && (
-                                    <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md opacity-0 group-hover/meta:opacity-100 transition-all duration-300 flex flex-col justify-center px-6 rounded-[28px] z-20">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Update Completion</span>
-                                            <span className="text-sm font-black text-white">{project?.progress || 0}%</span>
-                                        </div>
-                                        <div className="relative">
-                                            <select
-                                                value={project.progress || 0}
-                                                onChange={(e) => handleProjectProgressUpdate(parseInt(e.target.value))}
-                                                className="w-full bg-white/10 border border-white/20 rounded-xl py-2.5 px-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all cursor-pointer appearance-none"
-                                            >
-                                                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
-                                                    <option key={val} value={val} className="bg-slate-800">{val}% Complete</option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
-                                                <ChevronDown size={14} />
+                                    {item.isProgress && ['COMPANY_OWNER', 'PM'].includes(user?.role) && (
+                                        <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md opacity-0 group-hover/meta:opacity-100 transition-all duration-300 flex flex-col justify-center items-center rounded-2xl z-20 px-2 shadow-xl shadow-slate-900/20">
+                                            <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-2 text-center">Update</span>
+                                            <div className="relative w-full text-center">
+                                                <select
+                                                    value={project.progress || 0}
+                                                    onChange={(e) => handleProjectProgressUpdate(parseInt(e.target.value))}
+                                                    className="w-full bg-white/10 border border-white/20 rounded-lg py-1.5 pl-2 pr-6 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all cursor-pointer appearance-none text-center"
+                                                >
+                                                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(val => (
+                                                        <option key={val} value={val} className="bg-slate-800 text-left">{val}% Complete</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400" />
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* ── Job Stats Row ── */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                        {[
-                            { label: 'Total Jobs', value: jobStats.total, color: 'blue', icon: Briefcase },
-                            { label: 'Active Site', value: jobStats.active, color: 'emerald', icon: CheckCircle2 },
-                            { label: 'In Planning', value: jobStats.planning, color: 'orange', icon: Clock },
-                            { label: 'Completed', value: jobStats.completed, color: 'slate', icon: CheckCircle2 },
-                        ].map((s, i) => (
-                            <div key={i} className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm p-6 flex items-center gap-5 hover:shadow-lg hover:shadow-slate-100 transition-all duration-300">
-                                <div className={`p-4 rounded-2xl border
-              ${s.color === 'blue' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                        s.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                            s.color === 'orange' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                    <s.icon size={24} />
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{s.label}</p>
-                                    <p className="text-2xl font-black text-slate-900 leading-none">{s.value}</p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
 
                     {/* ── Jobs Section ── */}

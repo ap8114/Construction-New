@@ -1,40 +1,19 @@
 import { Save, Lock, Camera, Briefcase, RefreshCw, UserCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../utils/api';
 
 const Profile = () => {
-    const { user } = useAuth();
+    const { user, updateUserData } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [profile, setProfile] = useState({
-        name: 'John Doe',
-        email: 'john@constructos.com',
-        role: 'Project Manager',
-        avatar: null
+        fullName: '',
+        email: '',
+        role: '',
+        avatar: null,
+        phone: ''
     });
-
-    const [workHistory] = useState([
-        { id: 1, role: 'Senior Foreman', company: 'BuildRight Inc.', period: '2020 - 2023', description: 'Led a team of 40 workers on high-rise residential projects.' },
-        { id: 2, role: 'Site Supervisor', company: 'ConstructOS', period: '2023 - Present', description: 'Overseeing site safety and daily operations for Skyline Tower.' },
-    ]);
-
-    const [syncStatus] = useState({
-        lastSync: 'Just now',
-        status: 'Synced',
-        offlineChanges: 0,
-        version: 'v2.4.1'
-    });
-
-    // Sync with auth user if available
-    useEffect(() => {
-        if (user) {
-            setProfile({
-                name: user.name || 'John Doe',
-                email: user.email || 'john@constructos.com',
-                role: user.role || 'Project Manager',
-                avatar: null
-            });
-        }
-    }, [user]);
 
     const [password, setPassword] = useState({
         current: '',
@@ -42,19 +21,59 @@ const Profile = () => {
         confirm: ''
     });
 
-    const handleProfileSave = (e) => {
+    // Sync with auth user if available
+    useEffect(() => {
+        if (user) {
+            setProfile({
+                fullName: user.fullName || '',
+                email: user.email || '',
+                role: user.role || '',
+                avatar: user.avatar || null,
+                phone: user.phone || ''
+            });
+        }
+    }, [user]);
+
+    const handleProfileSave = async (e) => {
         e.preventDefault();
-        alert("Profile details updated successfully.");
+        setIsSubmitting(true);
+        try {
+            const res = await api.patch('/auth/profile', {
+                fullName: profile.fullName,
+                email: profile.email,
+                avatar: profile.avatar,
+                phone: profile.phone
+            });
+            updateUserData(res.data);
+            alert("Profile details updated successfully.");
+        } catch (err) {
+            console.error('Failed to update profile:', err);
+            alert(err.response?.data?.message || "Failed to update profile");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handlePasswordReset = (e) => {
+    const handlePasswordReset = async (e) => {
         e.preventDefault();
         if (password.new !== password.confirm) {
             alert("New passwords do not match.");
             return;
         }
-        alert("Password reset successfully.");
-        setPassword({ current: '', new: '', confirm: '' });
+        setIsSubmitting(true);
+        try {
+            await api.patch('/auth/updatepassword', {
+                currentPassword: password.current,
+                newPassword: password.new
+            });
+            alert("Password reset successfully.");
+            setPassword({ current: '', new: '', confirm: '' });
+        } catch (err) {
+            console.error('Failed to reset password:', err);
+            alert(err.response?.data?.message || "Failed to reset password");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleImageUpload = (e) => {
@@ -70,8 +89,6 @@ const Profile = () => {
 
     const tabs = [
         { id: 'profile', label: 'Profile Settings', icon: UserCircle },
-        // { id: 'work', label: 'Work History', icon: Briefcase },
-        // { id: 'sync', label: 'Sync Status', icon: RefreshCw },
     ];
 
     return (
@@ -114,7 +131,7 @@ const Profile = () => {
                                                 {profile.avatar ? (
                                                     <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    profile.name.split(' ').map(n => n[0]).join('')
+                                                    (profile.fullName || 'User').split(' ').map(n => n[0]).join('')
                                                 )}
                                             </div>
                                             <label className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-md border border-slate-100 text-blue-600 hover:scale-110 transition cursor-pointer">
@@ -123,8 +140,8 @@ const Profile = () => {
                                             </label>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-800 text-lg">{profile.name}</h4>
-                                            <p className="text-slate-500 text-sm">{profile.role}</p>
+                                            <h4 className="font-bold text-slate-800 text-lg">{profile.fullName || 'Not Set'}</h4>
+                                            <p className="text-slate-500 text-sm tracking-widest uppercase font-black text-[10px]">{profile.role}</p>
                                         </div>
                                     </div>
 
@@ -133,9 +150,10 @@ const Profile = () => {
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Display Name</label>
                                             <input
                                                 type="text"
-                                                value={profile.name}
-                                                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                                                value={profile.fullName}
+                                                onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                                                required
                                             />
                                         </div>
                                         <div>
@@ -144,7 +162,7 @@ const Profile = () => {
                                                 type="text"
                                                 value={profile.role}
                                                 disabled
-                                                className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-slate-500 cursor-not-allowed"
+                                                className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-slate-500 cursor-not-allowed uppercase font-black text-xs"
                                             />
                                         </div>
                                     </div>
@@ -155,11 +173,25 @@ const Profile = () => {
                                             value={profile.email}
                                             onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                                             className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                        <input
+                                            type="text"
+                                            value={profile.phone}
+                                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
                                         />
                                     </div>
                                     <div className="flex justify-end pt-2">
-                                        <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200">
-                                            <Save size={18} /> Update Details
+                                        <button 
+                                            type="submit" 
+                                            disabled={isSubmitting}
+                                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200 disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? <RefreshCw className="animate-spin" size={18} /> : <Save size={18} />} Update Details
                                         </button>
                                     </div>
                                 </form>
@@ -177,6 +209,7 @@ const Profile = () => {
                                             value={password.current}
                                             onChange={(e) => setPassword({ ...password, current: e.target.value })}
                                             className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                                            required
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -187,6 +220,7 @@ const Profile = () => {
                                                 value={password.new}
                                                 onChange={(e) => setPassword({ ...password, new: e.target.value })}
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                                                required
                                             />
                                         </div>
                                         <div>
@@ -196,71 +230,20 @@ const Profile = () => {
                                                 value={password.confirm}
                                                 onChange={(e) => setPassword({ ...password, confirm: e.target.value })}
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                                                required
                                             />
                                         </div>
                                     </div>
                                     <div className="flex justify-end pt-2">
-                                        <button type="submit" className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg">
-                                            Change Password
+                                        <button 
+                                            type="submit" 
+                                            disabled={isSubmitting}
+                                            className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg disabled:opacity-50"
+                                        >
+                                            {isSubmitting ? 'Changing...' : 'Change Password'}
                                         </button>
                                     </div>
                                 </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'work' && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                                <h3 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-4">Work History</h3>
-                                <div className="space-y-8 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                                    {workHistory.map((job) => (
-                                        <div key={job.id} className="relative pl-10">
-                                            <div className="absolute left-0 top-1.5 w-7 h-7 bg-blue-100 rounded-full border-4 border-white flex items-center justify-center">
-                                                <Briefcase size={12} className="text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800">{job.role}</h4>
-                                                <p className="text-sm font-semibold text-blue-600 mb-1">{job.company}</p>
-                                                <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full inline-block mb-3">
-                                                    {job.period}
-                                                </span>
-                                                <p className="text-sm text-slate-500 leading-relaxed">{job.description}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'sync' && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                                <h3 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-4">Sync Status</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-emerald-50 rounded-xl p-6 border border-emerald-100 text-center">
-                                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                            <RefreshCw size={32} />
-                                        </div>
-                                        <h4 className="font-bold text-slate-800 text-lg">Fully Synced</h4>
-                                        <p className="text-emerald-600 text-sm font-medium mt-1">Last synced: {syncStatus.lastSync}</p>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                            <span className="text-sm font-medium text-slate-600">App Version</span>
-                                            <span className="text-sm font-bold text-slate-800">{syncStatus.version}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                            <span className="text-sm font-medium text-slate-600">Pending Changes</span>
-                                            <span className="text-sm font-bold text-slate-800">{syncStatus.offlineChanges} items</span>
-                                        </div>
-                                        <button className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                                            <RefreshCw size={18} /> Force Sync Now
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     )}

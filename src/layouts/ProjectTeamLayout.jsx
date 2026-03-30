@@ -54,16 +54,21 @@ const ProjectTeamLayout = () => {
   };
 
   const navItems = [
-    { icon: LayoutDashboard, label: 'Home', path: '/project-team', roles: ['project_manager', 'foreman', 'worker'] },
-    { icon: ClipboardList, label: 'My Tasks', path: '/project-team/tasks', roles: ['project_manager', 'foreman', 'worker'] },
-    { icon: Camera, label: 'Photo Upload', path: '/project-team/upload', roles: ['project_manager', 'foreman'] },
-    { icon: MessageSquare, label: 'Team Chat', path: '/project-team/chat', roles: ['project_manager', 'foreman', 'worker'] },
+    { icon: LayoutDashboard, label: 'Home', path: '/project-team', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_DASHBOARD' },
+    { icon: ClipboardList, label: 'My Tasks', path: '/project-team/tasks', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_TASKS' },
+    { icon: Camera, label: 'Photo Upload', path: '/project-team/upload', roles: ['project_manager', 'foreman'], permission: 'VIEW_PHOTOS' },
+    { icon: MessageSquare, label: 'Team Chat', path: '/project-team/chat', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_CHAT' },
     { icon: User, label: 'My Profile', path: '/project-team/profile', roles: ['project_manager', 'foreman', 'worker'] },
   ];
 
-  const filteredNavItems = navItems.filter(item =>
-    !item.roles || item.roles.includes(user?.role || 'worker')
-  );
+  const filteredNavItems = navItems.filter(item => {
+    // Role-based check
+    const roleAllowed = !item.roles || item.roles.includes(user?.role?.toLowerCase() || 'worker');
+    // Permission-based check (if a permission key is assigned)
+    const permissionAllowed = !item.permission || user?.permissions?.includes(item.permission);
+    
+    return roleAllowed && permissionAllowed;
+  });
 
   const getHeaderTitle = () => {
     const currentItem = filteredNavItems.find(item => item.path === location.pathname);

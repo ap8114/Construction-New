@@ -17,11 +17,11 @@ import api from '../../utils/api';
 import CancellationModal from '../../components/jobs/CancellationModal';
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true, extraValue }) => (
-  <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
+  <div className="bg-white p-3 md:p-3.5 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
     <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`p-2 rounded-lg md:rounded-xl ${color} shadow-sm group-hover:scale-105 transition-transform duration-300 shrink-0`}>
-          <Icon size={18} className="text-white" />
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className={`p-1.5 rounded-lg md:rounded-xl ${color} shadow-sm group-hover:scale-105 transition-transform duration-300 shrink-0`}>
+          <Icon size={16} className="text-white" />
         </div>
         <h3 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest truncate">{title}</h3>
       </div>
@@ -46,7 +46,7 @@ const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFi
 const QuickActionButton = ({ label, icon: Icon, color, bg, onClick }) => (
   <button
     onClick={onClick}
-    className={`${bg} ${color} flex items-center gap-2.5 px-4 md:px-5 py-3 md:py-3.5 rounded-lg md:rounded-xl font-black text-[11px] md:text-xs uppercase tracking-tight shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all w-full md:w-auto border border-white/10`}
+    className={`${bg} ${color} flex items-center gap-2 px-3.5 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl font-black text-[11px] md:text-xs uppercase tracking-tight shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all w-full md:w-auto border border-white/10`}
   >
     <div className={`p-1.5 rounded-lg bg-white/20 shrink-0`}>
       <Icon size={16} />
@@ -107,17 +107,17 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
     if (!todo.trim()) return;
     try {
       setSubmitting(true);
-      
+
       const isManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
-      
+
       const reqAssignedTo = assignedTo || (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(currentUser?.role) ? currentUser?._id : undefined);
 
       if (isManagement && !assignedTo) {
-          alert('Please select a worker to assign this task.');
-          setSubmitting(false);
-          return;
+        alert('Please select a worker to assign this task.');
+        setSubmitting(false);
+        return;
       }
-      
+
       await api.post('/todos', {
         title: todo,
         assignedTo: reqAssignedTo,
@@ -139,33 +139,33 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
   const showAssignTo = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(currentUser?.role);
 
   return (
-    <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-[2rem] shadow-xl shadow-indigo-900/10 text-white mb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-white/20 rounded-xl">
-          <ClipboardList size={20} />
+    <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-xl shadow-indigo-900/10 text-white mb-6">
+      <div className="flex items-center gap-2.5 mb-3.5">
+        <div className="p-1.5 bg-white/20 rounded-lg">
+          <ClipboardList size={18} />
         </div>
-        <h3 className="text-lg font-black tracking-tight">Daily Quick To-Do</h3>
+        <h3 className="text-base font-black tracking-tight">Daily Quick To-Do</h3>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1.5 block px-1">What needs to be done? (Non-Project Task)</label>
+        <div className="flex flex-col md:flex-row items-end gap-3">
+          <div className="flex-1 w-full">
+            <label className="text-[9px] font-black uppercase tracking-widest text-indigo-100 mb-1 block px-1">Task Description</label>
             <input
               type="text"
               placeholder="e.g. Pick up supplies, call site manager..."
               value={todo}
               onChange={(e) => setTodo(e.target.value)}
-              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm font-bold placeholder:text-indigo-100 outline-none focus:bg-white/20 transition-all font-sans"
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm font-bold placeholder:text-indigo-100 outline-none focus:bg-white/20 transition-all font-sans"
             />
           </div>
-          
+
           {showAssignTo && (
-            <div className="md:w-64">
-              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-100 mb-1.5 block px-1">Assign To Worker</label>
+            <div className="w-full md:w-64">
+              <label className="text-[9px] font-black uppercase tracking-widest text-indigo-100 mb-1 block px-1">Assign To Worker</label>
               <select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:bg-white/20 transition-all appearance-none"
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:bg-white/20 transition-all appearance-none"
               >
                 {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role) ? (
                   <option value="" className="text-slate-900">Assign to Myself</option>
@@ -183,11 +183,11 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
               </select>
             </div>
           )}
-          
+
           <button
             type="submit"
             disabled={submitting || !todo.trim()}
-            className="md:self-end bg-white text-indigo-600 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-tight hover:bg-slate-50 transition-all disabled:opacity-50 h-[46px] shadow-lg active:scale-95 whitespace-nowrap"
+            className="w-full md:w-auto bg-white text-indigo-600 px-8 py-2.5 rounded-xl font-black text-sm uppercase tracking-tight hover:bg-slate-50 transition-all disabled:opacity-50 h-[42px] shadow-lg active:scale-95 whitespace-nowrap"
           >
             {submitting ? 'Adding...' : showAssignTo ? 'Assign Item' : 'Add My Todo'}
           </button>
@@ -208,13 +208,12 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks" }
         <div className="py-8 text-center text-slate-400 font-bold text-xs">No pending todos</div>
       ) : (
         todos.map(todo => (
-          <div key={todo._id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-all group">
+          <div key={todo._id} className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-all group">
             <div className="flex items-center gap-3 min-w-0">
-              <button 
+              <button
                 onClick={() => onUpdate(todo._id, { status: todo.status === 'completed' ? 'pending' : 'completed' })}
-                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                  todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
-                }`}
+                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
+                  }`}
               >
                 <Check size={14} />
               </button>
@@ -222,19 +221,19 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks" }
                 <p className={`text-xs font-bold truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                   {todo.title}
                 </p>
-                {todo.assignedBy && todo.assignedBy._id !== todo.assignedTo && typeof todo.assignedBy === 'object' && (
+                {todo.assignedBy && typeof todo.assignedBy === 'object' && (
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
                     Assigned by: {todo.assignedBy.fullName}
                   </p>
                 )}
                 {todo.assignedTo && typeof todo.assignedTo === 'object' && todo.assignedTo._id !== currentUser?._id && (
-                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
                     Assigned to: {todo.assignedTo.fullName}
                   </p>
                 )}
               </div>
             </div>
-            <button 
+            <button
               onClick={() => onDelete(todo._id)}
               className="p-2 text-slate-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 shrink-0"
             >
@@ -406,7 +405,7 @@ const CompanyAdminDashboard = () => {
     fetchDashboardData();
 
     // Connect socket
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
     socketRef.current = io(socketUrl);
     socketRef.current.emit('register_user', user);
 
@@ -588,21 +587,16 @@ const CompanyAdminDashboard = () => {
   const isOwnerOrPM = isOwner || isPM;
 
   return (
-    <div className="space-y-8 pb-12 animate-fade-in max-w-[1600px] mx-auto">
+    <div className="space-y-6 pb-8 animate-fade-in mx-auto">
       {/* Header Content Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Dashboard</h1>
-          <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
-            <Smartphone size={14} className="text-blue-600" />
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">Dashboard</h1>
+          <p className="text-slate-500 font-bold text-[11px] md:text-xs mt-0.5 uppercase tracking-widest flex items-center gap-2">
+            <Smartphone size={13} className="text-blue-600" />
             Own Your Time. Control Your Site.
           </p>
         </div>
-        {/* <div className="flex gap-2">
-          <button className="p-2.5 bg-white rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:shadow-sm transition-all">
-            <MoreHorizontal size={20} />
-          </button>
-        </div> */}
       </div>
 
       {/* Worker / Subcontractor Clock Widget */}
@@ -611,7 +605,7 @@ const CompanyAdminDashboard = () => {
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <Clock size={120} />
           </div>
-          <div className="p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+          <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
             <div className="space-y-2 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 text-blue-600 font-black text-xs uppercase tracking-widest bg-blue-50 w-fit px-3 py-1 rounded-full mx-auto md:mx-0">
                 <div className={`w-2 h-2 rounded-full ${isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
@@ -673,7 +667,7 @@ const CompanyAdminDashboard = () => {
       )}
 
       {/* Summary Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {(isOwner || isPM) && (
           <>
             <SummaryCard title="Active Jobs" value={metrics.activeJobs} icon={Briefcase} color="bg-orange-400" loading={loading} />
@@ -711,12 +705,12 @@ const CompanyAdminDashboard = () => {
       </div>
 
       {/* Quick Actions & Alerts Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left: Quick Actions */}
-        <div className="xl:col-span-3 space-y-8">
+        <div className="lg:col-span-3 space-y-6">
           <div className="bg-transparent">
-            <h3 className="text-lg font-black text-slate-800 mb-5 tracking-tight">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <h3 className="text-base font-black text-slate-800 mb-4 tracking-tight">Quick Actions</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {isOwnerOrPM && (
                 <>
                   <QuickActionButton label="Clock In crew" icon={CheckCircle} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/timesheets')} />
@@ -755,29 +749,29 @@ const CompanyAdminDashboard = () => {
           </div>
 
           {/* Quick To-Do Section - Independent of Projects */}
-          <QuickTodoWidget 
+          <QuickTodoWidget
             users={teamMembers}
             currentUser={user}
-            onTaskCreated={fetchDashboardData} 
+            onTaskCreated={fetchDashboardData}
           />
 
-           {/* Dynamic To-Do Lists Layout */}
-          <div className={`grid grid-cols-1 ${(!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role)) ? 'md:grid-cols-2' : ''} gap-8 mb-8`}>
+          {/* Dynamic To-Do Lists Layout */}
+          <div className={`grid grid-cols-1 ${(!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role)) ? 'md:grid-cols-2' : ''} gap-6 mb-6`}>
             {/* Show My Daily Todos ONLY for personnel who actually create them for themselves (Workers, Foremen) */}
             {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && (
-              <TodoList 
-                title="My Daily Todos" 
-                todos={myTodos.filter(t => t.status === 'pending')} 
+              <TodoList
+                title="My Daily Todos"
+                todos={myTodos.filter(t => t.status === 'pending')}
                 onUpdate={handleTodoUpdate}
                 onDelete={handleTodoDelete}
                 currentUser={user}
               />
             )}
-            
+
             {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
-              <TodoList 
-                title="Assigned By Me" 
-                todos={assignedByMeTodos.filter(t => t.status === 'pending')} 
+              <TodoList
+                title="Assigned By Me"
+                todos={assignedByMeTodos.filter(t => t.status === 'pending')}
                 onUpdate={handleTodoUpdate}
                 onDelete={handleTodoDelete}
                 currentUser={user}
@@ -834,7 +828,7 @@ const CompanyAdminDashboard = () => {
               </div>
               <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto no-scrollbar">
                 {myTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').map((task) => (
-                  <div key={task._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                  <div key={task._id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-4 min-w-0">
                       <button
                         onClick={() => handleToggleTaskStatus(task, task.status)}
@@ -927,7 +921,7 @@ const CompanyAdminDashboard = () => {
           {/* My Recent Activity - For Workers & Subcontractors */}
           {(isWorker || isSubcontractor) && (
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-lg font-black text-slate-800 tracking-tight">My Recent Activity</h3>
                 <button
                   onClick={() => navigate('/company-admin/timesheets')}
@@ -938,7 +932,7 @@ const CompanyAdminDashboard = () => {
               </div>
               <div className="divide-y divide-slate-50">
                 {myRecentActivity.map((item) => (
-                  <div key={item.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`p-2.5 rounded-xl ${item.action === 'Clocked In' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}>
                         <Clock size={20} />
@@ -964,7 +958,7 @@ const CompanyAdminDashboard = () => {
           {/* Live Crew Activity Table */}
           {(isOwnerOrPM || isForeman) && (
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-lg font-black text-slate-800 tracking-tight">Live Crew Activity</h3>
               </div>
               {/* Desktop Table View */}
@@ -972,18 +966,18 @@ const CompanyAdminDashboard = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Employee</th>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Job</th>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Clock In</th>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">GPS</th>
-                      <th className="px-6 py-4"></th>
+                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Employee</th>
+                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Job</th>
+                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Clock In</th>
+                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">GPS</th>
+                      <th className="px-5 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {crewActivity.map((member, i) => (
                       <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 border border-slate-300">
                               {member.avatar}
@@ -991,21 +985,21 @@ const CompanyAdminDashboard = () => {
                             <span className="text-sm font-bold text-slate-900">{member.name}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-600">{member.job}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3 text-sm font-bold text-slate-600">{member.job}</td>
+                        <td className="px-5 py-3">
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-slate-900">{member.time}</span>
                             {member.subtext && <span className="text-[10px] text-slate-400 font-bold">{member.subtext}</span>}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3">
                           <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${member.status === 'On Site' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
                             }`}>
                             {member.status === 'On Site' ? <CheckCircle size={12} /> : <X size={12} />}
                             {member.status}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3">
                           <button
                             onClick={() => {
                               if (member.lat && member.lng) {
@@ -1024,7 +1018,7 @@ const CompanyAdminDashboard = () => {
                             <span className="hidden sm:inline">{member.lat ? 'View' : 'N/A'}</span>
                           </button>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3">
                           <div className={`w-12 h-8 rounded border overflow-hidden text-[8px] flex items-center justify-center font-black ${member.status === 'On Site' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-400'
                             }`}>
                             {member.status === 'On Site' ? '● LIVE' : 'OUT'}
@@ -1044,7 +1038,7 @@ const CompanyAdminDashboard = () => {
               {/* Mobile Card View */}
               <div className="md:hidden divide-y divide-slate-100">
                 {crewActivity.map((member, i) => (
-                  <div key={i} className="p-5 space-y-4">
+                  <div key={i} className="p-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-600 border border-slate-200">
@@ -1100,9 +1094,9 @@ const CompanyAdminDashboard = () => {
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-200 flex items-center justify-center">
                     {topProject?.image ? (
-                        <img src={topProject.image} className="w-full h-full object-cover" />
+                      <img src={topProject.image} className="w-full h-full object-cover" />
                     ) : (
-                        <TrendingUp className="text-blue-500" size={32} />
+                      <TrendingUp className="text-blue-500" size={32} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1154,8 +1148,8 @@ const CompanyAdminDashboard = () => {
         <div className="space-y-8">
           {/* Attention & Alerts */}
           {!isWorker && (
-            <div id="overdue-tasks-section" className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 transition-all duration-500">
-              <h3 className="text-lg font-black text-slate-800 mb-6 tracking-tight">Attention & Alerts</h3>
+            <div id="overdue-tasks-section" className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 transition-all duration-500">
+              <h3 className="text-lg font-black text-slate-800 mb-5 tracking-tight">Attention & Alerts</h3>
               <div className="space-y-3">
                 {metrics.overdueTasks > 0 && (
                   <div className="space-y-2">
@@ -1180,7 +1174,7 @@ const CompanyAdminDashboard = () => {
                           </div>
                         ))}
                         {overdueTasksList.length > 5 && (
-                          <button 
+                          <button
                             onClick={() => navigate('/company-admin/tasks')}
                             className="text-[10px] font-black text-red-600 hover:text-red-700 uppercase tracking-widest pt-1 text-center"
                           >
@@ -1229,8 +1223,8 @@ const CompanyAdminDashboard = () => {
 
           {/* Recent Daily Logs - Hidden for Worker */}
           {(isOwner || isPM || isForeman) && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="flex justify-between items-center mb-5">
                 <h3 className="text-lg font-black text-slate-800 tracking-tight">Recent Daily Logs</h3>
               </div>
               <div className="space-y-2">

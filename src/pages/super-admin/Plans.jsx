@@ -7,11 +7,12 @@ import Modal from '../../components/Modal';
 const Plans = () => {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
-    const [actionLoading, setActionLoading] = useState(false);
+    const [featureInput, setFeatureInput] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -22,8 +23,6 @@ const Plans = () => {
         maxProjects: 5,
         isPopular: false
     });
-
-    const [featureInput, setFeatureInput] = useState('');
 
     useEffect(() => {
         fetchPlans();
@@ -85,6 +84,11 @@ const Plans = () => {
         setFormData({ ...formData, features: newFeatures });
     };
 
+    const handleOpenDeleteModal = (id) => {
+        setDeletingId(id);
+        setIsDeleteModalOpen(true);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setActionLoading(true);
@@ -98,6 +102,7 @@ const Plans = () => {
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving plan:', error);
+            alert(error.response?.data?.message || 'Error saving plan');
         } finally {
             setActionLoading(false);
         }
@@ -329,6 +334,8 @@ const Plans = () => {
                             ))}
                         </div>
                     </div>
+
+                    {/* No Role Permissions needed per user request */}
 
                     <button
                         type="submit"

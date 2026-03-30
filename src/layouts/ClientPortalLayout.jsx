@@ -291,11 +291,15 @@ const ClientPortalLayout = () => {
               className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition"
             >
               <div className="text-right hidden sm:block">
-                <div className="text-sm font-medium text-slate-900">{user?.name || 'Client User'}</div>
-                <div className="text-xs text-slate-500">Project Stakeholder</div>
+                <div className="text-sm font-medium text-slate-900">{user?.fullName || 'Client User'}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 leading-none">{user?.role === 'CLIENT' ? 'Project Stakeholder' : user?.role || 'Guest'}</div>
               </div>
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">
-                {(user?.name || 'C U').split(' ').map(n => n[0]).join('')}
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.fullName || 'C U').split(' ').map(n => n[0]).join('')
+                )}
               </div>
             </button>
 
@@ -303,10 +307,10 @@ const ClientPortalLayout = () => {
             {isProfileMenuOpen && (
               <div className="absolute top-16 right-0 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in">
                 <div className="px-4 py-3 border-b border-slate-100 sm:hidden">
-                  <p className="text-sm font-medium text-slate-900">{user?.name || 'Client User'}</p>
+                  <p className="text-sm font-medium text-slate-900">{user?.fullName || 'Client User'}</p>
                 </div>
                 <button
-                  onClick={() => { setIsProfileMenuOpen(false); }}
+                  onClick={() => { navigate('/client-portal/profile'); setIsProfileMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                 >
                   <User size={16} /> My Account

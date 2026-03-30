@@ -67,12 +67,18 @@ const CreateRFI = () => {
         if (!validate()) return;
         setSubmitting(true);
         try {
-            const payload = { ...form };
-            if (!payload.assignedTo) delete payload.assignedTo;
-            if (!payload.dueDate) delete payload.dueDate;
-            if (!payload.location) delete payload.location;
+            const data = new FormData();
+            Object.keys(form).forEach(key => {
+                if (form[key]) data.append(key, form[key]);
+            });
 
-            const res = await api.post('/rfis', payload);
+            files.forEach(file => {
+                data.append('files', file);
+            });
+
+            const res = await api.post('/rfis', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             navigate(`${basePath}/rfi/${res.data._id}`);
         } catch (err) {
             alert(err.response?.data?.message || 'Failed to create RFI');

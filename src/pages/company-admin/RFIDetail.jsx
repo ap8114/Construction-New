@@ -6,7 +6,7 @@ import {
     MapPin, Tag, Calendar, Paperclip, Download,
     ChevronDown, Edit2, CheckCheck, X
 } from 'lucide-react';
-import api from '../../utils/api';
+import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const statusColors = {
@@ -232,7 +232,7 @@ const RFIDetail = () => {
                                             <Paperclip size={14} className="text-slate-400" />
                                             <span className="text-sm font-medium text-slate-700">{att.name}</span>
                                         </div>
-                                        <a href={att.url} download className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
+                                        <a href={getServerUrl(att.url)} target="_blank" rel="noreferrer" className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
                                             <Download size={14} />
                                         </a>
                                     </div>

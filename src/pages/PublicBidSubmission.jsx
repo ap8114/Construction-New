@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { FileText, Download, Send, CheckCircle, Loader, DollarSign, MessageSquare } from 'lucide-react';
+import { FileText, Download, Send, CheckCircle, Loader, DollarSign, MessageSquare, Plus, X } from 'lucide-react';
 import api, { getServerUrl } from '../utils/api';
 
 const PublicBidSubmission = () => {
@@ -17,6 +17,7 @@ const PublicBidSubmission = () => {
         bidAmount: '',
         notes: ''
     });
+    const [attachments, setAttachments] = useState([]);
 
     useEffect(() => {
         const fetchDrawing = async () => {
@@ -38,12 +39,19 @@ const PublicBidSubmission = () => {
 
         try {
             setSubmitting(true);
-            await api.post('/vendors/public/submit-bid', {
-                drawingId,
-                vendorId,
-                bidAmount: formData.bidAmount,
-                notes: formData.notes,
-                companyId: drawing.companyId
+            const data = new FormData();
+            data.append('drawingId', drawingId);
+            data.append('vendorId', vendorId);
+            data.append('bidAmount', formData.bidAmount);
+            data.append('notes', formData.notes);
+            data.append('companyId', drawing.companyId);
+            
+            attachments.forEach(file => {
+                data.append('files', file);
+            });
+
+            await api.post('/vendors/public/submit-bid', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             setSubmitted(true);
         } catch (err) {
@@ -52,6 +60,15 @@ const PublicBidSubmission = () => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        setAttachments(prev => [...prev, ...files]);
+    };
+
+    const removeAttachment = (index) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
     if (loading) return (
@@ -175,10 +192,48 @@ const PublicBidSubmission = () => {
                                 <textarea
                                     value={formData.notes}
                                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    rows="1"
+                                    rows="2"
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:border-blue-500 outline-none transition"
                                     placeholder="Briefly describe your scope of work..."
                                 ></textarea>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supporting Documents (PDF, Images, DOCS)</label>
+                                <div className="flex flex-wrap gap-3">
+                                    <label className="cursor-pointer group">
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            onChange={handleFileChange} 
+                                            className="hidden" 
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                                        />
+                                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 w-32 h-32 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-2 group-hover:bg-blue-100 group-hover:text-blue-600 transition">
+                                                <Plus size={20} />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase text-slate-400 text-center">Attach Files</span>
+                                        </div>
+                                    </label>
+
+                                    {attachments.map((file, idx) => (
+                                        <div key={idx} className="w-32 h-32 bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col justify-between relative group animate-fade-in">
+                                            <button 
+                                                type="button"
+                                                onClick={() => removeAttachment(idx)}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
+                                                <FileText size={16} />
+                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-600 truncate">{file.name}</p>
+                                            <p className="text-[9px] font-medium text-slate-300">{(file.size / 1024).toFixed(1)} KB</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <button

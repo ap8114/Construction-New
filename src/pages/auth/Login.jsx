@@ -7,6 +7,7 @@ import Logo from '../../assets/images/Logo.png';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Login = () => {
   const handleLogin = async (e, overrideEmail, overridePass) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
     // Use overrides if provided (for quick login), otherwise use state
     const loginEmail = overrideEmail || email;
@@ -31,8 +33,9 @@ const Login = () => {
       } else {
         navigate('/'); // Fallback
       }
-    } catch (error) {
-      console.error("Login failed", error);
+    } catch (err) {
+      console.error("Login failed", err);
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +149,12 @@ const Login = () => {
             <h2 className="text-3xl font-bold text-slate-900">Sign In</h2>
             <p className="text-slate-500 mt-2 italic text-sm">Use the guide on the left to copy test credentials</p>
           </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-bold animate-shake">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={(e) => handleLogin(e)} className="space-y-6">
             <div>

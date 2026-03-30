@@ -34,7 +34,8 @@ const LandingPage = () => {
     useEffect(() => {
         const fetchPlans = async () => {
             try {
-                const response = await fetch('https://construction-backend-production-b192.up.railway.app/api/plans');
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+                const response = await fetch(`${apiUrl}/plans`);
                 const data = await response.json();
                 if (data && data.length > 0) {
                     const formattedPlans = data.map(plan => ({
