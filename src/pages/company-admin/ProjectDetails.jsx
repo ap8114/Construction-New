@@ -5,7 +5,7 @@ import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
     Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart,
-    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X
+    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X, Phone, Mail
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -82,6 +82,11 @@ const ProjectDetails = () => {
     const [projectTasks, setProjectTasks] = useState([]);
     const [tasksLoading, setTasksLoading] = useState(false);
     const [taskSearch, setTaskSearch] = useState('');
+    
+    // Contacts states
+    const [isAddingContact, setIsAddingContact] = useState(false);
+    const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' });
+    const [contactToDelete, setContactToDelete] = useState(null);
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -232,6 +237,37 @@ const ProjectDetails = () => {
             alert('Failed to post update');
         } finally {
             setIsSubmittingUpdate(false);
+        }
+    };
+
+    const handleAddContact = async (e) => {
+        e.preventDefault();
+        try {
+            const updatedContacts = [...(project?.contacts || []), newContact];
+            const res = await api.patch(`/projects/${projectId}`, { contacts: updatedContacts });
+            setProject(res.data);
+            setIsAddingContact(false);
+            setNewContact({ name: '', email: '', phone: '', role: '' });
+        } catch (err) {
+            console.error(err);
+            alert('Failed to add contact');
+        }
+    };
+
+    const handleDeleteContact = (indexToRemove) => {
+        setContactToDelete(indexToRemove);
+    };
+
+    const confirmDeleteContact = async () => {
+        if (contactToDelete === null) return;
+        try {
+            const updatedContacts = project.contacts.filter((_, idx) => idx !== contactToDelete);
+            const res = await api.patch(`/projects/${projectId}`, { contacts: updatedContacts });
+            setProject(res.data);
+            setContactToDelete(null);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to remove contact');
         }
     };
 
@@ -432,6 +468,7 @@ const ProjectDetails = () => {
                     { id: 'overview', label: 'Overview', icon: LayoutGrid },
                     user?.role !== 'WORKER' && { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
                     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
+                    { id: 'contacts', label: 'Contacts', icon: Users },
                     { id: 'updates', label: 'Client Updates', icon: MessageSquare },
                 ].filter(Boolean).map((tab) => (
                     <button
@@ -1352,6 +1389,219 @@ const ProjectDetails = () => {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ── Contacts Tab ── */}
+            {activeTab === 'contacts' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-[28px] border border-slate-200/60 shadow-sm">
+                        <div>
+                            <h2 className="text-xl font-black text-slate-900 tracking-tight">Project Contacts</h2>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Directory of individuals involved</p>
+                        </div>
+                        {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) && (
+                            <button
+                                onClick={() => setIsAddingContact(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all"
+                            >
+                                <Plus size={16} /> Add Contact
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <th className="px-6 py-4">Contact Info</th>
+                                        <th className="px-6 py-4">Role</th>
+                                        <th className="px-6 py-4 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {project?.contacts?.map((contact, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-[14px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs border border-blue-100 shrink-0">
+                                                        <Users size={16} />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-slate-900 text-sm truncate">{contact.name}</p>
+                                                        {(contact.phone || contact.email) && (
+                                                            <div className="flex items-center gap-2 mt-1 truncate">
+                                                                {contact.phone && <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><Phone size={10} className="text-slate-400" /> {contact.phone}</span>}
+                                                                {contact.phone && contact.email && <span className="text-slate-300">•</span>}
+                                                                {contact.email && <span className="text-xs font-bold text-slate-500 flex items-center gap-1"><Mail size={10} className="text-slate-400" /> {contact.email}</span>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {contact.role ? (
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full inline-block">
+                                                        {contact.role}
+                                                    </span>
+                                                ) : <span className="text-slate-300 text-[10px] uppercase font-bold">—</span>}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) ? (
+                                                    <button 
+                                                        onClick={() => handleDeleteContact(idx)} 
+                                                        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-100 transition-all mx-auto"
+                                                        title="Remove Contact"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                ) : <span className="text-slate-300">—</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!project?.contacts || project.contacts.length === 0) && (
+                                        <tr>
+                                            <td colSpan={3} className="px-6 py-16 text-center">
+                                                <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                    <Users size={32} />
+                                                    <p className="font-black uppercase tracking-widest text-xs">No contacts added yet</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isAddingContact && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-slate-100/50 shrink-0">
+                            <button 
+                                onClick={() => setIsAddingContact(false)}
+                                className="absolute top-8 right-8 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                            
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                                <UserCheck size={20} />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Add Contact</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Project Directory</p>
+                        </div>
+                        
+                        <div className="p-8 overflow-y-auto min-h-0">
+                            <form onSubmit={handleAddContact} className="space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Full Name *</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={newContact.name} 
+                                        onChange={e => setNewContact({...newContact, name: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none placeholder:text-slate-300"
+                                        placeholder="Enter contact's name"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Role *</label>
+                                    <div className="relative">
+                                        <select 
+                                            required
+                                            value={newContact.role} 
+                                            onChange={e => setNewContact({...newContact, role: e.target.value})}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-4 pr-10 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer"
+                                        >
+                                            <option value="" disabled>Select a role...</option>
+                                            <option value="Client">Client</option>
+                                            <option value="Architect">Architect</option>
+                                            <option value="General Contractor">General Contractor</option>
+                                            <option value="Subcontractor">Subcontractor</option>
+                                            <option value="Engineer">Engineer</option>
+                                            <option value="Supplier">Supplier</option>
+                                            <option value="Plumber">Plumber</option>
+                                            <option value="Electrician">Electrician</option>
+                                            <option value="HVAC Tech">HVAC Tech</option>
+                                            <option value="Inspector">Inspector</option>
+                                            <option value="Consultant">Consultant</option>
+                                            <option value="Project Manager">Project Manager</option>
+                                            <option value="Site Supervisor">Site Supervisor</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Email Address</label>
+                                    <input 
+                                        type="email" 
+                                        value={newContact.email} 
+                                        onChange={e => setNewContact({...newContact, email: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none placeholder:text-slate-300"
+                                        placeholder="email@example.com"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Phone Number</label>
+                                    <input 
+                                        type="tel" 
+                                        value={newContact.phone} 
+                                        onChange={e => setNewContact({...newContact, phone: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none placeholder:text-slate-300"
+                                        placeholder="(555) 555-0123"
+                                    />
+                                </div>
+                                
+                                <div className="pt-4 pb-2">
+                                    <button 
+                                        type="submit"
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-blue-50 outline-none"
+                                    >
+                                        Save Contact
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {contactToDelete !== null && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-[400px] shadow-2xl relative overflow-hidden flex flex-col items-center text-center p-8">
+                        <button 
+                            onClick={() => setContactToDelete(null)}
+                            className="absolute top-6 right-6 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                        <div className="w-16 h-16 rounded-[20px] bg-red-50 text-red-500 flex items-center justify-center mb-6 border border-red-100/50">
+                            <AlertTriangle size={28} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Remove Contact?</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                            Are you sure you want to remove <strong className="text-slate-900">{project?.contacts?.[contactToDelete]?.name || 'this contact'}</strong> from the directory?
+                        </p>
+                        <div className="flex gap-4 w-full">
+                            <button 
+                                onClick={() => setContactToDelete(null)}
+                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmDeleteContact}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={16} /> Remove
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

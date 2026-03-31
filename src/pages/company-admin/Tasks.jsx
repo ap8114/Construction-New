@@ -485,25 +485,47 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 <td className="py-2.5 px-4 relative" style={{ paddingLeft: `${indentPx}px` }}>
                     {/* Tree Connectors */}
                     <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                        {/* Previous Depth Vertical Lines */}
                         {levelLines.map((hasLine, i) => (
                             hasLine && (
                                 <div
                                     key={i}
-                                    className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40"
+                                    className="absolute top-0 bottom-0 border-l-[1.5px] border-slate-200"
                                     style={{ left: `${baseOffset + i * step}px` }}
                                 />
                             )
                         ))}
-                        {/* Current branch vertical line */}
+                        {/* Current branch vertical line to the next sibling, if not last */}
+                        {!isLast && (
+                            <div
+                                className="absolute border-l-[1.5px] border-slate-200"
+                                style={{
+                                    left: `${baseOffset + depth * step}px`,
+                                    top: '50%',
+                                    bottom: '0',
+                                }}
+                            />
+                        )}
+                        {/* Curving L shape pointing to the task */}
                         <div
-                            className={`absolute w-[1px] bg-slate-200/40 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`}
-                            style={{ left: `${baseOffset + depth * step}px` }}
-                        />
-                        {/* Current branch horizontal line */}
-                        <div
-                            className="absolute top-1/2 h-[1px] bg-slate-200/40"
-                            style={{ left: `${baseOffset + depth * step}px`, width: '18px' }}
-                        />
+                            className="absolute border-slate-300"
+                            style={{
+                                left: `${baseOffset + depth * step}px`,
+                                top: '0',
+                                height: '50%',
+                                width: '22px',
+                                borderLeftWidth: '1.5px',
+                                borderBottomWidth: '1.5px',
+                                borderBottomLeftRadius: '8px',
+                            }}
+                        >
+                            {/* SVG Arrowhead at the end */}
+                            <div className="absolute -right-[3px] -bottom-[4px] text-slate-400">
+                                <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2 relative z-10">
