@@ -63,7 +63,7 @@ const priorityStyles = {
 
 // ─── Kanban Task Card ──────────────────────────────────────────────────────────
 const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id || task.id });
     const [menuOpen, setMenuOpen] = useState(false);
     const urgency = getTaskUrgency(task);
     const uStyle = urgencyStyles[urgency];
@@ -118,7 +118,14 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
             </div>
 
             <div className="space-y-0.5 mb-3">
-                <h4 className="font-black text-slate-900 leading-tight text-[13px] md:text-sm group-hover:text-blue-600 transition-colors">{task.title}</h4>
+                <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-black text-slate-900 leading-tight text-[13px] md:text-sm group-hover:text-blue-600 transition-colors">{task.title}</h4>
+                    {task.parentTaskTitle && (
+                        <span className="text-[7px] font-black bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-tighter shrink-0">
+                           Child Of: {task.parentTaskTitle}
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-1.5">
                     <Hash size={9} className="text-blue-500" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{task.projectId?.name || '—'}</span>
@@ -142,23 +149,41 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
             </div>
 
             {/* Assignee row */}
-            {task.assignedTo?.length > 0 && (
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="flex -space-x-1.5">
-                        {task.assignedTo.slice(0, 3).map((u, i) => (
-                            <div key={i} className="w-5 h-5 rounded-full bg-slate-100 border border-white text-[8px] font-black text-slate-500 flex items-center justify-center shadow-sm" title={u.fullName}>
-                                {u.fullName?.charAt(0)}
-                            </div>
-                        ))}
+            {(() => {
+                const assignees = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+                return assignees.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <div className="flex flex-wrap gap-1.5">
+                            {assignees.slice(0, 3).map((u, i) => (
+                                <div key={i} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 pr-2 rounded-full overflow-hidden" title={u.fullName || 'User'}>
+                                    <div className="w-5 h-5 rounded-full bg-white text-slate-500 flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">
+                                        {u.fullName ? u.fullName.charAt(0) : '?'}
+                                    </div>
+                                    <span className="text-[9.5px] font-bold text-slate-600 truncate max-w-[90px] tracking-tight">
+                                        {u.fullName ? u.fullName.split(' ')[0] + (u.fullName.split(' ')[1] ? ' ' + u.fullName.split(' ')[1][0] + '.' : '') : 'User'}
+                                    </span>
+                                </div>
+                            ))}
+                            {assignees.length > 3 && (
+                                <div className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full flex items-center justify-center shadow-sm">
+                                    +{assignees.length - 3}
+                                </div>
+                            )}
+                        </div>
+                        {task.assignedRoleType && (
+                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'} uppercase tracking-tighter whitespace-nowrap`}>
+                                {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
+                            </span>
+                        )}
                     </div>
-                    {task.assignedRoleType && (
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'} uppercase tracking-tighter`}>
-                            {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
+                ) : (
+                    <div className="mb-2 px-1">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
+                            Unassigned
                         </span>
-                    )}
-                </div>
-            )}
-
+                    </div>
+                );
+            })()}
             <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                 {urgency !== 'normal' && (
                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${uStyle.badge}`}>{uStyle.label}</span>
@@ -176,7 +201,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
 const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick }) => {
     const { setNodeRef } = useDroppable({ id: status });
     const colTasks = filteredTasks.filter(t => t.status === status);
-    const taskIds = colTasks.map(t => t._id);
+    const taskIds = colTasks.map(t => t._id || t.id);
 
     return (
         <div ref={setNodeRef} className="flex-1 flex flex-col min-w-[300px] bg-slate-50/50 rounded-[32px] border border-slate-200/60 h-full max-h-full">
@@ -194,7 +219,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
             <div className="p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {colTasks.map(task => (
-                        <DraggableTask key={task._id} task={task} onEdit={onEdit} onDelete={onDelete} onClick={onTaskClick} />
+                        <DraggableTask key={task._id || task.id} task={task} onEdit={onEdit} onDelete={onDelete} onClick={onTaskClick} />
                     ))}
                 </SortableContext>
                 {colTasks.length === 0 && (
@@ -258,8 +283,8 @@ const SortableTaskRow = ({ task, ...props }) => {
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <div className="w-20 h-0.5 bg-slate-100 rounded-full overflow-hidden">
                                     <div className="h-full bg-blue-500 transition-all" style={{ width: `${task.progress || 0}%` }} />
                                 </div>
                                 <span className="text-[8px] font-bold text-slate-400">{task.progress || 0}%</span>
@@ -279,17 +304,21 @@ const SortableTaskRow = ({ task, ...props }) => {
                                 {task.assignedTo.length > 1 && <p className="text-[9px] font-bold text-slate-400">+{task.assignedTo.length - 1} more</p>}
                             </div>
                         </div>
-                    ) : <span className="text-slate-300 text-[11px] font-bold">Unassigned</span>}
+                    ) : (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
+                            Unassigned
+                        </span>
+                    )}
                 </td>
                 <td className="px-4 py-2.5">
                     {task.assignedRoleType ? (
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border whitespace-nowrap ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
                             {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
                         </span>
                     ) : <span className="text-slate-300 text-[9px] font-bold">—</span>}
                 </td>
                 <td className="px-4 py-2.5">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-widest whitespace-nowrap
                         ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                             task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                                 task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
@@ -298,7 +327,7 @@ const SortableTaskRow = ({ task, ...props }) => {
                     </span>
                 </td>
                 <td className="px-4 py-2.5">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-widest whitespace-nowrap ${priorityStyles[task.priority] || priorityStyles.Medium}`}>
                         {task.priority}
                     </span>
                 </td>
@@ -344,87 +373,46 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     };
 
     return (
-        <tr className="bg-slate-50/10 border-l-[3px] border-slate-300 relative group">
-            {/* First empty column to match table structure */}
-            <td className="w-10 px-4 py-2.5" />
-
-            {/* Main content column with tree lines and form */}
-            <td className="py-3 pr-6 pl-4 relative" colSpan={9} style={{ paddingLeft: '58px' }}>
-                {/* Tree Connector for root subtask (child of main task) */}
+        <tr className="bg-slate-50/10 relative group">
+            <td className="w-10 px-4 py-2" />
+            <td className="py-2 pr-6 pl-4 relative" colSpan={9} style={{ paddingLeft: '58px' }}>
                 <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
-                    <div className="absolute top-0 h-1/2 w-[1.5px] bg-slate-200/60" style={{ left: '26px' }} />
-                    <div className="absolute top-1/2 h-[1.5px] bg-slate-200/60" style={{ left: '26px', width: '18px' }} />
+                    <div className="absolute top-0 h-full w-[1px] bg-slate-200/40" style={{ left: '26px' }} />
+                    <div className="absolute top-1/2 h-[1px] bg-slate-200/40" style={{ left: '26px', width: '18px' }} />
                 </div>
 
-                <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-3 relative z-10">
-                    <div className="flex-1 min-w-[200px] relative">
-                        <Plus size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <form onSubmit={handleSubmit} className="flex items-center gap-2 relative z-10 opacity-70 hover:opacity-100 transition-opacity">
+                    <div className="flex-1 relative">
+                        <Plus size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             required type="text"
-                            placeholder="Add a new root sub-task..."
+                            placeholder="Add subtask..."
                             value={title} onChange={e => setTitle(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 shadow-sm transition-all"
+                            className="w-full bg-white border border-slate-200/80 rounded-lg pl-8 pr-3 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-400 transition-all"
                         />
                     </div>
-
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <select
                             value={status} onChange={e => setStatus(e.target.value)}
-                            className={`text-[11px] font-black px-3 py-2 rounded-xl border shadow-sm outline-none cursor-pointer transition-colors ${status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                    'bg-white text-slate-700 border-slate-200'
-                                }`}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none appearance-none cursor-pointer"
                         >
                             <option value="todo">Todo</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
+                            <option value="in_progress">Active</option>
+                            <option value="completed">Done</option>
                         </select>
-
-                        <select
-                            value={priority} onChange={e => setPriority(e.target.value)}
-                            className={`text-[11px] font-black px-3 py-2 rounded-xl border shadow-sm outline-none cursor-pointer ${priorityStyles[priority] || priorityStyles.Medium}`}
-                        >
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
-
                         <select
                             value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 outline-none shadow-sm max-w-[140px]"
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none max-w-[100px]"
                         >
-                            <option value="">Assignee</option>
+                            <option value="">Assign</option>
                             {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
                         </select>
-
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">Start</span>
-                                <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                <input
-                                    type="date"
-                                    value={startDate} onChange={e => setStartDate(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[10px] font-black text-slate-700 outline-none shadow-sm w-[115px]"
-                                />
-                            </div>
-                            <div className="relative">
-                                <span className="absolute -top-3.5 left-1 text-[8px] font-black text-slate-400 uppercase tracking-widest">End</span>
-                                <Calendar size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                <input
-                                    type="date"
-                                    value={dueDate} onChange={e => setDueDate(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-[10px] font-black text-slate-700 outline-none shadow-sm w-[115px]"
-                                />
-                            </div>
-                        </div>
-
                         <button
                             type="submit"
                             disabled={!title.trim() || isSubmitting}
-                            className="bg-slate-900 text-white px-5 py-2 rounded-xl text-[11px] font-black hover:bg-black transition shadow-lg shadow-slate-200 disabled:opacity-30 flex items-center gap-1.5 uppercase tracking-tight"
+                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-black transition-all disabled:opacity-30"
                         >
-                            {isSubmitting ? <Loader size={12} className="animate-spin" /> : <Plus size={14} strokeWidth={3} />}
-                            Add
+                            <Plus size={14} />
                         </button>
                     </div>
                 </form>
@@ -489,7 +477,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     return (
         <React.Fragment>
             {/* ── Subtask Row ── */}
-            <tr className={`bg-white hover:bg-slate-50/60 border-l-[3px] ${depthColor} transition-colors border-b border-slate-100 relative group`}>
+            <tr className={`bg-white hover:bg-slate-50/40 transition-colors border-b border-slate-50 relative group`}>
                 {/* Grip placeholder column (Column 1) */}
                 <td className="w-10 px-4 py-2.5" />
 
@@ -501,19 +489,19 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                             hasLine && (
                                 <div
                                     key={i}
-                                    className="absolute top-0 bottom-0 w-[1.5px] bg-slate-200/60"
+                                    className="absolute top-0 bottom-0 w-[1px] bg-slate-200/40"
                                     style={{ left: `${baseOffset + i * step}px` }}
                                 />
                             )
                         ))}
                         {/* Current branch vertical line */}
                         <div
-                            className={`absolute w-[1.5px] bg-slate-200/60 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`}
+                            className={`absolute w-[1px] bg-slate-200/40 transition-all ${isLast ? 'h-1/2 top-0' : 'h-full top-0'}`}
                             style={{ left: `${baseOffset + depth * step}px` }}
                         />
                         {/* Current branch horizontal line */}
                         <div
-                            className="absolute top-1/2 h-[1.5px] bg-slate-200/60"
+                            className="absolute top-1/2 h-[1px] bg-slate-200/40"
                             style={{ left: `${baseOffset + depth * step}px`, width: '18px' }}
                         />
                     </div>
@@ -571,62 +559,58 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 {/* Project (Column 3) */}
                 <td className="px-4 py-2.5 text-xs font-bold text-slate-300">—</td>
 
-                {/* Assigned To (Column 4) */}
                 <td className="px-4 py-2.5">
                     {subTask.assignedTo?.fullName ? (
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[9px] font-black border border-blue-100 shadow-sm">
+                        <div className="flex items-center gap-1.5 opacity-100">
+                            <div className="w-5 h-5 rounded bg-slate-100 text-slate-600 flex items-center justify-center text-[8px] font-black border border-slate-200 shadow-sm">
                                 {subTask.assignedTo.fullName.charAt(0)}
                             </div>
-                            <span className="text-[11px] font-black text-slate-700">{subTask.assignedTo.fullName}</span>
+                            <span className="text-[10px] font-bold text-slate-700 truncate max-w-[100px]">{subTask.assignedTo.fullName}</span>
                         </div>
-                    ) : <span className="text-[11px] text-slate-300 font-bold">Unassigned</span>}
+                    ) : (
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
+                           Unassigned
+                        </span>
+                    )}
                 </td>
 
-                {/* Role (Column 5) */}
-                <td className="px-4 py-2.5">
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full border bg-violet-50 text-violet-600 border-violet-100 uppercase tracking-widest leading-none">
-                        subtask
-                    </span>
-                </td>
+                <td className="px-4 py-2.5" />
 
-                {/* Status (Column 6) */}
                 <td className="px-4 py-2.5">
                     {canManage ? (
                         <select
                             value={subTask.status}
                             onChange={e => onUpdate(subTask, { status: e.target.value })}
-                            className={`text-[9px] font-black px-2 py-1 rounded-full border shadow-sm outline-none cursor-pointer transition-colors uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            className={`text-[10px] font-black px-2 py-1 rounded border outline-none cursor-pointer transition-all uppercase tracking-tighter whitespace-nowrap min-w-[70px] ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                 subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                    'bg-slate-50 text-slate-500 border-slate-200'
+                                    'bg-white text-slate-500 border-slate-200'
                                 }`}
                         >
                             <option value="todo">Todo</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
+                            <option value="in_progress">Active</option>
+                            <option value="completed">Done</option>
                         </select>
                     ) : (
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-tighter ${subTask.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                             subTask.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                                 'bg-slate-50 text-slate-500 border-slate-200'
-                            }`}>{subTask.status.replace('_', ' ')}</span>
+                            }`}>{subTask.status === 'in_progress' ? 'Active' : subTask.status === 'completed' ? 'Done' : 'Todo'}</span>
                     )}
                 </td>
 
-                {/* Priority (Column 7) */}
                 <td className="px-4 py-2.5">
                     {canManage ? (
                         <select
                             value={subTask.priority}
                             onChange={e => onUpdate(subTask, { priority: e.target.value })}
-                            className={`text-[9px] font-black px-2 py-1 rounded-full border shadow-sm outline-none cursor-pointer transition-colors uppercase tracking-widest ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}
+                            className={`text-[10px] font-black px-2 py-1 rounded border outline-none cursor-pointer transition-all uppercase tracking-tighter whitespace-nowrap min-w-[75px] ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}
                         >
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
                         </select>
                     ) : (
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-tighter ${priorityStyles[subTask.priority] || priorityStyles.Medium}`}>
                             {subTask.priority}
                         </span>
                     )}
@@ -821,9 +805,13 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         {node.status.replace('_', ' ')}
                     </span>
                 )}
-                {node.assignedTo?.fullName && (
+                {node.assignedTo?.fullName ? (
                     <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
                         <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
+                    </span>
+                ) : (
+                    <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
+                        Unassigned
                     </span>
                 )}
                 {node.startDate && (
@@ -1139,37 +1127,64 @@ const Tasks = () => {
         });
     }, [scheduleTasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory]);
 
-    const handleTaskUpdate = async (taskId, updates, isSubTask = false) => {
+    // Flatten all tasks and subtasks for unified board view
+    const allFlattenedTasks = useMemo(() => {
+        const flat = [];
+        const process = (taskItems, parentTitle = null) => {
+            taskItems.forEach(t => {
+                const subId = t._id || t.id;
+                // Avoid duplicates if a task appears in both lists
+                if (flat.some(f => (f._id || f.id) === subId)) return;
+                
+                flat.push({ ...t, parentTaskTitle: parentTitle });
+                const subs = t.subTasks || subTasksMap[subId] || [];
+                if (subs.length > 0) process(subs, t.title);
+            });
+        };
+        // Fallback to filteredTasks so root tasks appear immediately on reload
+        const source = filteredScheduleTasks.length > 0 ? filteredScheduleTasks : filteredTasks;
+        process(source);
+        return flat;
+    }, [filteredTasks, filteredScheduleTasks, subTasksMap]);
+    const handleTaskUpdate = async (taskId, updates, isSubTask = false, activeTask = null) => {
         try {
             if (isSubTask) {
-                // Find parent taskId for the URL
-                const parentTask = scheduleTasks.find(t => (t.subTasks || []).some(st => (st._id || st.id) === taskId));
-                const pId = parentTask?.id || parentTask?._id;
+                let pId = activeTask?.taskId?._id || activeTask?.taskId;
+                if (!pId) {
+                    const parentTask = scheduleTasks.find(t => (t.subTasks || []).some(st => (st._id || st.id) === taskId));
+                    pId = parentTask?.id || parentTask?._id;
+                }
+
                 if (pId) {
                     await api.patch(`/tasks/${pId}/subtasks/${taskId}`, updates);
                 } else {
-                    // Fallback to direct patch if parent not found (might be a sub-subtask)
-                    await api.patch(`/tasks/subtasks/${taskId}`, updates);
+                    console.error("Could not determine root task ID for subtask update");
+                    return;
                 }
             } else {
-                // Check if it's a JobTask (Unified View) with robust ID normalization
                 const isJobTask = (scheduleTasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask) || 
                                  (tasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask);
                 
                 const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
-                
-                // JobTask expects single ID for assignedTo
-                const finalUpdates = isJobTask && updates.assignedTo ? {
-                    ...updates,
-                    assignedTo: Array.isArray(updates.assignedTo) ? (updates.assignedTo[0] || null) : updates.assignedTo
-                } : updates;
+                let finalUpdates = { ...updates };
+                if (isJobTask) {
+                    if (finalUpdates.assignedTo !== undefined) {
+                        finalUpdates.assignedTo = Array.isArray(updates.assignedTo) ? (updates.assignedTo[0] || null) : updates.assignedTo;
+                    }
+                    if (finalUpdates.priority !== undefined && typeof finalUpdates.priority === 'string') {
+                        finalUpdates.priority = finalUpdates.priority.toLowerCase();
+                    }
+                }
 
                 await api.patch(endpoint, finalUpdates);
             }
-            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             fetchData();
         } catch (error) {
             console.error('Failed to update task:', error);
+            // Revert on failure
+            fetchData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
         }
     };
 
@@ -1189,7 +1204,7 @@ const Tasks = () => {
     };
 
     useEffect(() => {
-        if (['schedule', 'gantt', 'calendar'].includes(view)) {
+        if (['kanban', 'gantt', 'calendar'].includes(view)) {
             fetchScheduleData();
         }
     }, [view, filterProject, filterStatus, filterRole, filterCategory]);
@@ -1209,50 +1224,49 @@ const Tasks = () => {
         const activeId = active.id;
         const overId = over.id;
 
-        const activeTaskIndex = tasks.findIndex(t => t._id === activeId);
-        if (activeTaskIndex === -1) return;
+        const activeTask = allFlattenedTasks.find(t => (t._id || t.id) === activeId);
+        if (!activeTask) return;
 
-        const activeTask = tasks[activeTaskIndex];
         let newStatus = activeTask.status;
-        let overTaskIndex = -1;
 
         if (columns[overId]) {
-            // Dropped on an empty column
-            newStatus = overId;
+             newStatus = overId;
         } else {
-            // Dropped on another task
-            overTaskIndex = tasks.findIndex(t => t._id === overId);
-            if (overTaskIndex !== -1) {
-                newStatus = tasks[overTaskIndex].status;
+            const overTask = allFlattenedTasks.find(t => (t._id || t.id) === overId);
+            if (overTask) {
+                newStatus = overTask.status;
             }
         }
 
-        let newTasks = [...tasks];
-
-        if (activeTask.status !== newStatus) {
-            newTasks[activeTaskIndex] = { ...activeTask, status: newStatus };
-        }
-
-        if (overTaskIndex !== -1 && activeId !== overId) {
-            const [movedTask] = newTasks.splice(activeTaskIndex, 1);
-            const adjustedOverIndex = activeTaskIndex < overTaskIndex ? overTaskIndex - 1 : overTaskIndex;
-            newTasks.splice(adjustedOverIndex, 0, movedTask);
-        }
-
-        setTasks(newTasks);
-
-        const updatedColumnTasks = newTasks
-            .filter(t => t.status === newStatus)
-            .map((t, index) => ({
-                id: t._id,
-                status: t.status,
-                position: index
-            }));
+        if (activeTask.status === newStatus) return;
 
         try {
-            await api.patch('/tasks/reorder', { tasks: updatedColumnTasks });
+            const taskId = activeTask._id || activeTask.id;
+            const isSubTask = !!activeTask.parentSubTaskId || !!activeTask.parentTaskTitle;
+            
+            // OPTIMISTIC UPDATES FOR IMMEDIATE FLUIDITY
+            if (!isSubTask) {
+                setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
+            }
+
+            // Always Optimistically update `scheduleTasks` tree to immediately reflect in Board View
+            setScheduleTasks(prev => {
+                const processUpdates = (list) => {
+                    return list.map(t => {
+                        if ((t._id || t.id) === taskId) return { ...t, status: newStatus };
+                        if (t.subTasks && t.subTasks.length > 0) {
+                            return { ...t, subTasks: processUpdates(t.subTasks) };
+                        }
+                        return t;
+                    });
+                };
+                return processUpdates(prev);
+            });
+
+            await handleTaskUpdate(taskId, { status: newStatus }, isSubTask, activeTask);
         } catch {
             fetchData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
         }
     };
 
@@ -1372,19 +1386,21 @@ const Tasks = () => {
             };
             if (editingTask) {
                 const isJobTask = editingTask.isJobTask;
-                const endpoint = isJobTask ? `/job-tasks/${editingTask._id}` : `/tasks/${editingTask._id}`;
+                const taskId = editingTask._id || editingTask.id;
+                const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
                 
-                // If it's a JobTask, we may need to adjust the payload (JobTask expects single assignedTo)
+                // If it's a JobTask, we may need to adjust the payload (JobTask expects single assignedTo and lowercase priority)
                 const finalPayload = isJobTask ? {
                     ...payload,
-                    assignedTo: payload.assignedTo[0] || undefined
+                    assignedTo: payload.assignedTo[0] || undefined,
+                    priority: payload.priority ? payload.priority.toLowerCase() : undefined
                 } : payload;
 
                 await api.patch(endpoint, finalPayload);
             } else {
                 await api.post('/tasks', payload);
             }
-            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             await fetchData();
             setIsModalOpen(false);
         } catch (error) {
@@ -1398,10 +1414,11 @@ const Tasks = () => {
         if (!taskToDelete) return;
         try {
             setIsSubmitting(true);
-            const endpoint = taskToDelete.isJobTask ? `/job-tasks/${taskToDelete._id}` : `/tasks/${taskToDelete._id}`;
+            const taskId = taskToDelete._id || taskToDelete.id;
+            const endpoint = taskToDelete.isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
             await api.delete(endpoint);
-            setTasks(prev => prev.filter(t => (t._id || t.id) !== taskToDelete._id));
-            if (['schedule', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
+            setTasks(prev => prev.filter(t => (t._id || t.id) !== taskId));
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             setIsDeleteModalOpen(false);
             setTaskToDelete(null);
         } catch (error) {
@@ -1624,7 +1641,7 @@ const Tasks = () => {
                                         key={status}
                                         status={status}
                                         style={style}
-                                        filteredTasks={filteredTasks}
+                                        filteredTasks={allFlattenedTasks}
                                         onEdit={openEdit}
                                         onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
                                         onTaskClick={openDetails}
@@ -1639,9 +1656,9 @@ const Tasks = () => {
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                                             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                 <th className="w-10 px-4 py-3"></th>
-                                                <th className="px-4 py-3">Task</th>
-                                                <th className="px-4 py-3">Project</th>
-                                                <th className="px-4 py-3">Assigned To</th>
+                                                <th className="px-4 py-3 min-w-[250px]">Task</th>
+                                                <th className="px-4 py-3 min-w-[120px]">Project</th>
+                                                <th className="px-4 py-3 min-w-[140px]">Assigned To</th>
                                                 <th className="px-4 py-3">Role</th>
                                                 <th className="px-4 py-3">Status</th>
                                                 <th className="px-4 py-3">Priority</th>
