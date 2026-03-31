@@ -3,7 +3,7 @@ import {
     Plus, Search, Filter, Calendar, MoreVertical,
     CheckCircle, Clock, AlertCircle, LayoutGrid, List, Loader,
     Hash, Target, Edit, Trash2, Info, Save, Tag,
-    AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag,
+    AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag, HardHat,
     ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
     ChevronUp, Settings, ChevronRight, Check, GripVertical, CalendarDays, KanbanSquare, AlignLeft, CalendarRange
 } from 'lucide-react';
@@ -427,7 +427,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [editTitle, setEditTitle] = useState(subTask.title || '');
+    const [editFormData, setEditFormData] = useState({
+        title: subTask.title || '',
+        assignedTo: subTask.assignedTo?._id || subTask.assignedTo || '',
+        priority: subTask.priority || 'Medium',
+        status: subTask.status || 'todo',
+        startDate: subTask.startDate ? subTask.startDate.split('T')[0] : '',
+        dueDate: subTask.dueDate ? subTask.dueDate.split('T')[0] : ''
+    });
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
@@ -464,11 +471,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
     const handleEditSave = async (e) => {
         if (e) e.preventDefault();
-        if (!editTitle.trim() || editTitle === subTask.title) {
-            setIsEditing(false);
-            return;
-        }
-        await onUpdate(subTask, { title: editTitle });
+        await onUpdate(subTask, editFormData);
         setIsEditing(false);
     };
 
@@ -554,14 +557,16 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
                         {/* Title */}
                         {isEditing ? (
-                            <input
-                                autoFocus
-                                className="text-[13px] font-black text-slate-800 bg-white border-2 border-blue-400 rounded-lg px-2 py-0.5 outline-none shadow-sm min-w-[150px]"
-                                value={editTitle}
-                                onChange={e => setEditTitle(e.target.value)}
-                                onBlur={handleEditSave}
-                                onKeyDown={e => e.key === 'Enter' && handleEditSave()}
-                            />
+                            <form onSubmit={handleEditSave} className="flex items-center gap-2 flex-1">
+                                <input
+                                    autoFocus
+                                    className="text-[13px] font-black text-slate-800 bg-white border-2 border-blue-400 rounded-lg px-2 py-0.5 outline-none shadow-sm flex-1 min-w-[120px]"
+                                    value={editFormData.title}
+                                    onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
+                                />
+                                <button type="submit" className="p-1 px-2 bg-blue-600 text-white rounded text-[10px] font-black uppercase tracking-widest">OK</button>
+                                <button type="button" onClick={() => setIsEditing(false)} className="p-1 px-2 bg-slate-200 text-slate-500 rounded text-[10px] font-black uppercase tracking-widest">X</button>
+                            </form>
                         ) : (
                             <span className={`text-[13px] font-black truncate max-w-[200px] ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 font-black'
                                 }`}>
@@ -582,7 +587,16 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 <td className="px-4 py-2.5 text-xs font-bold text-slate-300">—</td>
 
                 <td className="px-4 py-2.5">
-                    {subTask.assignedTo?.fullName ? (
+                    {isEditing ? (
+                        <select
+                            value={editFormData.assignedTo}
+                            onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold text-slate-700 outline-none"
+                        >
+                            <option value="">Assign To</option>
+                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                        </select>
+                    ) : subTask.assignedTo?.fullName ? (
                         <div className="flex items-center gap-1.5 opacity-100">
                             <div className="w-5 h-5 rounded bg-slate-100 text-slate-600 flex items-center justify-center text-[8px] font-black border border-slate-200 shadow-sm">
                                 {subTask.assignedTo.fullName.charAt(0)}
@@ -640,7 +654,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
                 {/* Start Date (Column 8) */}
                 <td className="px-4 py-2.5 text-[11px] font-black text-slate-500">
-                    {subTask.startDate ? (
+                    {isEditing ? (
+                        <input
+                            type="date"
+                            value={editFormData.startDate}
+                            onChange={e => setEditFormData({ ...editFormData, startDate: e.target.value })}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold text-slate-700 outline-none"
+                        />
+                    ) : subTask.startDate ? (
                         <div className="flex items-center gap-1.5 opacity-60">
                             <Calendar size={11} />
                             <span>{new Date(subTask.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -650,7 +671,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
                 {/* End Date (Column 9) */}
                 <td className="px-4 py-2.5 text-[11px] font-black text-slate-700">
-                    {subTask.dueDate ? (
+                    {isEditing ? (
+                        <input
+                            type="date"
+                            value={editFormData.dueDate}
+                            onChange={e => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold text-slate-700 outline-none"
+                        />
+                    ) : subTask.dueDate ? (
                         <div className="flex items-center gap-1.5 opacity-60">
                             <Calendar size={11} />
                             <span>{new Date(subTask.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
@@ -750,9 +778,18 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
 
 // ─── Recursive SubTask Tree Node (ClickUp Style) ─────────────────────────────
-const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage, onToggle, onAddChild, onDelete }) => {
+const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage, onToggle, onAddChild, onUpdate, onDelete }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [addingHere, setAddingHere] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editFormData, setEditFormData] = useState({
+        title: node.title || '',
+        assignedTo: node.assignedTo?._id || node.assignedTo || '',
+        priority: node.priority || 'Medium',
+        status: node.status || 'todo',
+        startDate: node.startDate ? node.startDate.split('T')[0] : '',
+        dueDate: node.dueDate ? node.dueDate.split('T')[0] : ''
+    });
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
@@ -811,60 +848,103 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                     {node.status === 'completed' && <Check size={11} strokeWidth={3} />}
                 </button>
 
-                {/* Title */}
-                <span className={`flex-1 text-sm font-bold truncate ${node.status === 'completed' ? 'line-through text-slate-300' : 'text-slate-800'
-                    }`}>
-                    {node.title}
-                </span>
-
-                {/* Badges */}
-                <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${priorityStyles[node.priority] || priorityStyles.Medium}`}>
-                    {node.priority}
-                </span>
-                {node.status !== 'completed' && (
-                    <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${node.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-200'
-                        }`}>
-                        {node.status.replace('_', ' ')}
-                    </span>
-                )}
-                {node.assignedTo?.fullName ? (
-                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                        <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
-                    </span>
+                {/* Title and Editing Form */}
+                {isEditing ? (
+                    <div className="flex-1 flex flex-wrap gap-2 items-center bg-white p-2 rounded-xl shadow-inner border border-blue-100">
+                        <input
+                            required
+                            className="bg-white border-2 border-blue-400 rounded-lg px-2 py-1 text-sm font-bold flex-1"
+                            value={editFormData.title}
+                            onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
+                        />
+                        <select value={editFormData.assignedTo} onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
+                            <option value="">Assign</option>
+                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                        </select>
+                        <select value={editFormData.status} onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
+                            <option value="todo">Todo</option>
+                            <option value="in_progress">Active</option>
+                            <option value="completed">Done</option>
+                        </select>
+                        <div className="flex gap-2">
+                            <input type="date" value={editFormData.startDate} onChange={e => setEditFormData({ ...editFormData, startDate: e.target.value })}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold w-[110px]" />
+                            <input type="date" value={editFormData.dueDate} onChange={e => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold w-[110px]" />
+                        </div>
+                        <div className="flex gap-1 ml-auto">
+                            <button onClick={async () => { await onUpdate(node, editFormData); setIsEditing(false); }} className="p-1 px-3 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase">Save</button>
+                            <button onClick={() => setIsEditing(false)} className="p-1 px-3 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase">X</button>
+                        </div>
+                    </div>
                 ) : (
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
-                        Unassigned
-                    </span>
-                )}
-                {node.startDate && (
-                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                        <Calendar size={10} className="text-blue-400" />{new Date(node.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                )}
-                {node.dueDate && (
-                    <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                        <Clock size={10} className="text-orange-400" />{new Date(node.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                )}
+                    <>
+                        <span className={`flex-1 text-sm font-bold truncate ${node.status === 'completed' ? 'line-through text-slate-300' : 'text-slate-800'
+                            }`}>
+                            {node.title}
+                        </span>
 
-                {/* Actions */}
-                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {canManage && (
-                        <button
-                            onClick={() => setAddingHere(!addingHere)}
-                            title="Add subtask here"
-                            className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
-                        >
-                            <Plus size={13} />
-                        </button>
-                    )}
-                    <button
-                        onClick={() => onDelete(node)}
-                        className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
-                    >
-                        <Trash2 size={13} />
-                    </button>
-                </div>
+                        {/* Badges */}
+                        <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${priorityStyles[node.priority] || priorityStyles.Medium}`}>
+                            {node.priority}
+                        </span>
+                        {node.status !== 'completed' && (
+                            <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${node.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-200'
+                                }`}>
+                                {node.status.replace('_', ' ')}
+                            </span>
+                        )}
+                        {node.assignedTo?.fullName ? (
+                            <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
+                            </span>
+                        ) : (
+                            <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
+                                Unassigned
+                            </span>
+                        )}
+                        {node.startDate && (
+                            <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <Calendar size={10} className="text-blue-400" />{new Date(node.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                        )}
+                        {node.dueDate && (
+                            <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <Clock size={10} className="text-orange-400" />{new Date(node.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                        )}
+
+                        {/* Actions */}
+                        <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {!isEditing && canManage && (
+                                <>
+                                    <button
+                                        onClick={() => setAddingHere(!addingHere)}
+                                        title="Add subtask here"
+                                        className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                                    >
+                                        <Plus size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        title="Edit"
+                                        className="p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition"
+                                    >
+                                        <Edit size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(node)}
+                                        className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Progress bar if has children */}
@@ -940,6 +1020,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                             canManage={canManage}
                             onToggle={onToggle}
                             onAddChild={onAddChild}
+                            onUpdate={onUpdate}
                             onDelete={onDelete}
                         />
                     ))}
@@ -977,8 +1058,10 @@ const Tasks = () => {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
     const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState(null);
     const [templateFormData, setTemplateFormData] = useState({
         templateName: '',
+        role: '',
         title: '',
         description: '',
         priority: 'Medium',
@@ -2001,6 +2084,13 @@ const Tasks = () => {
                                             team={filteredTeamByRole}
                                             canManage={canManage}
                                             onToggle={handleToggleSubTask}
+                                            onUpdate={async (st, updates) => {
+                                                try {
+                                                    const res = await api.patch(`/tasks/${selectedTask._id}/subtasks/${st._id}`, updates);
+                                                    setSubTasks(prev => prev.map(s => s._id === st._id ? res.data : s));
+                                                    fetchData();
+                                                } catch (err) { console.error('Update subtask error:', err); }
+                                            }}
                                             onAddChild={handleAddNestedSubTask}
                                             onDelete={handleDeleteSubTask}
                                         />
@@ -2059,10 +2149,15 @@ const Tasks = () => {
                                     onClick={() => {
                                         setTemplateFormData({
                                             templateName: selectedTask.title + ' Template',
+                                            role: selectedTask.assignedRoleType || '',
                                             title: selectedTask.title,
                                             description: selectedTask.description || '',
                                             priority: selectedTask.priority || 'Medium',
-                                            steps: []
+                                            steps: subTasks.map(st => ({
+                                                title: st.title || '',
+                                                remarks: st.remarks || '',
+                                                priority: st.priority || 'Medium'
+                                            }))
                                         });
                                         setIsSaveTemplateModalOpen(true);
                                     }}
@@ -2083,26 +2178,34 @@ const Tasks = () => {
                 <form
                     onSubmit={async (e) => {
                         e.preventDefault();
-                        if (!templateFormData.templateName || !templateFormData.title) {
-                            alert('Template Name and Task Title are required');
+                        if (!templateFormData.templateName || !templateFormData.title || !templateFormData.role) {
+                            alert('Template Name, Role, and Task Title are required');
                             return;
                         }
                         try {
                             setIsSubmitting(true);
-                            const outSteps = subTasks.map(st => ({
+                             const outSteps = templateFormData.steps.map(st => ({
                                 title: st.title || 'Untitled Step',
                                 remarks: st.remarks || '',
                                 priority: st.priority || 'Medium'
                             }));
 
-                            await api.post('/task-templates', {
-                                ...templateFormData,
-                                steps: outSteps
-                            });
+                            if (editingTemplate) {
+                                await api.patch(`/task-templates/${editingTemplate._id}`, {
+                                    ...templateFormData,
+                                    steps: outSteps
+                                });
+                            } else {
+                                await api.post('/task-templates', {
+                                    ...templateFormData,
+                                    steps: outSteps
+                                });
+                            }
 
                             setIsSaveTemplateModalOpen(false);
+                            setEditingTemplate(null);
                             await fetchTemplates();
-                            alert('Template saved successfully!');
+                            alert(editingTemplate ? 'Template updated successfully!' : 'Template saved successfully!');
                         } catch (err) {
                             console.error('Save template error:', err);
                             alert(err.response?.data?.message || 'Error saving template. Please ensure all required fields are filled.');
@@ -2119,21 +2222,55 @@ const Tasks = () => {
                         </p>
                     </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <Tag size={12} className="text-blue-500" /> Template Identifier
-                        </label>
-                        <input
-                            required
-                            type="text"
-                            value={templateFormData.templateName}
-                            onChange={e => setTemplateFormData({ ...templateFormData, templateName: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500"
-                            placeholder="e.g. Standard Foundation Check"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Tag size={12} className="text-blue-50" /> Template Identifier
+                            </label>
+                            <input
+                                required
+                                type="text"
+                                value={templateFormData.templateName}
+                                onChange={e => setTemplateFormData({ ...templateFormData, templateName: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500"
+                                placeholder="e.g. Standard Foundation Check"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <HardHat size={12} className="text-blue-500" /> Assign Role
+                            </label>
+                            <div className="relative">
+                                <select
+                                    required
+                                    value={templateFormData.role}
+                                    onChange={e => setTemplateFormData({ ...templateFormData, role: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none appearance-none focus:border-blue-500 cursor-pointer"
+                                >
+                                    <option value="">Select Role...</option>
+                                    <option value="ELECTRICIAN">Electrician</option>
+                                    <option value="PLUMBER">Plumber</option>
+                                    <option value="CARPENTER">Carpenter</option>
+                                    <option value="FOREMAN">Foreman</option>
+                                    <option value="PM">PM</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Default Description</label>
+                            <textarea
+                                rows={2}
+                                value={templateFormData.description}
+                                onChange={e => setTemplateFormData({ ...templateFormData, description: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-800 outline-none focus:border-blue-500 resize-none"
+                            />
+                        </div>
+
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <Target size={12} className="text-blue-500" /> Default Task Title
@@ -2147,15 +2284,60 @@ const Tasks = () => {
                                 placeholder="Main task name when applied"
                             />
                         </div>
+                    </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Default Description</label>
-                            <textarea
-                                rows={2}
-                                value={templateFormData.description}
-                                onChange={e => setTemplateFormData({ ...templateFormData, description: e.target.value })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 font-bold text-slate-800 outline-none focus:border-blue-500 resize-none"
-                            />
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center px-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <List size={12} className="text-blue-500" /> Template Sub-tasks
+                            </label>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTemplateFormData(prev => ({
+                                        ...prev,
+                                        steps: [...prev.steps, { title: '', remarks: '', priority: 'Medium' }]
+                                    }));
+                                }}
+                                className="p-1 px-2.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all flex items-center gap-1 text-[9px] font-black uppercase tracking-widest border border-blue-100"
+                            >
+                                <Plus size={12} /> Add Step
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 flex flex-col gap-2">
+                            {templateFormData.steps.length === 0 ? (
+                                <div className="py-6 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/30">
+                                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">No sub-tasks added to template</p>
+                                </div>
+                            ) : templateFormData.steps.map((step, idx) => (
+                                <div key={idx} className="flex gap-2 items-start bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 group">
+                                    <div className="flex-1 space-y-2">
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="Sub-task title..."
+                                            value={step.title}
+                                            onChange={e => {
+                                                const newSteps = [...templateFormData.steps];
+                                                newSteps[idx].title = e.target.value;
+                                                setTemplateFormData({ ...templateFormData, steps: newSteps });
+                                            }}
+                                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-300 transition-all"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newSteps = templateFormData.steps.filter((_, i) => i !== idx);
+                                            setTemplateFormData({ ...templateFormData, steps: newSteps });
+                                        }}
+                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -2183,7 +2365,8 @@ const Tasks = () => {
                         </div>
                         <button
                             onClick={() => {
-                                setTemplateFormData({ templateName: '', title: '', description: '', priority: 'Medium', steps: [] });
+                                 setEditingTemplate(null);
+                                setTemplateFormData({ templateName: '', role: '', title: '', description: '', priority: 'Medium', steps: [] });
                                 setIsSaveTemplateModalOpen(true);
                             }}
                             className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition"
@@ -2199,33 +2382,67 @@ const Tasks = () => {
                                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">No templates found.</p>
                                 <p className="text-slate-300 text-[9px] mt-1">Save a task as a template or create one from scratch.</p>
                             </div>
-                        ) : templates.map(tmpl => (
+                        ) : templates
+                            .sort((a, b) => {
+                                // Prioritize user role matching templates first
+                                if (user?.role && a.role === user.role && b.role !== user.role) return -1;
+                                if (user?.role && b.role === user.role && a.role !== user.role) return 1;
+                                return 0;
+                            })
+                            .map(tmpl => (
                             <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all">
                                 <div>
-                                    <h4 className="font-black text-slate-800 text-sm tracking-tight">{tmpl.templateName}</h4>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                    <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {tmpl.role && (
+                                            <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
+                                                {tmpl.role}
+                                            </span>
+                                        )}
+                                        <span className="inline-flex items-center text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-tighter border border-slate-200 leading-none">
                                             {tmpl.steps?.length || 0} sub-tasks
                                         </span>
-                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter border ${priorityStyles[tmpl.priority]}`}>
+                                        <span className={`inline-flex items-center text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority]}`}>
                                             {tmpl.priority}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={async () => {
-                                            if (window.confirm('Delete this template?')) {
-                                                try {
-                                                    await api.delete(`/task-templates/${tmpl._id}`);
-                                                    fetchTemplates();
-                                                } catch (err) { alert('Failed to delete template'); }
-                                            }
-                                        }}
-                                        className="p-2 text-slate-300 hover:text-red-500 rounded-xl hover:bg-red-50 transition border border-transparent hover:border-red-100"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => {
+                                                setEditingTemplate(tmpl);
+                                                setTemplateFormData({
+                                                    templateName: tmpl.templateName || '',
+                                                    role: tmpl.role || '',
+                                                    title: tmpl.title || '',
+                                                    description: tmpl.description || '',
+                                                    priority: tmpl.priority || 'Medium',
+                                                    steps: tmpl.steps || []
+                                                });
+                                                setIsSaveTemplateModalOpen(true);
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
+                                            title="Edit Template"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm('Delete this template?')) {
+                                                    try {
+                                                        await api.delete(`/task-templates/${tmpl._id}`);
+                                                        fetchTemplates();
+                                                    } catch (err) { alert('Failed to delete template'); }
+                                                }
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                                            title="Delete Template"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+
                                     <button
                                         onClick={() => {
                                             setFormData({
@@ -2238,7 +2455,7 @@ const Tasks = () => {
                                             setIsTemplateModalOpen(false);
                                             setIsModalOpen(true);
                                         }}
-                                        className="px-5 py-2.5 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95"
+                                        className="h-10 px-6 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95 whitespace-nowrap"
                                     >
                                         Use Template
                                     </button>
