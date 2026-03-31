@@ -14,7 +14,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import TimelineView from '../../components/tasks/TimelineView';
+
 import GanttView from '../../components/tasks/GanttView';
 import CalendarView from '../../components/tasks/CalendarView';
 
@@ -1524,9 +1524,7 @@ const Tasks = () => {
                             <KanbanSquare size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Board</span>
                         </button>
                         <div className="w-px bg-slate-200/60 my-1.5 mx-1" />
-                        <button onClick={() => setView('schedule')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'schedule' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
-                            <Clock size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Schedule</span>
-                        </button>
+
                         <button onClick={() => setView('gantt')} className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${view === 'gantt' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200/50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50 border border-transparent'}`}>
                             <CalendarRange size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Gantt</span>
                         </button>
@@ -1615,9 +1613,7 @@ const Tasks = () => {
                     </div>
                 ) : (
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        {view === 'schedule' ? (
-                            <TimelineView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
-                        ) : view === 'gantt' ? (
+                        {view === 'gantt' ? (
                             <GanttView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
                         ) : view === 'calendar' ? (
                             <CalendarView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />

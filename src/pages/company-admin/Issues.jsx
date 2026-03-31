@@ -30,12 +30,20 @@ const DraggableIssue = ({ issue, onClick }) => {
                 ${isDragging ? 'z-50 ring-2 ring-red-500/20' : ''}`}
     >
       <div className="flex justify-between items-start mb-4">
-        <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm
-                    ${issue.priority === 'critical' ? 'bg-red-600 text-white border-red-500' :
-            issue.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-              'bg-blue-50 text-blue-600 border-blue-100'}`}>
-          {issue.priority} Priority
-        </span>
+        <div className="flex flex-wrap gap-2">
+          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm
+                      ${issue.priority === 'critical' ? 'bg-red-600 text-white border-red-500' :
+              issue.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                'bg-blue-50 text-blue-600 border-blue-100'}`}>
+            {issue.priority} Priority
+          </span>
+          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm
+                      ${issue.status === 'open' ? 'bg-red-50 text-red-600 border-red-100' :
+              issue.status === 'in_review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+            {issue.status === 'open' ? 'Active' : issue.status === 'in_review' ? 'In Correction' : 'Fixed'}
+          </span>
+        </div>
         <span className="text-[10px] font-black text-slate-300">#{issue._id.slice(-4).toUpperCase()}</span>
       </div>
 

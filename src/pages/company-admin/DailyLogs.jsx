@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import {
     CloudSun, Sun, CloudRain, Wind, Thermometer,
     Calendar, Search, Filter, Plus, FileText, Image as ImageIcon, Users, Loader, Trash2,
-    MapPin, Clock, ChevronRight, MoreHorizontal, ExternalLink, Hash, Check, LayoutGrid, List
+    MapPin, Clock, ChevronRight, MoreHorizontal, ExternalLink, Hash, Check, LayoutGrid, List, Eye
 } from 'lucide-react';
 import Modal from '../../components/Modal';
-import api from '../../utils/api';
+import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const WeatherIcon = ({ status, size = 20 }) => {
@@ -54,6 +54,8 @@ const DailyLogs = () => {
     });
     const [viewMode, setViewMode] = useState('grid');
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [selectedLog, setSelectedLog] = useState(null);
     const [logToDelete, setLogToDelete] = useState(null);
 
     const isSubcontractor = user?.role === 'SUBCONTRACTOR';
@@ -122,6 +124,11 @@ const DailyLogs = () => {
             return;
         }
         setSelectedFiles(prev => [...prev, ...files]);
+    };
+
+    const handleView = (log) => {
+        setSelectedLog(log);
+        setIsViewModalOpen(true);
     };
 
     const handleSave = async () => {
@@ -282,7 +289,7 @@ const DailyLogs = () => {
                                     {/* Card Header Illustration/Image Placeholder */}
                                     <div className="h-28 bg-slate-100 relative overflow-hidden">
                                         <img
-                                            src={log.photos?.[0] || `https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400`}
+                                            src={log.photos?.[0] ? getServerUrl(log.photos[0]) : `https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=400`}
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                             alt="Site"
                                         />
@@ -306,12 +313,20 @@ const DailyLogs = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(log._id); }}
-                                            className="absolute top-4 right-4 p-2 bg-red-50 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleView(log); }}
+                                                className="p-2 bg-white/90 backdrop-blur text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(log._id); }}
+                                                className="p-2 bg-red-50/90 backdrop-blur text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="p-3.5 md:p-4 pt-0 space-y-3.5 flex-1 flex flex-col -mt-3 relative z-10">
@@ -467,13 +482,16 @@ const DailyLogs = () => {
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <button
+                                                        onClick={(e) => { e.stopPropagation(); handleView(log); }}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+                                                    <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(log._id); }}
                                                         className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                                                     >
                                                         <Trash2 size={18} />
-                                                    </button>
-                                                    <button className="p-2 text-slate-400 hover:text-blue-600 transition-colors">
-                                                        <ChevronRight size={18} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -716,6 +734,139 @@ const DailyLogs = () => {
                         </button>
                     </div>
                 </div>
+            </Modal>
+
+            {/* View Log Modal */}
+            <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Daily Log Details">
+                {selectedLog && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-start border-b border-slate-100 pb-5">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                                    {selectedLog.projectId?.name || 'Unassigned Project'}
+                                </h3>
+                                <div className="flex items-center gap-3 text-slate-500 mt-1">
+                                    <Calendar size={14} className="text-blue-600" />
+                                    <span className="text-xs font-bold uppercase tracking-widest">
+                                        {formatSafeDate(selectedLog.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <WeatherIcon status={selectedLog.weather?.status} size={28} />
+                                    <span className="text-xl font-black text-slate-800">{selectedLog.weather?.temperature}°F</span>
+                                </div>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none">
+                                    {selectedLog.weather?.status || 'Sunny'} Sky Condition
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                            <div className="bg-slate-50 p-4 rounded-2xl flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm">
+                                    <Users size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-black text-slate-900 leading-none">
+                                        {selectedLog.manpower?.reduce((acc, m) => acc + (m.count || 0), 0) || 0} People
+                                    </p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tight mt-1">Team Presence</p>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shadow-sm">
+                                    <Clock size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-black text-slate-900 leading-none">
+                                        {selectedLog.manpower?.reduce((acc, m) => acc + ((m.hours || 0) * (m.count || 0)), 0) || 0} Hours
+                                    </p>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tight mt-1">Productive Capacity</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <FileText size={14} className="text-blue-600" /> Work Performed & Site Logs
+                            </label>
+                            <div className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100 shadow-inner">
+                                <p className="text-slate-800 font-bold leading-relaxed whitespace-pre-wrap italic">
+                                    "{selectedLog.workPerformed}"
+                                </p>
+                            </div>
+                        </div>
+
+                        {selectedLog.photos?.length > 0 && (
+                            <div className="space-y-3">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <ImageIcon size={14} className="text-blue-600" /> Site Documentation ({selectedLog.photos.length})
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {selectedLog.photos.map((photo, i) => (
+                                        <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-slate-200 group relative">
+                                            <img
+                                                src={getServerUrl(photo)}
+                                                className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                                alt={`Site ${i + 1}`}
+                                            />
+                                            <a 
+                                                href={getServerUrl(photo)} 
+                                                target="_blank" 
+                                                rel="noreferrer"
+                                                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <ExternalLink size={20} className="text-white" />
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedLog.location && (
+                            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-xs">
+                                        <MapPin size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-900 leading-none">GPS Verified Location</p>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                                            Lat: {selectedLog.location.latitude?.toFixed(4)}, Lng: {selectedLog.location.longitude?.toFixed(4)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${selectedLog.location.latitude},${selectedLog.location.longitude}`, '_blank')}
+                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors"
+                                >
+                                    Open Maps
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="pt-6 mt-4 border-t border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-slate-200 border-2 border-white shadow-sm flex items-center justify-center text-xs font-black text-slate-600">
+                                    {selectedLog.reportedBy?.fullName?.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-slate-900 leading-none">{selectedLog.reportedBy?.fullName}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">Reported by Author</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsViewModalOpen(false)}
+                                className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-100 transition-transform active:scale-95"
+                            >
+                                Close View
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div >
     );

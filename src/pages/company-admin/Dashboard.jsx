@@ -1,7 +1,7 @@
 import {
   TrendingUp, Users, AlertTriangle, CheckCircle, Calendar, Plus,
   MessageSquare, X, Check, ArrowRight, Activity, FileText,
-  DollarSign, MapPin, Camera, AlertCircle, RefreshCw, Search,
+  DollarSign, MapPin, Camera, AlertCircle, RefreshCw, Search, Filter,
   ChevronDown, Bell, Wrench, ClipboardList, Clock, Briefcase,
   MoreHorizontal, Smartphone, ExternalLink, Trash2
 } from 'lucide-react';
@@ -197,54 +197,108 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
   );
 };
 
-const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks" }) => (
-  <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
-    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-      <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
-      <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-black">{todos.length}</span>
-    </div>
-    <div className="p-2 space-y-1">
-      {todos.length === 0 ? (
-        <div className="py-8 text-center text-slate-400 font-bold text-xs">No pending todos</div>
-      ) : (
-        todos.map(todo => (
-          <div key={todo._id} className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-all group">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => onUpdate(todo._id, { status: todo.status === 'completed' ? 'pending' : 'completed' })}
-                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
-                  }`}
-              >
-                <Check size={14} />
-              </button>
-              <div className="min-w-0">
-                <p className={`text-xs font-bold truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                  {todo.title}
-                </p>
-                {todo.assignedBy && typeof todo.assignedBy === 'object' && (
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
-                    Assigned by: {todo.assignedBy.fullName}
-                  </p>
-                )}
-                {todo.assignedTo && typeof todo.assignedTo === 'object' && todo.assignedTo._id !== currentUser?._id && (
-                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
-                    Assigned to: {todo.assignedTo.fullName}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => onDelete(todo._id)}
-              className="p-2 text-slate-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 shrink-0"
+const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", users = [] }) => {
+  const [showFilters, setShowFilters] = useState(false);
+  const [workerFilter, setWorkerFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+
+  const filteredTodos = todos.filter(todo => {
+    const matchesWorker = !workerFilter || todo.assignedTo?._id === workerFilter || todo.assignedTo === workerFilter;
+    const matchesSearch = !searchFilter || todo.title.toLowerCase().includes(searchFilter.toLowerCase());
+    return matchesWorker && matchesSearch;
+  });
+
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
+      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
+          <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-black">{filteredTodos.length}</span>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`p-1.5 rounded-lg transition-all ${showFilters ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100'}`}
+        >
+          <Filter size={14} />
+        </button>
+      </div>
+
+      {showFilters && (
+        <div className="p-4 bg-slate-50/80 border-b border-slate-100 grid grid-cols-2 gap-3 animate-in slide-in-from-top duration-200">
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 px-1">Worker</label>
+            <select
+              value={workerFilter}
+              onChange={(e) => setWorkerFilter(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] font-bold outline-none focus:border-indigo-500"
             >
-              <Trash2 size={14} />
-            </button>
+              <option value="">All Workers</option>
+              {users.filter(u => u.role === 'WORKER').map(u => (
+                <option key={u._id} value={u._id}>{u.fullName}</option>
+              ))}
+            </select>
           </div>
-        ))
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 px-1">Search Task</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 pl-8 text-[11px] font-bold outline-none focus:border-indigo-500"
+              />
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+        </div>
       )}
+
+      <div className="p-2 space-y-1">
+        {filteredTodos.length === 0 ? (
+          <div className="py-8 text-center text-slate-400 font-bold text-xs">
+            {todos.length > 0 ? "No results match filters" : "No pending todos"}
+          </div>
+        ) : (
+          filteredTodos.map(todo => (
+            <div key={todo._id} className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-all group">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={() => onUpdate(todo._id, { status: todo.status === 'completed' ? 'pending' : 'completed' })}
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
+                    }`}
+                >
+                  <Check size={14} />
+                </button>
+                <div className="min-w-0">
+                  <p className={`text-xs font-bold truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                    {todo.title}
+                  </p>
+                  {todo.assignedBy && typeof todo.assignedBy === 'object' && (
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                      Assigned by: {todo.assignedBy.fullName}
+                    </p>
+                  )}
+                  {todo.assignedTo && typeof todo.assignedTo === 'object' && todo.assignedTo._id !== currentUser?._id && (
+                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
+                      Assigned to: {todo.assignedTo.fullName}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => onDelete(todo._id)}
+                className="p-2 text-slate-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 shrink-0"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CompanyAdminDashboard = () => {
   const navigate = useNavigate();
@@ -775,6 +829,7 @@ const CompanyAdminDashboard = () => {
                 onUpdate={handleTodoUpdate}
                 onDelete={handleTodoDelete}
                 currentUser={user}
+                users={teamMembers}
               />
             )}
           </div>
