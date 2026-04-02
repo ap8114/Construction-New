@@ -94,6 +94,19 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
   const [todo, setTodo] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Auto-set assignedTo for workers/subcontractors
   useEffect(() => {
@@ -108,15 +121,16 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
     try {
       setSubmitting(true);
 
-      const isManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
+      const isForcedAssignmentRole = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
 
-      const reqAssignedTo = assignedTo || (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(currentUser?.role) ? currentUser?._id : undefined);
-
-      if (isManagement && !assignedTo) {
-        alert('Please select a worker to assign this task.');
+      if (isForcedAssignmentRole && !assignedTo) {
+        alert('Please select a user to assign this task.');
         setSubmitting(false);
         return;
       }
+
+      // Default to self for others, or use assignedTo
+      const reqAssignedTo = assignedTo || currentUser?._id;
 
       await api.post('/todos', {
         title: todo,
@@ -124,9 +138,9 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
         priority: 'Medium'
       });
       setTodo('');
-      if (!['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(currentUser?.role)) {
-        setAssignedTo('');
-      }
+      setAssignedTo('');
+      setSearchTerm('');
+      setShowDropdown(false);
       onTaskCreated();
     } catch (err) {
       console.error('Failed to create todo:', err);
@@ -160,27 +174,85 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
           </div>
 
           {showAssignTo && (
-            <div className="w-full md:w-64">
-              <label className="text-[9px] font-black uppercase tracking-widest text-indigo-100 mb-1 block px-1">Assign To Worker</label>
-              <select
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:bg-white/20 transition-all appearance-none"
-              >
-                {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role) ? (
-                  <option value="" className="text-slate-900">Assign to Myself</option>
-                ) : (
-                  <option value="" className="text-slate-900">Select Worker...</option>
-                )}
-                {users
-                  .filter(u => u.role === 'WORKER')
-                  .filter(u => u._id !== currentUser?._id)
-                  .map(u => (
-                    <option key={u._id} value={u._id} className="text-slate-900">
-                      {u.fullName}
-                    </option>
-                  ))}
-              </select>
+            <div ref={dropdownRef} className="w-full md:w-64 relative group">
+              <label className="text-[9px] font-black uppercase tracking-widest text-indigo-100 mb-1 block px-1">Assign To User</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search user..."
+                  autoComplete="off"
+                  value={searchTerm}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:bg-white/20 transition-all placeholder:text-indigo-200"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-200">
+                  <Search size={14} />
+                </div>
+              </div>
+
+              {showDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-indigo-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssignedTo('');
+                        setSearchTerm('');
+                        setShowDropdown(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left rounded-xl hover:bg-slate-50 transition-colors flex flex-col gap-0.5 group"
+                    >
+                      <span className="text-xs font-black text-slate-900">
+                        {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(currentUser?.role) ? 'Assign to Myself (Default)' : 
+                         currentUser?.role === 'PM' ? 'Select User...' : 'Assign to Myself'}
+                      </span>
+                    </button>
+                    {users
+                      .filter(u => {
+                        const isHighManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(currentUser?.role);
+                        const isPM = currentUser?.role === 'PM';
+                        
+                        if (isHighManagement) {
+                          return !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role);
+                        }
+                        if (isPM) {
+                          return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                        }
+                        return u.role === 'WORKER';
+                      })
+                      .filter(u => {
+                        const nameMatches = u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || u.role.toLowerCase().includes(searchTerm.toLowerCase());
+                        return nameMatches && u._id !== currentUser?._id;
+                      })
+                      .map(u => (
+                        <button
+                          key={u._id}
+                          type="button"
+                          onClick={() => {
+                            setAssignedTo(u._id);
+                            setSearchTerm(u.fullName);
+                            setShowDropdown(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left rounded-xl hover:bg-indigo-50 transition-colors flex flex-col gap-0.5 group"
+                        >
+                          <span className="text-xs font-black text-slate-900 group-hover:text-indigo-600 truncate">{u.fullName}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{u.role}</span>
+                        </button>
+                      ))}
+                    {users.filter(u => {
+                      const isManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
+                      const roleMatches = isManagement ? !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role) : u.role === 'WORKER';
+                      return roleMatches && u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) && u._id !== currentUser?._id;
+                    }).length === 0 && (
+                      <div className="p-4 text-center text-slate-400 text-[10px] font-bold italic">No matching users found</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -197,7 +269,7 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
   );
 };
 
-const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", users = [] }) => {
+const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", users = [], showTeamFilter = true }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [workerFilter, setWorkerFilter] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
@@ -212,7 +284,7 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
     <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{title}</h3>
           <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[10px] font-black">{filteredTodos.length}</span>
         </div>
         <button
@@ -225,20 +297,28 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
 
       {showFilters && (
         <div className="p-4 bg-slate-50/80 border-b border-slate-100 grid grid-cols-2 gap-3 animate-in slide-in-from-top duration-200">
-          <div className="space-y-1">
-            <label className="text-[9px] font-black uppercase text-slate-400 px-1">Worker</label>
-            <select
-              value={workerFilter}
-              onChange={(e) => setWorkerFilter(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] font-bold outline-none focus:border-indigo-500"
-            >
-              <option value="">All Workers</option>
-              {users.filter(u => u.role === 'WORKER').map(u => (
-                <option key={u._id} value={u._id}>{u.fullName}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
+          {showTeamFilter && (
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-400 px-1">Team Member</label>
+              <select
+                value={workerFilter}
+                onChange={(e) => setWorkerFilter(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[11px] font-bold outline-none focus:border-indigo-500"
+              >
+                <option value="">All Team</option>
+                {users.filter(u => {
+                  const isFieldManager = ['FOREMAN', 'SUBCONTRACTOR'].includes(currentUser?.role);
+                  const isPM = currentUser?.role === 'PM';
+                  if (isFieldManager) return u.role === 'WORKER';
+                  if (isPM) return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                  return !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role);
+                }).map(u => (
+                  <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className={`space-y-1 ${!showTeamFilter ? 'col-span-2' : ''}`}>
             <label className="text-[9px] font-black uppercase text-slate-400 px-1">Search Task</label>
             <div className="relative">
               <input
@@ -254,33 +334,33 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
         </div>
       )}
 
-      <div className="p-2 space-y-1">
+      <div className="p-2 space-y-1 max-h-[500px] overflow-y-auto no-scrollbar">
         {filteredTodos.length === 0 ? (
           <div className="py-8 text-center text-slate-400 font-bold text-xs">
             {todos.length > 0 ? "No results match filters" : "No pending todos"}
           </div>
         ) : (
           filteredTodos.map(todo => (
-            <div key={todo._id} className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition-all group">
-              <div className="flex items-center gap-3 min-w-0">
+            <div key={todo._id} className="flex items-center justify-between p-3.5 rounded-2xl hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">
+              <div className="flex items-center gap-4 min-w-0">
                 <button
                   onClick={() => onUpdate(todo._id, { status: todo.status === 'completed' ? 'pending' : 'completed' })}
-                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
+                  className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${todo.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-200 text-transparent hover:border-indigo-400'
                     }`}
                 >
-                  <Check size={14} />
+                  <Check size={16} />
                 </button>
                 <div className="min-w-0">
-                  <p className={`text-xs font-bold truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                  <p className={`text-sm font-black truncate ${todo.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                     {todo.title}
                   </p>
                   {todo.assignedBy && typeof todo.assignedBy === 'object' && (
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mt-1">
                       Assigned by: {todo.assignedBy.fullName}
                     </p>
                   )}
                   {todo.assignedTo && typeof todo.assignedTo === 'object' && todo.assignedTo._id !== currentUser?._id && (
-                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter mt-0.5">
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter mt-1">
                       Assigned to: {todo.assignedTo.fullName}
                     </p>
                   )}
@@ -810,27 +890,33 @@ const CompanyAdminDashboard = () => {
           />
 
           {/* Dynamic To-Do Lists Layout */}
-          <div className={`grid grid-cols-1 ${(!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role)) ? 'md:grid-cols-2' : ''} gap-6 mb-6`}>
-            {/* Show My Daily Todos ONLY for personnel who actually create them for themselves (Workers, Foremen) */}
-            {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role) && (
-              <TodoList
-                title="My Daily Todos"
-                todos={myTodos.filter(t => t.status === 'pending')}
-                onUpdate={handleTodoUpdate}
-                onDelete={handleTodoDelete}
-                currentUser={user}
-              />
+          <div className={`grid grid-cols-1 ${(['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role)) ? 'md:grid-cols-3' : ''} gap-6 mb-6`}>
+            {/* Show My Daily Todos for Operational Staff only - but include PM now as Admin can assign to them */}
+            {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
+              <div className="md:col-span-1">
+                <TodoList
+                  title="My Daily Todos"
+                  todos={myTodos.filter(t => t.status === 'pending')}
+                  onUpdate={handleTodoUpdate}
+                  onDelete={handleTodoDelete}
+                  currentUser={user}
+                  showTeamFilter={false}
+                />
+              </div>
             )}
 
-            {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
-              <TodoList
-                title="Assigned By Me"
-                todos={assignedByMeTodos.filter(t => t.status === 'pending')}
-                onUpdate={handleTodoUpdate}
-                onDelete={handleTodoDelete}
-                currentUser={user}
-                users={teamMembers}
-              />
+            {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
+              <div className={['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role) ? "md:col-span-2" : "md:col-span-1"}>
+                <TodoList
+                  title="Assigned By Me"
+                  todos={assignedByMeTodos.filter(t => t.status === 'pending')}
+                  onUpdate={handleTodoUpdate}
+                  onDelete={handleTodoDelete}
+                  currentUser={user}
+                  users={teamMembers}
+                  showTeamFilter={true}
+                />
+              </div>
             )}
           </div>
 
@@ -1030,7 +1116,15 @@ const CompanyAdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {crewActivity.map((member, i) => (
+                    {crewActivity
+                      .filter(member => {
+                        if (isForeman) {
+                          // Foreman only sees themselves
+                          return member.name.toLowerCase().includes(user?.fullName?.split(' ')[0].toLowerCase());
+                        }
+                        return true; // Admin/PM see everyone
+                      })
+                      .map((member, i) => (
                       <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-3">
@@ -1092,7 +1186,14 @@ const CompanyAdminDashboard = () => {
 
               {/* Mobile Card View */}
               <div className="md:hidden divide-y divide-slate-100">
-                {crewActivity.map((member, i) => (
+                {crewActivity
+                  .filter(member => {
+                    if (isForeman) {
+                      return member.name.toLowerCase().includes(user?.fullName?.split(' ')[0].toLowerCase());
+                    }
+                    return true;
+                  })
+                  .map((member, i) => (
                   <div key={i} className="p-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1136,67 +1237,7 @@ const CompanyAdminDashboard = () => {
             </div>
           )}
 
-          {/* Trend Chart - Owner Only */}
-          {isOwnerOrPM && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 overflow-hidden relative">
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-lg font-black text-slate-800 tracking-tight">Hours Trend</h3>
-                  {/* <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 flex items-center gap-1">
-                    View Log <ExternalLink size={10} />
-                  </button> */}
-                </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border border-slate-200 flex items-center justify-center">
-                    {topProject?.image ? (
-                      <img src={topProject.image} className="w-full h-full object-cover" />
-                    ) : (
-                      <TrendingUp className="text-blue-500" size={32} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-black text-slate-900 tracking-tight truncate">{topProject?.name || "No Active Project"}</h4>
-                    <p className="text-xs font-bold text-slate-400">Total: {topProject?.hours || 0}h logged</p>
-                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">Lead: {topProject?.manager || "N/A"}</p>
-                  </div>
-                </div>
-                <div className="h-40 w-full mt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendData}>
-                      <defs>
-                        <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
 
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-lg font-black text-slate-800 tracking-tight">7-day Hours Trend</h3>
-                </div>
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="text-xs font-bold text-slate-400">{trendData.reduce((acc, curr) => acc + (curr.hours || 0), 0)}h total</span>
-                  <div className="w-full h-px bg-slate-100"></div>
-                </div>
-                <div className="h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} fontSize={10} fontWeight="bold" tick={{ fill: '#94a3b8' }} />
-                      <YAxis hide />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                      <Line type="monotone" dataKey="hours" stroke="#3b82f6" strokeWidth={4} dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right Column: Alerts & Recent Logs */}
