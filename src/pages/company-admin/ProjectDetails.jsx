@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -82,6 +82,7 @@ const ProjectDetails = () => {
     const [projectTasks, setProjectTasks] = useState([]);
     const [tasksLoading, setTasksLoading] = useState(false);
     const [taskSearch, setTaskSearch] = useState('');
+    const [expandedTasks, setExpandedTasks] = useState(new Set());
     
     // Contacts states
     const [isAddingContact, setIsAddingContact] = useState(false);
@@ -1306,14 +1307,18 @@ const ProjectDetails = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {projectTasks
-                                        .filter(t => t.title?.toLowerCase().includes(taskSearch.toLowerCase()) ||
-                                            t.assignedTo?.[0]?.fullName?.toLowerCase().includes(taskSearch.toLowerCase()))
-                                        .map(task => {
-                                            const now = new Date();
-                                            const due = task.dueDate ? new Date(task.dueDate) : null;
-                                            const isOverdue = due && due < now && task.status !== 'completed';
-                                            const isDueSoon = due && !isOverdue && (due - now) / (1000 * 60 * 60 * 24) <= 3 && task.status !== 'completed';
+                                    {(() => {
+                                        const toggleExpand = (id) => {
+                                            setExpandedTasks(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(id)) next.delete(id);
+                                                else next.add(id);
+                                                return next;
+                                            });
+                                        };
+
+                                        const renderTaskRow = (task, depth = 0, isLast = false, levelLines = []) => {
+                                            const isExpanded = expandedTasks.has(task._id);
                                             const roleColors = {
                                                 WORKER: 'bg-blue-50 text-blue-600 border-blue-100',
                                                 FOREMAN: 'bg-orange-50 text-orange-600 border-orange-100',
@@ -1324,58 +1329,122 @@ const ProjectDetails = () => {
                                             const roleLabels = {
                                                 WORKER: 'Worker', FOREMAN: 'Foreman', SUBCONTRACTOR: 'Subcontractor', PM: 'PM', ENGINEER: 'Engineer'
                                             };
-                                            return (
-                                                <tr key={task._id} className={`hover:bg-slate-50/50 transition-colors ${isOverdue ? 'bg-red-50/30' : isDueSoon ? 'bg-yellow-50/20' : ''}`}>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-2">
-                                                            {isOverdue && <div className="w-1 h-6 bg-red-500 rounded-full shrink-0" />}
-                                                            {isDueSoon && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
-                                                            {task.status === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
-                                                            <span className="font-black text-slate-900 text-sm">{task.title}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        {task.assignedTo?.length > 0 ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
-                                                                    {task.assignedTo[0]?.fullName?.charAt(0)}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-slate-700">{task.assignedTo[0]?.fullName}</span>
-                                                            </div>
-                                                        ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        {task.assignedRoleType ? (
-                                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border ${roleColors[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                                {roleLabels[task.assignedRoleType] || task.assignedRoleType}
-                                                            </span>
-                                                        ) : <span className="text-slate-300 text-[10px]">—</span>}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
-                                                            ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                                task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                    task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                        'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                                                            {task.status?.replace('_', ' ')}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border
-                                                            ${task.priority === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                task.priority === 'Medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                    'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                                                            {task.priority}
-                                                        </span>
-                                                    </td>
-                                                    <td className={`px-6 py-4 text-xs font-black ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-700' : 'text-slate-700'}`}>
-                                                        {due ? due.toLocaleDateString() : '—'}
-                                                        {isOverdue && <span className="ml-2 text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-black">OVERDUE</span>}
-                                                    </td>
-                                                </tr>
+                                            
+                                            const roleType = task.assignedRoleType || task.assignedTo?.[0]?.role;
+                                            const now = new Date();
+                                            const due = task.dueDate ? new Date(task.dueDate) : null;
+                                            const isOverdue = due && due < now && task.status !== 'completed';
+                                            const isDueSoon = due && !isOverdue && (due - now) / (1000 * 60 * 60 * 24) <= 3 && task.status !== 'completed';
+
+                                            const directChildren = projectTasks.filter(t => 
+                                                t.isSubTask && (
+                                                    (task.isSubTask ? t.parentSubTaskId === task._id : t.taskId === task._id && !t.parentSubTaskId)
+                                                )
                                             );
-                                        })}
-                                    {projectTasks.filter(t => t.title?.toLowerCase().includes(taskSearch.toLowerCase())).length === 0 && (
+                                            const hasChildren = directChildren.length > 0;
+
+                                            // Indentation & Connectors layout
+                                            const baseOffset = 26;
+                                            const step = 28;
+                                            const indentPx = 24 + depth * step;
+
+                                            return (
+                                                <React.Fragment key={task._id}>
+                                                    <tr className={`hover:bg-slate-50/50 transition-colors ${isOverdue ? 'bg-red-50/30' : isDueSoon ? 'bg-yellow-50/20' : ''}`}>
+                                                        <td className="px-6 py-3 relative" style={{ paddingLeft: `${indentPx}px` }}>
+                                                            {/* Tree Connectors */}
+                                                            {task.isSubTask && (
+                                                                <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                                                                    {/* Ancestor Vertical lines */}
+                                                                    {levelLines.map((hasLine, i) => hasLine && (
+                                                                        <div key={i} className="absolute top-0 bottom-0 border-l-[1.5px] border-slate-200"
+                                                                            style={{ left: `${baseOffset + i * step}px` }}
+                                                                        />
+                                                                    ))}
+                                                                    {/* Vertical line to next sibling */}
+                                                                    {!isLast && (
+                                                                        <div className="absolute border-l-[1.5px] border-slate-200"
+                                                                            style={{ left: `${baseOffset + (depth-1) * step}px`, top: '50%', bottom: '0' }}
+                                                                        />
+                                                                    )}
+                                                                    {/* L-Shape Curve */}
+                                                                    <div className="absolute border-slate-200"
+                                                                        style={{
+                                                                            left: `${baseOffset + (depth-1) * step}px`, top: '0', height: '50%', width: '18px',
+                                                                            borderLeftWidth: '1.5px', borderBottomWidth: '1.5px', borderBottomLeftRadius: '8px'
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-1.5 relative z-10">
+                                                                <button
+                                                                    onClick={() => toggleExpand(task._id)}
+                                                                    className={`p-1 hover:bg-slate-200 rounded-md text-slate-400 transition-all ${hasChildren ? '' : 'invisible'}`}
+                                                                    style={{ transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                                                                >
+                                                                    <ChevronRight size={10} />
+                                                                </button>
+                                                                {isOverdue && <div className="w-1 h-6 bg-red-500 rounded-full shrink-0" />}
+                                                                {isDueSoon && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
+                                                                {task.status === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`font-black text-slate-900 text-sm ${task.status === 'completed' ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
+                                                                        {hasChildren && <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md">{directChildren.length}</span>}
+                                                                    </div>
+                                                                    {task.isSubTask && <span className="text-[7px] font-black bg-slate-100 text-slate-400 px-1 py-0.5 rounded uppercase tracking-widest w-fit">Sub-Task</span>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            {task.assignedTo?.length > 0 ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">
+                                                                        {task.assignedTo[0]?.fullName?.charAt(0)}
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-700">{task.assignedTo[0]?.fullName}</span>
+                                                                </div>
+                                                            ) : <span className="text-slate-300 text-xs font-bold">Unassigned</span>}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            {roleType ? (
+                                                                <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border ${roleColors[roleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                                    {roleLabels[roleType] || roleType}
+                                                                </span>
+                                                            ) : <span className="text-slate-300 text-[10px]">—</span>}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest
+                                                                ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                    task.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                        task.status === 'review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                            'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                                                {task.status?.replace('_', ' ')}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border
+                                                                ${task.priority === 'High' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                    task.priority === 'Medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                                        'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                                                {task.priority}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`px-6 py-4 text-xs font-black ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-700' : 'text-slate-700'}`}>
+                                                            {due ? due.toLocaleDateString() : '—'}
+                                                            {isOverdue && <span className="ml-2 text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-black">OVERDUE</span>}
+                                                        </td>
+                                                    </tr>
+                                                    {isExpanded && directChildren.map((child, idx) => renderTaskRow(child, depth + 1, idx === directChildren.length - 1, [...levelLines, !isLast]))}
+                                                </React.Fragment>
+                                            );
+                                        };
+
+                                        const rootTasks = projectTasks.filter(t => !t.isSubTask && t.title?.toLowerCase().includes(taskSearch.toLowerCase()));
+                                        return rootTasks.map((task, idx) => renderTaskRow(task, 0, idx === rootTasks.length - 1));
+                                    })()}
+                                    {projectTasks.length === 0 && (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">
                                                 <div className="flex flex-col items-center gap-3 text-slate-300">
