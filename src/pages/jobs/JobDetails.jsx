@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Briefcase, Clock, CheckCircle, AlertCircle, Plus,
     Search, Filter, MoreHorizontal, Camera, FileText,
     Users, MapPin, DollarSign, ChevronRight, Layout,
     Trash2, Edit, Save, X, ArrowLeft, TrendingUp,
-    AlertTriangle, ShoppingCart, Download, History, UserPlus
+    AlertTriangle, ShoppingCart, Download, History, UserPlus,
+    ChevronDown, ChevronUp, Check, Loader
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,14 @@ const JobDetails = () => {
 
     const [activeTimeLog, setActiveTimeLog] = useState(null);
     const [clockTogglingId, setClockTogglingId] = useState(null);
+
+    // Tree State
+    const [expandedTasks, setExpandedTasks] = useState(new Set());
+    const [newSubTask, setNewSubTask] = useState({ 
+        title: '', assignedTo: '', startDate: '', dueDate: '', 
+        priority: 'Medium', parentTaskId: null, parentSubTaskId: null 
+    });
+    const [submittingSubTask, setSubmittingSubTask] = useState(false);
 
     const fetchJobDetails = async () => {
         try {
@@ -134,6 +143,259 @@ const JobDetails = () => {
         } catch (err) {
             console.error('Error updating task status:', err);
         }
+    };
+
+    const handleToggleExpand = (id) => {
+        setExpandedTasks(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleAddSubTask = async (parentTaskId, parentSubTaskId = null) => {
+        if (!newSubTask.title.trim()) return;
+        try {
+            setSubmittingSubTask(true);
+            await api.post(`/tasks/${parentTaskId}/subtasks`, {
+                title: newSubTask.title,
+                assignedTo: newSubTask.assignedTo || undefined,
+                priority: newSubTask.priority,
+                startDate: newSubTask.startDate || undefined,
+                dueDate: newSubTask.dueDate || undefined,
+                parentSubTaskId: parentSubTaskId
+            });
+            setNewSubTask({ title: '', assignedTo: '', startDate: '', dueDate: '', priority: 'Medium', parentTaskId: null, parentSubTaskId: null });
+            fetchJobDetails();
+        } catch (err) {
+            console.error('Error adding sub-task:', err);
+        } finally {
+            setSubmittingSubTask(false);
+        }
+    };
+
+    const renderTaskRow = (task, depth = 0, isLast = false, levelLines = []) => {
+        const isExpanded = expandedTasks.has(task._id);
+        const children = tasks.filter(t => t.parentSubTaskId === task._id || (t.isSubTask && t.taskId === task._id && !t.parentSubTaskId));
+        const hasChildren = children.length > 0;
+        
+        // Tree Connector Geometry
+        const indentStep = 28;
+        const indentPx = 24 + depth * indentStep;
+        const baseOffset = 24;
+
+        return (
+            <React.Fragment key={task._id}>
+                <tr className="hover:bg-slate-50/50 transition-colors group relative border-b border-slate-50">
+                    {/* Status Checkbox */}
+                    <td className="px-5 py-4 w-16">
+                        <button
+                            onClick={() => {
+                                if (task.status === 'cancelled') return;
+                                const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+                                handleUpdateTaskStatus(task._id, nextStatus);
+                            }}
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shadow-sm ${task.status === 'completed'
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'bg-white border-slate-300 hover:border-blue-500 hover:bg-blue-50'
+                                }`}
+                        >
+                            {task.status === 'completed' ? <Check size={12} strokeWidth={3} /> : <div className="w-1 h-1 bg-transparent" />}
+                        </button>
+                    </td>
+
+                    {/* Task Content with Tree Connectors */}
+                    <td className="px-5 py-4 relative" style={{ paddingLeft: `${indentPx}px` }}>
+                        {/* Tree Lines */}
+                        <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
+                            {levelLines.map((hasLine, i) => (
+                                hasLine && (
+                                    <div
+                                        key={i}
+                                        className="absolute top-0 bottom-0 border-l-[1.5px] border-slate-200"
+                                        style={{ left: `${baseOffset + i * indentStep}px` }}
+                                    />
+                                )
+                            ))}
+                            {depth > 0 && (
+                                <div
+                                    className="absolute border-slate-200"
+                                    style={{
+                                        left: `${baseOffset + (depth - 1) * indentStep}px`,
+                                        top: '0',
+                                        height: '50%',
+                                        width: '18px',
+                                        borderLeftWidth: '1.5px',
+                                        borderBottomWidth: '1.5px',
+                                        borderBottomLeftRadius: '8px',
+                                    }}
+                                />
+                            )}
+                            {depth > 0 && !isLast && (
+                                <div
+                                    className="absolute border-l-[1.5px] border-slate-200"
+                                    style={{
+                                        left: `${baseOffset + (depth - 1) * indentStep}px`,
+                                        top: '50%',
+                                        bottom: '0',
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 relative z-10">
+                            {/* Expand Toggle */}
+                            <button
+                                onClick={() => handleToggleExpand(task._id)}
+                                className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all ${hasChildren
+                                    ? 'text-slate-500 bg-white hover:bg-slate-50 shadow-sm border border-slate-100'
+                                    : 'invisible'}`}
+                                style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.1s ease-out' }}
+                            >
+                                <ChevronRight size={10} />
+                            </button>
+
+                            <div className="flex flex-col min-w-0">
+                                <span className={`text-[13px] font-black tracking-tight truncate max-w-[300px] ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                                    {task.title}
+                                </span>
+                                {task.description && <span className="text-[10px] text-slate-400 font-bold truncate">{task.description}</span>}
+                            </div>
+
+                            {/* Subtask Counter */}
+                            {hasChildren && (
+                                <span className="text-[7px] font-black bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">
+                                    {children.length}
+                                </span>
+                            )}
+                        </div>
+                    </td>
+
+                    {/* Assigned To */}
+                    <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded bg-slate-100 text-slate-500 flex items-center justify-center text-[8px] font-black border border-slate-200">
+                                {task.assignedTo?.fullName?.charAt(0) || '?'}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700">{task.assignedTo?.fullName || 'Unassigned'}</span>
+                        </div>
+                    </td>
+
+                    {/* Priority */}
+                    <td className="px-5 py-4">
+                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border 
+                            ${task.priority?.toLowerCase() === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
+                                task.priority?.toLowerCase() === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                    'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                            {task.priority || 'Medium'}
+                        </span>
+                    </td>
+
+                    {/* Due Date */}
+                    <td className="px-5 py-4">
+                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">
+                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Flexible'}
+                         </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-5 py-4 text-right">
+                        <div className="flex justify-end gap-1 opacity-100">
+                             {/* Add Subtask Indicator - Disabled locally per request */}
+                             {/* <button
+                                onClick={() => {
+                                    setNewSubTask(prev => ({ 
+                                        ...prev, 
+                                        parentTaskId: task.isSubTask ? task.taskId : task._id, 
+                                        parentSubTaskId: task.isSubTask ? task._id : null 
+                                    }));
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                title="Add Subtask"
+                             >
+                                <Plus size={14} />
+                             </button> */}
+                             <button
+                                onClick={() => { setEditingTask(task); setIsTaskModalOpen(true); }}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                title="Edit"
+                             >
+                                <Edit size={14} />
+                             </button>
+                             <button
+                                onClick={() => handleDeleteTask(task._id)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete"
+                             >
+                                <Trash2 size={14} />
+                             </button>
+                        </div>
+                    </td>
+                </tr>
+
+                {/* Inline New Subtask Input */}
+                {(newSubTask.parentTaskId === (task.isSubTask ? task.taskId : task._id) && 
+                  newSubTask.parentSubTaskId === (task.isSubTask ? task._id : null)) && (
+                    <tr className="bg-slate-50/10 border-b border-slate-50">
+                        <td className="px-5 py-3" />
+                        <td className="px-5 py-3" colSpan="5" style={{ paddingLeft: `${indentPx + indentStep}px` }}>
+                            <form 
+                                onSubmit={(e) => { e.preventDefault(); handleAddSubTask(newSubTask.parentTaskId, newSubTask.parentSubTaskId); }}
+                                className="flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-200"
+                            >
+                                <div className="flex-1 bg-white border border-blue-200 rounded-xl px-3 py-1.5 shadow-sm ring-2 ring-blue-50/50">
+                                    <input 
+                                        autoFocus
+                                        className="w-full bg-transparent border-none outline-none text-[12px] font-black text-slate-800 placeholder-slate-400"
+                                        placeholder="Subtask title..."
+                                        value={newSubTask.title}
+                                        onChange={e => setNewSubTask({ ...newSubTask, title: e.target.value })}
+                                        disabled={submittingSubTask}
+                                    />
+                                </div>
+                                <select 
+                                    className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-bold outline-none"
+                                    value={newSubTask.assignedTo}
+                                    onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
+                                >
+                                    <option value="">Assign To</option>
+                                    {companyUsers.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                                </select>
+                                <div className="flex gap-1">
+                                    <button 
+                                        type="submit"
+                                        disabled={submittingSubTask || !newSubTask.title.trim()}
+                                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-1 shadow-lg shadow-blue-200 disabled:opacity-50"
+                                    >
+                                        {submittingSubTask ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                                        Add
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setNewSubTask({ ...newSubTask, parentTaskId: null, parentSubTaskId: null })}
+                                        className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                )}
+
+                {/* Recursive Children Rendering */}
+                {isExpanded && hasChildren && (
+                    renderTree(children, depth + 1, [...levelLines, !isLast])
+                )}
+            </React.Fragment>
+        );
+    };
+
+    const renderTree = (tasksToRender, depth = 0, levelLines = []) => {
+        // Find orphans or root-level items for this depth
+        const sorted = [...tasksToRender].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        return sorted.map((task, index) => renderTaskRow(task, depth, index === sorted.length - 1, levelLines));
     };
 
     const handleClockToggle = async (taskId) => {
@@ -273,7 +535,7 @@ const JobDetails = () => {
                     </p>
                 </div>
 
-                {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                {/* {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
                     <div className="flex gap-2">
                         <button
                             onClick={() => {
@@ -285,7 +547,7 @@ const JobDetails = () => {
                             <Plus size={16} /> New Task
                         </button>
                     </div>
-                )}
+                )} */}
             </div>
 
             {/* Stats / Progress Quick Bar */}
@@ -399,171 +661,7 @@ const JobDetails = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        tasks.map(task => (
-                                            <tr key={task._id} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="px-6 py-5">
-                                                    <button
-                                                        onClick={() => {
-                                                            if (task.status === 'cancelled') return;
-                                                            const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
-                                                            handleUpdateTaskStatus(task._id, nextStatus);
-                                                        }}
-                                                        disabled={task.status === 'cancelled'}
-                                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all
-                                                            ${task.status === 'completed'
-                                                                ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                                                : task.status === 'cancelled'
-                                                                    ? 'bg-red-50 border-red-200 text-red-500'
-                                                                    : 'border-slate-200 text-transparent hover:border-emerald-500'}`}
-                                                    >
-                                                        {task.status === 'cancelled' ? <X size={12} /> : <CheckCircle size={14} />}
-                                                    </button>
-                                                </td>
-                                                <td className="px-6 py-5">
-                                                    <div>
-                                                        <p className={`text-sm font-black tracking-tight 
-                                                            ${task.status === 'completed' ? 'text-slate-400 line-through decoration-2' :
-                                                                task.status === 'cancelled' ? 'text-red-500' : 'text-slate-900'}`}>
-                                                            {task.title}
-                                                        </p>
-                                                        {task.description && <p className="text-xs text-slate-400 line-clamp-1 mt-0.5 font-medium">{task.description}</p>}
-                                                        {task.status === 'cancelled' && task.cancellationReason && (
-                                                            <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-xl">
-                                                                <div className="flex items-center gap-1 text-[9px] text-red-600 font-black uppercase tracking-widest mb-1">
-                                                                    <AlertTriangle size={10} /> Cancellation Reason
-                                                                </div>
-                                                                <p className="text-xs text-red-500 font-bold italic pl-4 border-l-2 border-red-200 ml-1">
-                                                                    {task.cancellationReason}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500">
-                                                            {task.assignedTo?.fullName?.charAt(0) || '?'}
-                                                        </div>
-                                                        <span className="text-xs font-bold text-slate-600">{task.assignedTo?.fullName || 'Unassigned'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border w-fit
-                                                            ${task.priority === 'high' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                                task.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                                                                    'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                                            {task.priority}
-                                                        </span>
-                                                        {task.status === 'cancelled' && (
-                                                            <span className="px-2 py-0.5 bg-red-600 text-white rounded-md text-[8px] font-black uppercase tracking-widest w-fit animate-pulse">
-                                                                Cancelled
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5 text-xs font-bold text-slate-500">
-                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'No date'}
-                                                </td>
-                                                <td className="px-6 py-5 text-right">
-                                                    <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                        {(() => {
-                                                            const isActive = (activeTimeLog?.taskId?._id || activeTimeLog?.taskId) === task._id;
-                                                            return user?.role === 'WORKER' ? (
-                                                                <>
-                                                                    {task.status !== 'completed' && task.status !== 'cancelled' && (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() => handleClockToggle(task._id)}
-                                                                                disabled={clockTogglingId === task._id}
-                                                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${isActive
-                                                                                    ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border-red-100'
-                                                                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border-blue-100'
-                                                                                    }`}
-                                                                                title={isActive ? "Clock Out" : "Clock In"}
-                                                                            >
-                                                                                <Clock size={13} /> {isActive ? 'Stop Timer' : 'Start Timer'}
-                                                                            </button>
-
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setTaskToCancel(task._id);
-                                                                                    setIsCancellationModalOpen(true);
-                                                                                }}
-                                                                                className="px-3 py-1.5 bg-slate-50 text-slate-600 hover:bg-red-600 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200"
-                                                                                title="Cancel Task"
-                                                                            >
-                                                                                Cancel
-                                                                            </button>
-                                                                        </>
-                                                                    )}
-                                                                    {task.status === 'cancelled' && (
-                                                                        <button
-                                                                            onClick={() => handleDeleteTask(task._id)}
-                                                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                                            title="Delete Cancelled Task"
-                                                                        >
-                                                                            <Trash2 size={16} />
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            ) : user?.role === 'FOREMAN' ? (
-                                                                <>
-                                                                    {/* Assign Button for Foreman - Quick assign a worker */}
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setAssigningTask(task);
-                                                                            setIsAssignModalOpen(true);
-                                                                        }}
-                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-100"
-                                                                        title="Assign Worker"
-                                                                    >
-                                                                        <UserPlus size={13} /> Assign
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditingTask(task);
-                                                                            setIsTaskModalOpen(true);
-                                                                        }}
-                                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                                        title="Edit Task"
-                                                                    >
-                                                                        <Edit size={14} />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleDeleteTask(task._id)}
-                                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                                        title="Delete Task"
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditingTask(task);
-                                                                            setIsTaskModalOpen(true);
-                                                                        }}
-                                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                                        title="Edit Task"
-                                                                    >
-                                                                        <Edit size={14} />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleDeleteTask(task._id)}
-                                                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                                        title="Delete Task"
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </>
-                                                            )
-                                                        })()}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
+                                        renderTree(tasks.filter(t => !t.isSubTask))
                                     )}
                                 </tbody>
                             </table>

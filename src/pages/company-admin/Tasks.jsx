@@ -388,29 +388,59 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                             required type="text"
                             placeholder="Add subtask..."
                             value={title} onChange={e => setTitle(e.target.value)}
-                            className="w-full bg-white border border-slate-200/80 rounded-lg pl-8 pr-3 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-400 transition-all"
+                            className="w-full bg-white border border-slate-200/80 rounded-xl pl-8 pr-3 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-400 transition-all shadow-sm"
                         />
                     </div>
+                    
+                    <select 
+                        value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm min-w-[100px]"
+                    >
+                        <option value="">Assign To</option>
+                        {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
+                    </select>
+
+                    <select 
+                        value={priority} onChange={e => setPriority(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
+                    >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+
+                    <select 
+                        value={status} onChange={e => setStatus(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
+                    >
+                        <option value="todo">Todo</option>
+                        <option value="in_progress">Active</option>
+                        <option value="completed">Done</option>
+                    </select>
+
+                    <div className="flex gap-2">
                         <input
                             type="date"
                             title="Start Date"
                             value={startDate} onChange={e => setStartDate(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none w-[110px]"
+                            className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none w-[110px] shadow-sm"
                         />
                         <input
                             type="date"
                             title="Due Date"
                             value={dueDate} onChange={e => setDueDate(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none w-[110px]"
+                            className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none w-[110px] shadow-sm"
                         />
-                        <button
-                            type="submit"
-                            disabled={!title.trim() || isSubmitting}
-                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-black transition-all disabled:opacity-30 flex items-center gap-1 px-3"
-                        >
-                            <Plus size={14} />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Add</span>
-                        </button>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={!title.trim() || isSubmitting}
+                        className="bg-slate-900 text-white p-1.5 rounded-xl hover:bg-black transition-all disabled:opacity-30 flex items-center gap-1.5 px-4 shadow-md"
+                    >
+                        <Plus size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Add</span>
+                    </button>
                 </form>
             </td>
         </tr>
@@ -434,6 +464,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
+    const [childStatus, setChildStatus] = useState('todo');
     const [childStartDate, setChildStartDate] = useState('');
     const [childDueDate, setChildDueDate] = useState('');
     const [savingChild, setSavingChild] = useState(false);
@@ -456,11 +487,12 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
             title: childTitle,
             assignedTo: childAssigned || undefined,
             priority: childPriority,
+            status: childStatus,
             startDate: childStartDate || undefined,
             dueDate: childDueDate || undefined,
             parentSubTaskId: subTask._id
         });
-        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildStartDate(''); setChildDueDate('');
+        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildStatus('todo'); setChildStartDate(''); setChildDueDate('');
         setAddingHere(false);
         setSavingChild(false);
     };
@@ -764,6 +796,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
+                            <select 
+                                value={childStatus} onChange={e => setChildStatus(e.target.value)}
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm"
+                            >
+                                <option value="todo">Todo</option>
+                                <option value="in_progress">Active</option>
+                                <option value="completed">Done</option>
+                            </select>
                             <div className="relative">
                                 <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">Start</span>
                                 <input type="date" value={childStartDate} onChange={e => setChildStartDate(e.target.value)}
@@ -810,6 +850,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
     const [childTitle, setChildTitle] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
+    const [childStatus, setChildStatus] = useState('todo');
     const [childStartDate, setChildStartDate] = useState('');
     const [childDueDate, setChildDueDate] = useState('');
     const [savingChild, setSavingChild] = useState(false);
@@ -824,6 +865,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
             title: childTitle,
             assignedTo: childAssigned || undefined,
             priority: childPriority,
+            status: childStatus,
             startDate: childStartDate || undefined,
             dueDate: childDueDate || undefined,
             parentSubTaskId: node._id
@@ -831,6 +873,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
         setChildTitle('');
         setChildAssigned('');
         setChildPriority('Medium');
+        setChildStatus('todo');
         setChildStartDate('');
         setChildDueDate('');
         setAddingHere(false);
@@ -1002,6 +1045,14 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         <option value="Medium">Medium</option>
                         <option value="High">High</option>
                     </select>
+                    <select 
+                        value={childStatus} onChange={e => setChildStatus(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm"
+                    >
+                        <option value="todo">Todo</option>
+                        <option value="in_progress">Active</option>
+                        <option value="completed">Done</option>
+                    </select>
                     <div className="relative">
                         <span className="absolute -top-3 left-1 text-[7px] font-black text-blue-400 uppercase tracking-widest">Start</span>
                         <input type="date" value={childStartDate} onChange={e => setChildStartDate(e.target.value)}
@@ -1069,6 +1120,8 @@ const Tasks = () => {
     const [expandedTasks, setExpandedTasks] = useState(new Set());
     const [subTasksMap, setSubTasksMap] = useState({});
     const [scheduleTasks, setScheduleTasks] = useState([]);
+    const [activeTab, setActiveTab] = useState('all_tasks'); // 'all_tasks' | 'my_tasks'
+    const [jobs, setJobs] = useState([]);
 
     // Task Templates State
     const [templates, setTemplates] = useState([]);
@@ -1094,10 +1147,28 @@ const Tasks = () => {
     const [filterDueTo, setFilterDueTo] = useState('');
     const [filterProject, setFilterProject] = useState('');
     const [formData, setFormData] = useState({
-        title: '', projectId: '', assignedTo: [], assignedRoleType: '',
+        title: '', projectId: '', jobId: '', assignedTo: [], assignedRoleType: '',
         priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: '',
         category: 'TASK'
     });
+
+    useEffect(() => {
+        const fetchJobs = async () => {
+            if (!formData.projectId) {
+                setJobs([]);
+                setFormData(prev => ({ ...prev, jobId: '' }));
+                return;
+            }
+            try {
+                const res = await api.get(`/jobs?projectId=${formData.projectId}`);
+                setJobs(res.data);
+            } catch (err) {
+                console.error('Error fetching jobs:', err);
+                setJobs([]);
+            }
+        };
+        fetchJobs();
+    }, [formData.projectId]);
 
     const [newSubTask, setNewSubTask] = useState({
         title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium'
@@ -1203,6 +1274,25 @@ const Tasks = () => {
         return list;
     }, [team, formData.assignedRoleType, user?.role]);
 
+    // Filtering Logic Helper
+    const isDirectlyAssigned = (task) => {
+        if (!task) return false;
+        const currentUserId = user?._id || user?.id;
+        if (!currentUserId) return false;
+
+        // Check assignedTo array (from Task or mapped JobTask)
+        const assignedIds = Array.isArray(task.assignedTo) 
+            ? task.assignedTo.map(u => (u._id || u.id || u).toString())
+            : (task.assignedTo ? [(task.assignedTo._id || task.assignedTo.id || task.assignedTo).toString()] : []);
+
+        if (assignedIds.includes(currentUserId.toString())) return true;
+
+        // Check if user is creator
+        if (task.createdBy === currentUserId.toString() || task.createdBy?._id === currentUserId.toString()) return true;
+
+        return false;
+    };
+
     // Apply all filters to general task list
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
@@ -1214,6 +1304,9 @@ const Tasks = () => {
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
             const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
             const matchCategory = !filterCategory || task.category === filterCategory;
+            
+            // New activeTab filter
+            const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
 
             let matchDue = true;
             if (task.dueDate) {
@@ -1222,9 +1315,9 @@ const Tasks = () => {
                 if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
             }
 
-            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory;
+            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
         });
-    }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory]);
+    }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
 
     // Apply all filters to specialized schedule data
     const filteredScheduleTasks = useMemo(() => {
@@ -1238,6 +1331,9 @@ const Tasks = () => {
             const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
             const matchCategory = !filterCategory || task.category === filterCategory;
 
+            // New activeTab filter
+            const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
+
             let matchDue = true;
             if (task.dueDate) {
                 const due = new Date(task.dueDate);
@@ -1245,9 +1341,9 @@ const Tasks = () => {
                 if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
             }
 
-            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory;
+            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
         });
-    }, [scheduleTasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory]);
+    }, [scheduleTasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
 
     // Flatten all tasks and subtasks for unified board view
     const allFlattenedTasks = useMemo(() => {
@@ -1333,11 +1429,11 @@ const Tasks = () => {
 
     // Stats
     const stats = useMemo(() => ({
-        total: tasks.length,
-        overdue: tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed').length,
-        completed: tasks.filter(t => t.status === 'completed').length,
-        inProgress: tasks.filter(t => t.status === 'in_progress').length,
-    }), [tasks]);
+        total: filteredTasks.length,
+        overdue: filteredTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed').length,
+        completed: filteredTasks.filter(t => t.status === 'completed').length,
+        inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
+    }), [filteredTasks]);
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
@@ -1507,7 +1603,7 @@ const Tasks = () => {
                 subTasksList: subTasksList.length > 0 ? subTasksList : undefined
             };
             if (editingTask) {
-                const isJobTask = editingTask.isJobTask;
+                const isJobTask = editingTask.isJobTask || !!formData.jobId;
                 const taskId = editingTask._id || editingTask.id;
                 const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
                 
@@ -1520,7 +1616,21 @@ const Tasks = () => {
 
                 await api.patch(endpoint, finalPayload);
             } else {
-                await api.post('/tasks', payload);
+                if (formData.jobId) {
+                    // Create JobTask
+                    const jobTaskPayload = {
+                        jobId: formData.jobId,
+                        title: formData.title,
+                        description: formData.description,
+                        assignedTo: formData.assignedTo[0],
+                        priority: formData.priority.toLowerCase(),
+                        status: formData.status === 'todo' ? 'pending' : formData.status,
+                        dueDate: formData.dueDate || undefined
+                    };
+                    await api.post('/job-tasks', jobTaskPayload);
+                } else {
+                    await api.post('/tasks', payload);
+                }
             }
             if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             await fetchData();
@@ -1743,6 +1853,36 @@ const Tasks = () => {
                 )}
             </div>
 
+            {/* Role-based Tab Switcher - Lower Position */}
+            {['PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
+                <div className="flex justify-start px-1 shrink-0">
+                    <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200/50 shadow-inner">
+                        <button
+                            onClick={() => setActiveTab('my_tasks')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                                activeTab === 'my_tasks'
+                                    ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
+                                    : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                        >
+                            <UserCheck size={13} />
+                            My Tasks
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('all_tasks')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                                activeTab === 'all_tasks'
+                                    ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
+                                    : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                        >
+                            <Users size={13} />
+                            All Tasks
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* ── Content ── */}
             <div className="flex-1 overflow-hidden min-h-0">
                 {loading ? (
@@ -1893,20 +2033,36 @@ const Tasks = () => {
                         />
                     </div>
 
-                    {/* Project */}
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            <Briefcase size={12} className="text-blue-600" /> Project
-                        </label>
-                        <select
-                            required
-                            value={formData.projectId}
-                            onChange={e => setFormData({ ...formData, projectId: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
-                        >
-                            <option value="">Select Project</option>
-                            {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                        </select>
+                    {/* Project & Job Row */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Briefcase size={12} className="text-blue-600" /> Project
+                            </label>
+                            <select
+                                required
+                                value={formData.projectId}
+                                onChange={e => setFormData({ ...formData, projectId: e.target.value, jobId: '' })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
+                            >
+                                <option value="">Select Project</option>
+                                {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Target size={12} className="text-blue-600" /> Job (Optional)
+                            </label>
+                            <select
+                                value={formData.jobId}
+                                onChange={e => setFormData({ ...formData, jobId: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800 outline-none focus:border-blue-500 appearance-none text-sm"
+                                disabled={!formData.projectId}
+                            >
+                                <option value="">Select Job</option>
+                                {jobs.map(j => <option key={j._id} value={j._id}>{j.name}</option>)}
+                            </select>
+                        </div>
                     </div>
 
                     {/* Role + Assignee row */}
