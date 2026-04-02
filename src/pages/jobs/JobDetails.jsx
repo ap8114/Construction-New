@@ -6,7 +6,7 @@ import {
     Users, MapPin, DollarSign, ChevronRight, Layout,
     Trash2, Edit, Save, X, ArrowLeft, TrendingUp,
     AlertTriangle, ShoppingCart, Download, History, UserPlus,
-    ChevronDown, ChevronUp, Check, Loader
+    ChevronDown, ChevronUp, Check, Loader, MessageSquare
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -46,6 +46,10 @@ const JobDetails = () => {
         priority: 'Medium', parentTaskId: null, parentSubTaskId: null 
     });
     const [submittingSubTask, setSubmittingSubTask] = useState(false);
+    const [notes, setNotes] = useState([]);
+    const [newNote, setNewNote] = useState('');
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [noteToDelete, setNoteToDelete] = useState(null);
 
     const fetchJobDetails = async () => {
         try {
@@ -115,7 +119,50 @@ const JobDetails = () => {
         if (activeTab === 'history') {
             fetchHistory();
         }
+        if (activeTab === 'notes') {
+            fetchNotes();
+        }
     }, [activeTab, jobId]);
+
+    const fetchNotes = async () => {
+        try {
+            setNotesLoading(true);
+            const res = await api.get(`/jobs/${jobId}/notes`);
+            setNotes(res.data);
+        } catch (err) {
+            console.error('Error fetching notes:', err);
+        } finally {
+            setNotesLoading(false);
+        }
+    };
+
+    const handleAddNote = async (e) => {
+        e.preventDefault();
+        if (!newNote.trim()) return;
+        try {
+            const res = await api.post(`/jobs/${jobId}/notes`, { content: newNote });
+            setNotes(prev => [res.data, ...prev]);
+            setNewNote('');
+        } catch (err) {
+            console.error('Error adding note:', err);
+            alert('Failed to add note');
+        }
+    };
+
+    const handleDeleteNote = async () => {
+        if (!noteToDelete) return;
+        try {
+            setSubmitting(true);
+            await api.delete(`/jobs/${jobId}/notes/${noteToDelete}`);
+            setNotes(prev => prev.filter(n => n._id !== noteToDelete));
+            setNoteToDelete(null);
+        } catch (err) {
+            console.error('Error deleting note:', err);
+            alert('Failed to delete note');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const handleDownloadHistory = async () => {
         try {
@@ -481,16 +528,19 @@ const JobDetails = () => {
     const tabs = user?.role === 'WORKER'
         ? [
             { id: 'tasks', label: 'Tasks', icon: CheckCircle },
+            { id: 'notes', label: 'Notes', icon: MessageSquare },
         ]
         : user?.role === 'FOREMAN' ? [
             { id: 'tasks', label: 'Tasks', icon: CheckCircle },
             { id: 'history', label: 'History', icon: History },
+            { id: 'notes', label: 'Notes', icon: MessageSquare },
         ]
             : [
                 // { id: 'overview', label: 'Overview', icon: Layout },
                 { id: 'tasks', label: 'Tasks', icon: CheckCircle },
                 { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
                 { id: 'history', label: 'History', icon: History },
+                { id: 'notes', label: 'Notes', icon: MessageSquare },
                 // { id: 'photos', label: 'Photos', icon: Camera },
                 // { id: 'documents', label: 'Documents', icon: FileText },
                 // { id: 'logs', label: 'Daily Logs', icon: Clock },
@@ -752,6 +802,92 @@ const JobDetails = () => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+                {activeTab === 'notes' && (
+                    <div className="p-8 animate-fade-in space-y-8 min-h-[600px] bg-slate-50/30">
+                        {/* Note Input Form */}
+                        <div className="bg-white p-6 rounded-[30px] border border-slate-200 shadow-sm">
+                            <form onSubmit={handleAddNote} className="space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <MessageSquare size={16} className="text-blue-600" />
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Add New Note</h3>
+                                </div>
+                                <textarea
+                                    value={newNote}
+                                    onChange={(e) => setNewNote(e.target.value)}
+                                    placeholder="Write a note about this job site, specific requirements, or updates..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/50 transition-all min-h-[120px] resize-none"
+                                />
+                                <div className="flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={!newNote.trim()}
+                                        className="bg-blue-600 text-white px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:shadow-none flex items-center gap-2"
+                                    >
+                                        <Plus size={16} /> Save Note
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Notes List */}
+                        <div className="space-y-4">
+                            <h3 className="px-1 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Recent Notes</h3>
+                            {notesLoading && notes.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                    <Loader size={30} className="text-blue-600 animate-spin" />
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading notes...</p>
+                                </div>
+                            ) : notes.length === 0 ? (
+                                <div className="bg-white border border-dashed border-slate-200 rounded-[30px] p-20 flex flex-col items-center gap-4 text-center">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
+                                        <MessageSquare size={32} strokeWidth={1} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No site notes found</p>
+                                        <p className="text-xs text-slate-400 font-bold max-w-[200px]">Important site updates and notes will appear here once added.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {notes.map((note) => (
+                                        <div key={note._id} className="bg-white border border-slate-100 p-6 rounded-[28px] shadow-sm hover:shadow-md transition-all group flex gap-5">
+                                            <div className="shrink-0">
+                                                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm uppercase border border-blue-100 shadow-inner">
+                                                    {note.createdBy?.fullName?.charAt(0) || '?'}
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="text-sm font-black text-slate-900 tracking-tight">{note.createdBy?.fullName || 'Anonymous User'}</h4>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                                                            {new Date(note.createdAt).toLocaleDateString(undefined, { 
+                                                                month: 'short', day: 'numeric', year: 'numeric',
+                                                                hour: '2-digit', minute: '2-digit'
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                    {(user?.role === 'COMPANY_OWNER' || user?._id === note.createdBy?._id) && (
+                                                        <button
+                                                            onClick={() => setNoteToDelete(note._id)}
+                                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                            title="Delete Note"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-slate-600 font-bold leading-relaxed whitespace-pre-wrap">
+                                                    {note.content}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1085,7 +1221,41 @@ const JobDetails = () => {
                     </div>
                 </div>
             )}
-        </div >
+
+            {/* Note Deletion Confirmation Modal */}
+            {noteToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[32px] w-full max-w-sm p-8 shadow-2xl border border-white/20 animate-in zoom-in duration-200">
+                        <div className="flex flex-col items-center text-center gap-5">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
+                                <Trash2 size={32} />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Delete Note?</h3>
+                                <p className="text-xs text-slate-400 font-bold leading-relaxed px-4">
+                                    Are you sure you want to remove this site note? This action cannot be undone and will be permanently removed from the job records.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 w-full mt-2">
+                                <button
+                                    onClick={() => setNoteToDelete(null)}
+                                    className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteNote}
+                                    disabled={submitting}
+                                    className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-200 flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? <Loader size={14} className="animate-spin" /> : 'Yes, Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

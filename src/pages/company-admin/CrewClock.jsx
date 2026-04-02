@@ -109,15 +109,28 @@ const CrewClock = () => {
 
         try {
             setLoading(true);
-            // In a real app, this would be an API call to bulk clock in
-            // For now, we simulate success
+            
+            // Get Admin's current position for the logs
+            const getPosition = () => new Promise((resolve) => {
+                if (!navigator.geolocation) return resolve(null);
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve(pos.coords),
+                    () => resolve(null),
+                    { timeout: 5000 }
+                );
+            });
+            const coords = await getPosition();
+
             await Promise.all(selectedWorkers.map(wid => {
                 const worker = workers.find(w => w._id === wid);
                 if (!worker.isClockedIn) {
-                    return api.post('/timelogs', {
+                    return api.post('/timelogs/clock-in', {
                         userId: wid,
                         projectId: activeJobId,
-                        clockIn: new Date().toISOString()
+                        latitude: coords?.latitude || 0, // Fallback to 0 if blocked, backend will be updated to allow this for admins
+                        longitude: coords?.longitude || 0,
+                        accuracy: coords?.accuracy || 0,
+                        deviceInfo: `Admin Force Clock-in: ${navigator.userAgent}`
                     });
                 }
                 return Promise.resolve();
@@ -136,11 +149,21 @@ const CrewClock = () => {
         if (selectedWorkers.length === 0) return;
         try {
             setLoading(true);
-            await Promise.all(selectedWorkers.map(wid => {
+            await Promise.all(selectedWorkers.map(async wid => {
                 const worker = workers.find(w => w._id === wid);
-                if (worker.isClockedIn && worker.activeLogId) {
-                    return api.patch(`/timelogs/${worker.activeLogId}`, {
-                        clockOut: new Date().toISOString()
+                if (worker.isClockedIn) {
+                    // Try to get position but don't block if unavailable for bulk clock out
+                    const getPosition = () => new Promise((resolve) => {
+                        if (!navigator.geolocation) return resolve(null);
+                        navigator.geolocation.getCurrentPosition((pos) => resolve(pos.coords), () => resolve(null), { timeout: 2000 });
+                    });
+                    const coords = await getPosition();
+
+                    return api.post('/timelogs/clock-out', {
+                        userId: wid,
+                        latitude: coords?.latitude || 0,
+                        longitude: coords?.longitude || 0,
+                        accuracy: coords?.accuracy || 0
                     });
                 }
                 return Promise.resolve();
