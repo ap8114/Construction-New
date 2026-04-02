@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     CloudSun, Sun, CloudRain, Wind, Thermometer,
-    Calendar, Search, Filter, Plus, FileText, Image as ImageIcon, Users, Loader, Trash2,
+    Calendar, Search, Filter, Plus, FileText, Image as ImageIcon, Users, Loader, Trash2, Edit,
     MapPin, Clock, ChevronRight, MoreHorizontal, ExternalLink, Hash, Check, LayoutGrid, List, Eye
 } from 'lucide-react';
 import Modal from '../../components/Modal';
@@ -57,6 +57,8 @@ const DailyLogs = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null);
     const [logToDelete, setLogToDelete] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState(null);
 
     const isSubcontractor = user?.role === 'SUBCONTRACTOR';
 
@@ -90,6 +92,8 @@ const DailyLogs = () => {
             location: null
         });
         setSelectedFiles([]);
+        setIsEditing(false);
+        setEditId(null);
         setIsModalOpen(true);
     };
 
@@ -131,6 +135,21 @@ const DailyLogs = () => {
         setIsViewModalOpen(true);
     };
 
+    const handleEdit = (log) => {
+        setFormData({
+            date: log.date.split('T')[0],
+            projectId: log.projectId?._id || '',
+            weather: log.weather || { status: 'Sunny', temperature: '' },
+            manpower: log.manpower?.length > 0 ? log.manpower : [{ role: 'General', count: 0, hours: 8 }],
+            workPerformed: log.workPerformed || '',
+            location: log.location || null
+        });
+        setIsEditing(true);
+        setEditId(log._id);
+        setSelectedFiles([]);
+        setIsModalOpen(true);
+    };
+
     const handleSave = async () => {
         try {
             const data = new FormData();
@@ -155,12 +174,20 @@ const DailyLogs = () => {
                 data.append('photos', file);
             });
 
-            await api.post('/dailylogs', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            if (isEditing) {
+                await api.patch(`/dailylogs/${editId}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                await api.post('/dailylogs', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
 
             fetchData();
             setIsModalOpen(false);
+            setIsEditing(false);
+            setEditId(null);
             setSelectedFiles([]);
         } catch (error) {
             console.error('Error saving log:', error);
@@ -314,15 +341,26 @@ const DailyLogs = () => {
                                             </div>
                                         </div>
                                         <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            {!isSubcontractor && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleEdit(log); }}
+                                                    className="p-2 bg-white/90 backdrop-blur text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                    title="Edit Log"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleView(log); }}
                                                 className="p-2 bg-white/90 backdrop-blur text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                title="View Details"
                                             >
                                                 <Eye size={16} />
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(log._id); }}
                                                 className="p-2 bg-red-50/90 backdrop-blur text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                title="Delete Log"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -481,15 +519,26 @@ const DailyLogs = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    {!isSubcontractor && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleEdit(log); }}
+                                                            className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"
+                                                            title="Edit Log"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleView(log); }}
                                                         className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                                        title="View Details"
                                                     >
                                                         <Eye size={18} />
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(log._id); }}
                                                         className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                        title="Delete Log"
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -511,8 +560,8 @@ const DailyLogs = () => {
                 )
             }
 
-            {/* Create Log Modal */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Daily Construction Log">
+            {/* Create/Edit Log Modal */}
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditing ? "Edit Daily Construction Log" : "New Daily Construction Log"}>
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="space-y-2">
