@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Mail, Phone, Shield, User, X, Save, Trash2, Edit, CheckCircle, AlertTriangle, Eye, Loader, Lock, Briefcase, Users } from 'lucide-react';
 import api from '../../utils/api';
+import Toast from '../../components/Toast';
+
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -265,6 +267,7 @@ const Team = () => {
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [formData, setFormData] = useState(emptyForm('WORKER'));
+  const [toast, setToast] = useState(null); // { message, type }
 
   // Permissions and Roles state
   const [allRoles, setAllRoles] = useState([]);
@@ -403,9 +406,20 @@ const Team = () => {
       await api.post('/auth/users', { ...formData });
       if (isTeamTab) fetchMembers(); else fetchClients();
       setIsAddOpen(false);
+      setToast({ message: 'User added successfully!', type: 'success' });
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create user.');
       console.error('Error adding user:', error);
+      if (error.response?.status === 403) {
+        setToast({ 
+          message: error.response?.data?.message || 'User limit reached for your plan. Please upgrade your plan to add more team members.', 
+          type: 'error' 
+        });
+      } else {
+        setToast({ 
+          message: error.response?.data?.message || 'Failed to create user.', 
+          type: 'error' 
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -719,6 +733,14 @@ const Team = () => {
         </div>
       </Modal>
 
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

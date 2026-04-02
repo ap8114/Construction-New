@@ -110,7 +110,7 @@ const ClientPortalLayout = () => {
     // Always show My Profile
     if (item.permission === 'VIEW_PROFILE') return true;
     return user?.permissions?.includes(item.permission);
-  });
+  }); 
 
   const getHeaderTitle = () => {
     const currentItem = navItems.find(item => item.path === location.pathname);

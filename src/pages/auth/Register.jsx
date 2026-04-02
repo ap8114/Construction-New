@@ -25,7 +25,7 @@ const Register = () => {
     useEffect(() => {
         const fetchPlanInfo = async () => {
             try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://construction-production-93bf.up.railway.app/api';
                 const response = await fetch(`${apiUrl}/plans`); // Adjust if needed
                 const data = await response.json();
                 const foundPlan = data.find(p => p.name.toLowerCase() === selectedPlan.toLowerCase());

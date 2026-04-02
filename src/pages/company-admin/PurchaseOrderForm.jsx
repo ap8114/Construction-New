@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Toast from '../../components/Toast';
 import '../../styles/PurchaseOrders.css';
 
 const PurchaseOrderForm = () => {
@@ -34,6 +35,7 @@ const PurchaseOrderForm = () => {
         tax: 0,
         totalAmount: 0
     });
+    const [toast, setToast] = useState(null); // { message, type }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -113,10 +115,22 @@ const PurchaseOrderForm = () => {
     };
 
     const handleSubmit = async (statusOverride = null) => {
+        // Validate items
+        const validItems = formData.items.filter(item => item.itemName.trim() !== '');
+        
+        if (validItems.length === 0) {
+            setToast({ message: 'Please add at least one item with a name.', type: 'warning' });
+            return;
+        }
+
         try {
             setLoading(true);
             const status = statusOverride || (user.role === 'FOREMAN' ? 'Draft' : 'Pending Approval');
-            const payload = { ...formData, status };
+            const payload = { 
+                ...formData, 
+                items: validItems,
+                status 
+            };
 
             if (isEdit) {
                 await api.patch(`/purchase-orders/${id}`, payload);
@@ -126,7 +140,8 @@ const PurchaseOrderForm = () => {
             navigate('/company-admin/purchase-orders');
         } catch (error) {
             console.error('Error saving PO:', error);
-            alert('Failed to save Purchase Order');
+            const errorMessage = error.response?.data?.message || 'Failed to save Purchase Order';
+            setToast({ message: errorMessage, type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -340,7 +355,9 @@ const PurchaseOrderForm = () => {
                         <div className="space-y-3 pt-4">
                             <button
                                 onClick={() => handleSubmit()}
-                                disabled={loading || !formData.projectId || !formData.vendorName}
+                                // disabled={loading || !formData.projectId || !formData.vendorName || !formData.items.some(item => item.itemName.trim() !== '')}
+
+                                disabled={loading || !formData.projectId}
                                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-900/40 transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-widest"
                             >
                                 <Save size={18} />
@@ -356,6 +373,15 @@ const PurchaseOrderForm = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 };

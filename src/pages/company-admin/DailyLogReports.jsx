@@ -416,8 +416,24 @@ const DailyLogReports = () => {
                             </tr>
                         ) : reportData.logs.length === 0 ? (
                             <tr>
-                                <td colSpan="4" className="px-8 py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
-                                    No data for selected filters
+                                <td colSpan="4" className="px-8 py-32 text-center">
+                                    <div className="flex flex-col items-center gap-6 max-w-sm mx-auto">
+                                        <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-3xl flex items-center justify-center border-2 border-dashed border-slate-100">
+                                            <FileText size={32} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="text-sm font-black text-slate-900 tracking-tight">No Operational Logs Found</h4>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                                                To generate reports, record site activities through the Site Log module.
+                                            </p>
+                                        </div>
+                                        <button 
+                                            onClick={() => window.location.href='/company-admin/daily-logs'}
+                                            className="px-6 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                                        >
+                                            Submit Your First Log
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ) : (

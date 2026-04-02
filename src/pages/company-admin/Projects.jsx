@@ -7,6 +7,7 @@ import {
   DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw, FileText, ChevronDown
 } from 'lucide-react';
 import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
 import api from '../../utils/api';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -217,7 +218,7 @@ const InsightCard = ({ title, value, subtext, icon: Icon, color }) => {
   };
   return (
     <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm border border-slate-200/60 flex items-center gap-3 md:gap-5 hover:shadow-xl hover:shadow-slate-100 transition-all duration-300">
-      <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl border ${colors[color]}`}><Icon size={20} md:size={28} /></div>
+      <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl border ${colors[color]}`}><Icon size={28} /></div>
       <div>
         <p className="text-[9px] md:text-[10px] text-slate-400 uppercase font-black tracking-widest">{title}</p>
         <p className="text-lg md:text-2xl font-black text-slate-900 leading-tight tracking-tighter">{value}</p>
@@ -243,6 +244,7 @@ const Projects = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [toast, setToast] = useState(null); // { message, type }
 
   const showBudget = canSeeBudget(user?.role);
 
@@ -285,10 +287,25 @@ const Projects = () => {
       await api.post('/projects', { ...formData, companyId: user?.companyId });
       setIsCreateOpen(false);
       setFormData(EMPTY);
+      setToast({ message: 'Project created successfully!', type: 'success' });
       fetchAll();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Project creation error:', err);
+      if (err.response?.status === 403) {
+        setToast({ 
+          message: err.response?.data?.message || 'Project limit reached for your plan (5 projects). Please upgrade your plan to create more projects.', 
+          type: 'error' 
+        });
+      } else {
+        setToast({ 
+          message: err.response?.data?.message || 'Failed to create project. Please try again.', 
+          type: 'error' 
+        });
+      }
+    }
   };
 
+  
   const handleUpdate = async () => {
     try {
       await api.patch(`/projects/${editingProject._id}`, editingProject);
@@ -416,11 +433,11 @@ const Projects = () => {
               <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
                 <button onClick={() => setView('grid')}
                   className={`p-2 rounded-lg transition-all ${view === 'grid' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>
-                  <LayoutGrid size={16} md:size={18} />
+                  <LayoutGrid size={18} />
                 </button>
                 <button onClick={() => setView('table')}
                   className={`p-2 rounded-lg transition-all ${view === 'table' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>
-                  <List size={16} md:size={18} />
+                  <List size={18} />
                 </button>
               </div>
               {user?.role === 'COMPANY_OWNER' && (
@@ -805,6 +822,14 @@ const Projects = () => {
             submitLabel="Save Changes" clients={clients} projectManagers={projectManagers} />
         )}
       </Modal>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

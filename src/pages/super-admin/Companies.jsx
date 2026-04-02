@@ -84,7 +84,7 @@ const Companies = () => {
       address: '',
       startDate: '',
       expireDate: '',
-      plan: plans.length > 0 ? plans[0].name : '',
+      plan: plans.length > 0 ? (plans[0]._id || plans[0].id) : '',
       planType: 'Monthly',
       password: '',
       confirmPassword: '',
@@ -204,7 +204,7 @@ const Companies = () => {
       address: '',
       startDate: new Date().toISOString().split('T')[0],
       expireDate: '',
-      plan: plans.length > 0 ? plans[0].name : '',
+      plan: plans.length > 0 ? (plans[0]._id || plans[0].id) : '',
       planType: 'Monthly',
       password: '',
       confirmPassword: '',
@@ -483,7 +483,7 @@ const Companies = () => {
               >
                 <option value="" disabled>Select Plan</option>
                 {plans.map((plan) => (
-                  <option key={plan._id || plan.id} value={plan.name}>
+                  <option key={plan._id || plan.id} value={plan._id || plan.id}>
                     {plan.name}
                   </option>
                 ))}

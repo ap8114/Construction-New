@@ -7,7 +7,7 @@ import {
     Download, Calendar, ArrowUpRight, ArrowDownRight, DollarSign,
     Activity, Briefcase, Clock, Shield, TrendingUp, Filter,
     ChevronDown, Printer, FileText, PieChart as PieIcon, BarChart2,
-    Wrench, CheckSquare, Layers
+    Wrench, CheckSquare, Layers, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import api from '../../utils/api';
 import { jsPDF } from 'jspdf';
@@ -19,6 +19,7 @@ const Reports = () => {
     const [data, setData] = useState({
         financials: { totalRevenue: 0, totalInvoiced: 0, outstanding: 0, projectBudget: 0 },
         projects: { total: 0, preConstruction: 0, activeSites: 0, onHold: 0, handedOver: 0 },
+        tasks: { total: 0, completed: 0, overdue: 0, completionRate: 0 },
         labor: { totalHours: 0, productivityData: [] },
         safety: { totalIncidents: 0, daysIncidentFree: 0 },
         equipment: { total: 0, operational: 0 },
@@ -68,6 +69,9 @@ const Reports = () => {
                 ['FINANCE', 'Total Revenue Collected', `$${data.financials.totalRevenue.toLocaleString()}`],
                 ['FINANCE', 'Outstanding Receivables', `$${data.financials.outstanding.toLocaleString()}`],
                 ['PROJECTS', 'Active Sites', data.projects.activeSites],
+                ['TASKS', 'Total Tasks Organized', data.tasks.total],
+                ['TASKS', 'Tasks Overdue', data.tasks.overdue],
+                ['TASKS', 'Completion Efficiency', `${data.tasks.completionRate}%`],
                 ['WORKFORCE', 'Cumulative Labor Hours', `${data.labor.totalHours}h`],
                 ['ASSETS', 'Equipment Operational', `${data.equipment.operational}/${data.equipment.total}`],
                 ['JOBS', 'Job Completion Rate', `${data.jobs.total > 0 ? ((data.jobs.completed / data.jobs.total) * 100).toFixed(1) : 0}%`],
@@ -94,7 +98,7 @@ const Reports = () => {
         );
     }
 
-    const { financials, projects, labor, safety, equipment, jobs } = data;
+    const { financials, projects, tasks, labor, safety, equipment, jobs } = data;
 
     const jobCompletionRate = jobs.total > 0 ? (jobs.completed / jobs.total) * 100 : 0;
     const equipmentHealth = equipment.total > 0 ? (equipment.operational / equipment.total) * 100 : 0;
@@ -169,30 +173,28 @@ const Reports = () => {
             {/* Sub Metrics Area */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-white border border-slate-200/50 rounded-2xl flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-inner">
                         <CheckSquare size={18} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Job Completion</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Task Completion</p>
                         <div className="flex items-center gap-2">
-                            <span className="text-lg font-black text-slate-900 leading-none">{jobCompletionRate.toFixed(1)}%</span>
+                            <span className="text-lg font-black text-slate-900 leading-none">{tasks.completionRate}%</span>
                             <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${jobCompletionRate}%` }}></div>
+                                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${tasks.completionRate}%` }}></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div className="p-4 bg-white border border-slate-200/50 rounded-2xl flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                        <Wrench size={18} />
+                    <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shadow-inner">
+                        <Clock size={18} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Equipment Health</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Overdue Tasks</p>
                         <div className="flex items-center gap-2">
-                            <span className="text-lg font-black text-slate-900 leading-none">{equipmentHealth.toFixed(1)}%</span>
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${equipmentHealth}%` }}></div>
-                            </div>
+                            <span className="text-lg font-black text-slate-900 leading-none">{tasks.overdue}</span>
+                            <span className="text-[8px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md uppercase tracking-widest">Action Needed</span>
                         </div>
                     </div>
                 </div>
@@ -361,8 +363,71 @@ const Reports = () => {
                 </div>
             </div>
 
+            {/* Outstanding Tasks Section */}
+            <div className="bg-white rounded-[40px] border border-slate-200/60 shadow-sm overflow-hidden mb-8">
+                <div className="p-6 md:p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                            <AlertCircle size={20} className="text-red-500" /> Outstanding Tasks & Action Items
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Items requiring immediate site attention</p>
+                    </div>
+                    <div className="px-4 py-1.5 bg-red-50 rounded-full text-[10px] font-black text-red-500 uppercase tracking-widest border border-red-100 animate-pulse">
+                        {tasks.overdue} OVERDUE
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/30">
+                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Task Title</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Project Site</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {tasks.outstandingTasks?.length > 0 ? (
+                                tasks.outstandingTasks.map((t, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-8 py-4">
+                                            <p className="text-sm font-black text-slate-900">{t.title}</p>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center gap-1.5">
+                                                <Briefcase size={12} className="text-blue-500" />
+                                                <span className="text-xs font-bold text-slate-600">{t.projectName}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <p className="text-xs font-black text-red-500 leading-none">
+                                                {new Date(t.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </p>
+                                        </td>
+                                        <td className="px-8 py-4 text-right">
+                                            <span className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-100">
+                                                Overdue
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="4" className="px-8 py-12 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <CheckCircle2 size={32} className="text-emerald-500" />
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No overdue tasks found. All sites on track.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {/* Operational Summary */}
-            <div className="bg-slate-50 p-4 md:p-6 rounded-[32px] border border-slate-200/60">
+            <div className="bg-slate-50 p-4 md:p-6 rounded-[32px] border border-slate-200/60 pb-10">
                 <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4">Operational Summary</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 bg-white rounded-2xl border border-slate-200/40">
@@ -379,15 +444,15 @@ const Reports = () => {
                             <Layers size={16} className="text-blue-500" />
                         </div>
                     </div>
-                    <div className="lg:col-span-2 p-4 bg-indigo-600 rounded-3xl text-white flex items-center justify-between">
+                    <div className="lg:col-span-2 p-4 bg-indigo-600 rounded-3xl text-white flex items-center justify-between shadow-lg shadow-indigo-100">
                         <div>
                             <div className="flex items-center gap-3 mb-1">
                                 <Shield size={18} className="text-indigo-200" />
-                                <span className="text-sm font-black uppercase tracking-widest">Compliance Status</span>
+                                <span className="text-sm font-black uppercase tracking-widest leading-none">Compliance Status</span>
                             </div>
-                            <p className="text-xs font-bold text-indigo-100">All current site safety inspections are up to date. Risk index: Low.</p>
+                            <p className="text-xs font-bold text-indigo-100/80 leading-relaxed max-w-sm">Current site safety inspections are up to date. Safety index is at 98.4%. Risk index remains Low.</p>
                         </div>
-                        <button className="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition">Review</button>
+                        <button className="px-5 py-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Review Hub</button>
                     </div>
                 </div>
             </div>

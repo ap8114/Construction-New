@@ -5,7 +5,7 @@ import {
     Hash, Target, Edit, Trash2, Info, Save, Tag,
     AlertTriangle, Layers, TrendingUp, X, UserCheck, Flag, HardHat,
     ChevronDown, Users, Briefcase, CheckCircle2, ArrowRight, Camera,
-    ChevronUp, Settings, ChevronRight, Check, GripVertical, CalendarDays, KanbanSquare, AlignLeft, CalendarRange
+    ChevronUp, Settings, ChevronRight, Check, GripVertical, CalendarDays, KanbanSquare, AlignLeft, CalendarRange, XCircle
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
@@ -391,30 +391,26 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                             className="w-full bg-white border border-slate-200/80 rounded-lg pl-8 pr-3 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-400 transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <select
-                            value={status} onChange={e => setStatus(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="todo">Todo</option>
-                            <option value="in_progress">Active</option>
-                            <option value="completed">Done</option>
-                        </select>
-                        <select
-                            value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none max-w-[100px]"
-                        >
-                            <option value="">Assign</option>
-                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                        </select>
+                        <input
+                            type="date"
+                            title="Start Date"
+                            value={startDate} onChange={e => setStartDate(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none w-[110px]"
+                        />
+                        <input
+                            type="date"
+                            title="Due Date"
+                            value={dueDate} onChange={e => setDueDate(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-600 outline-none w-[110px]"
+                        />
                         <button
                             type="submit"
                             disabled={!title.trim() || isSubmitting}
-                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-black transition-all disabled:opacity-30"
+                            className="bg-slate-900 text-white p-1.5 rounded-lg hover:bg-black transition-all disabled:opacity-30 flex items-center gap-1 px-3"
                         >
                             <Plus size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Add</span>
                         </button>
-                    </div>
                 </form>
             </td>
         </tr>
@@ -690,27 +686,48 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 {canManage && (
                     <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                            <button
-                                onClick={() => setAddingHere(!addingHere)}
-                                title="Add subtask"
-                                className={`p-1.5 rounded-lg transition-all ${addingHere ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
-                            >
-                                <Plus size={13} />
-                            </button>
-                            <button
-                                onClick={() => setIsEditing(!isEditing)}
-                                title="Edit"
-                                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                            >
-                                <Edit size={13} />
-                            </button>
-                            <button
-                                onClick={() => onUpdate(subTask, { delete: true })}
-                                title="Delete"
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
-                            >
-                                <Trash2 size={13} />
-                            </button>
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={handleEditSave}
+                                        title="Save Changes"
+                                        className="p-1.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-all"
+                                    >
+                                        <CheckCircle2 size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        title="Cancel"
+                                        className="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+                                    >
+                                        <XCircle size={13} />
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setAddingHere(!addingHere)}
+                                        title="Add subtask"
+                                        className={`p-1.5 rounded-lg transition-all ${addingHere ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                                    >
+                                        <Plus size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        title="Edit"
+                                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                                    >
+                                        <Edit size={13} />
+                                    </button>
+                                    <button
+                                        onClick={() => onUpdate(subTask, { delete: true })}
+                                        title="Delete"
+                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </td>
                 )}
@@ -1083,7 +1100,7 @@ const Tasks = () => {
     });
 
     const [newSubTask, setNewSubTask] = useState({
-        title: '', assignedTo: '', dueDate: '', remarks: ''
+        title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium'
     });
 
     const columns = {
