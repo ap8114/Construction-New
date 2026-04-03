@@ -161,9 +161,15 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                     )}
                 </div>
 
-                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <span>Last Used</span>
-                    <span className="text-slate-900">{item.assignedDate ? new Date(item.assignedDate).toLocaleDateString() : 'N/A'}</span>
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] text-slate-400">Hourly Rate</span>
+                        <span className="text-slate-900 font-black">${(item.costPerHour || 0).toLocaleString()}/hr</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-[8px] text-slate-400">Last Used</span>
+                        <span className="text-slate-900">{item.assignedDate ? new Date(item.assignedDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
                 </div>
 
                 {/* View History Button */}
@@ -191,6 +197,7 @@ const EquipmentTable = ({ items, onEdit, onDelete, onAssign, onReturn, onViewHis
                         <th className="px-6 py-4">Asset ID / Type</th>
                         <th className="px-6 py-4">Category</th>
                         <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Rate</th>
                         <th className="px-6 py-4">Location</th>
                         <th className="px-6 py-4">Assigned Job</th>
                         <th className="px-6 py-4">Last Maint.</th>
@@ -226,6 +233,12 @@ const EquipmentTable = ({ items, onEdit, onDelete, onAssign, onReturn, onViewHis
                             </td>
                             <td className="px-6 py-4">
                                 <StatusBadge status={item.status} />
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-1.5 text-xs font-black text-blue-600">
+                                    <DollarSign size={13} className="text-blue-400" />
+                                    ${(item.costPerHour || 0).toLocaleString()}/h
+                                </div>
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
@@ -277,7 +290,8 @@ const EMPTY_FORM = {
     serialNumber: '',
     location: 'Warehouse',
     notes: '',
-    imageUrl: ''
+    imageUrl: '',
+    costPerHour: 0
 };
 
 const Equipment = () => {
@@ -854,6 +868,18 @@ const Equipment = () => {
                                         onChange={e => setForm({ ...form, lastServiceDate: e.target.value })}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none" />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Hourly Cost ($)</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</div>
+                                        <input type="number" value={form.costPerHour} onChange={e => setForm({ ...form, costPerHour: Number(e.target.value) })}
+                                            placeholder="0.00"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-4 py-3 font-bold text-slate-800 outline-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Initial Status</label>
                                     <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
