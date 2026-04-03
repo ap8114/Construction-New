@@ -5,6 +5,8 @@ import {
     ChevronRight, ExternalLink, Hash, Check, Trash2, ShieldCheck, AlertCircle, TrendingUp, RefreshCw
 } from 'lucide-react';
 import { io } from 'socket.io-client';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -215,6 +217,39 @@ const Timesheets = () => {
         URL.revokeObjectURL(url);
     };
 
+    const handleExportPDF = () => {
+        const doc = new jsPDF();
+        const tableData = filteredEntries.map(e => {
+            const clockIn = new Date(e.clockIn);
+            const clockOut = e.clockOut ? new Date(e.clockOut) : null;
+            const duration = clockOut ? ((clockOut - clockIn) / (1000 * 60 * 60)).toFixed(2) : 'In Progress';
+            return [
+                e.userId?.fullName || '',
+                e.projectId?.name || 'Manual Log',
+                clockIn.toLocaleDateString(),
+                clockIn.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                clockOut ? clockOut.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---',
+                duration,
+                e.status.toUpperCase()
+            ];
+        });
+
+        doc.setFontSize(18);
+        doc.text('Timesheet Report', 14, 22);
+        doc.setFontSize(11);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+        autoTable(doc, {
+            head: [['Employee', 'Project', 'Date', 'Clock In', 'Clock Out', 'Hours', 'Status']],
+            body: tableData,
+            startY: 40,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [37, 99, 235] }
+        });
+
+        doc.save(`timesheets_${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     const openDetails = (entry) => {
         setSelectedEntry(entry);
         setIsModalOpen(true);
@@ -277,6 +312,13 @@ const Timesheets = () => {
                         title="Export CSV"
                     >
                         <Download size={20} />
+                    </button>
+                    <button
+                        onClick={handleExportPDF}
+                        className="p-2.5 bg-white rounded-xl border border-slate-200 text-red-400 hover:text-red-500 hover:shadow-sm transition-all"
+                        title="Download PDF Report"
+                    >
+                        <FileText size={20} />
                     </button>
                     {!isWorker ? (
                         <button
@@ -697,88 +739,118 @@ const Timesheets = () => {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white border-2 border-slate-50 rounded-3xl p-6 relative overflow-hidden group hover:border-blue-500/10 transition-colors">
-                                <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all"></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-hidden group hover:border-blue-500/10 transition-colors">
+                                <div className="absolute -top-4 -right-4 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all"></div>
                                 <div className="relative">
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-3 flex items-center gap-2">
-                                        <Clock size={12} className="text-emerald-500" /> Start of Shift
+                                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5">
+                                        <Clock size={11} className="text-emerald-500" /> Start of Shift
                                     </p>
-                                    <p className="text-3xl font-black text-slate-900 tracking-tighter">
-                                        {new Date(selectedEntry.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                        {new Date(selectedEntry.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
-                                    <p className="text-xs font-bold text-slate-500 mt-1">
-                                        {new Date(selectedEntry.clockIn).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                                        {new Date(selectedEntry.clockIn).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
                                     </p>
                                 </div>
                             </div>
-                            <div className="bg-white border-2 border-slate-50 rounded-3xl p-6 relative overflow-hidden group hover:border-blue-500/10 transition-colors">
-                                <div className="absolute -top-4 -right-4 w-24 h-24 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-all"></div>
+                            <div className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-hidden group hover:border-blue-500/10 transition-colors">
+                                <div className="absolute -top-4 -right-4 w-16 h-16 bg-red-500/5 rounded-full blur-xl group-hover:bg-red-500/10 transition-all"></div>
                                 <div className="relative">
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-3 flex items-center gap-2">
-                                        <Clock size={12} className="text-red-500" /> End of Shift
+                                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-2 flex items-center gap-1.5">
+                                        <Clock size={11} className="text-red-500" /> End of Shift
                                     </p>
-                                    <p className={`text-3xl font-black tracking-tighter ${selectedEntry.clockOut ? 'text-slate-900' : 'text-blue-600 animate-pulse'}`}>
-                                        {selectedEntry.clockOut ? new Date(selectedEntry.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'ACTIVE'}
+                                    <p className={`text-2xl font-black tracking-tighter ${selectedEntry.clockOut ? 'text-slate-900' : 'text-blue-600 animate-pulse'}`}>
+                                        {selectedEntry.clockOut ? new Date(selectedEntry.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ACTIVE'}
                                     </p>
-                                    <p className="text-xs font-bold text-slate-500 mt-1">
+                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
                                         {selectedEntry.clockOut
-                                            ? new Date(selectedEntry.clockOut).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                                            : 'User currently clocked in'}
+                                            ? new Date(selectedEntry.clockOut).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })
+                                            : 'On-site session'}
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        {selectedEntry.clockOut && (
-                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-100 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                                        <TrendingUp size={24} />
+                        <div className={`p-4 ${selectedEntry.isManual ? 'bg-amber-50/50 border-amber-100' : 'bg-slate-50 border-slate-100'} rounded-2xl border space-y-3`}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedEntry.isManual ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-500'}`}>
+                                        <User size={14} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-black uppercase tracking-widest text-blue-100">Total Calculated Hours</p>
-                                        <p className="text-2xl font-black leading-none mt-1">
+                                        <p className={`text-[8px] font-black uppercase tracking-widest leading-none mb-0.5 ${selectedEntry.isManual ? 'text-amber-500' : 'text-slate-400'}`}>
+                                            {selectedEntry.isManual ? 'Manual Entry By' : 'Auto-Capture By'}
+                                        </p>
+                                        <p className="text-xs font-black text-slate-700 uppercase tracking-tight">
+                                            {selectedEntry.createdBy?.fullName || (selectedEntry.isManual ? 'System Admin' : selectedEntry.userId?.fullName)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${selectedEntry.isManual ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                    {selectedEntry.isManual ? 'Manual Override' : 'System Capture'}
+                                </div>
+                            </div>
+                            {selectedEntry.isManual && selectedEntry.reason && (
+                                <div className="bg-white/80 p-3 rounded-xl border border-amber-100/50">
+                                    <p className="text-[8px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Entry Reason</p>
+                                    <p className="text-[11px] font-bold text-slate-600 italic">"{selectedEntry.reason}"</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {selectedEntry.clockOut && (
+                            <div className={`${selectedEntry.isManual ? 'bg-slate-900 shadow-slate-100' : 'bg-blue-600 shadow-blue-100'} rounded-2xl p-4 text-white shadow-lg flex items-center justify-between transition-all duration-300`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl ${selectedEntry.isManual ? 'bg-white/10' : 'bg-white/20'} backdrop-blur-md flex items-center justify-center border border-white/20`}>
+                                        <TrendingUp size={18} />
+                                    </div>
+                                    <div>
+                                        <p className={`text-[10px] font-black uppercase tracking-widest ${selectedEntry.isManual ? 'text-slate-400' : 'text-blue-100'}`}>Calculated Hours</p>
+                                        <p className="text-xl font-black leading-none mt-0.5">
                                             {((new Date(selectedEntry.clockOut) - new Date(selectedEntry.clockIn)) / (1000 * 60 * 60)).toFixed(2)}h
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase flex items-center gap-1 justify-end text-blue-200">
-                                        <ShieldCheck size={12} /> Auto-Computed
+                                    <p className={`text-[8px] font-black uppercase flex items-center gap-1 justify-end ${selectedEntry.isManual ? 'text-amber-400' : 'text-blue-100'}`}>
+                                        {selectedEntry.isManual ? <FileText size={10} /> : <ShieldCheck size={10} />}
+                                        {selectedEntry.isManual ? 'Manual Override' : 'System Verified'}
                                     </p>
-                                    <span className="text-[9px] italic text-blue-300 font-medium">Verified by KAAL Engine</span>
+                                    <span className={`text-[8px] italic font-medium opacity-60`}>
+                                        {selectedEntry.isManual ? 'Authorised Entry' : 'GPS Secured'}
+                                    </span>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100 mt-auto">
-                            <button onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">
+                        <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-slate-50 mt-auto">
+                            <button onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
                                 Skip for now
                             </button>
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
                                 {selectedEntry.status === 'pending' && selectedEntry.clockOut && (
                                     <>
                                         <button
                                             onClick={() => handleReject(selectedEntry._id)}
-                                            className="flex-1 sm:flex-none px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-tight text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-100 shadow-sm flex items-center justify-center gap-2"
+                                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-50 flex items-center justify-center gap-2"
                                         >
-                                            <XCircle size={18} /> Reject
+                                            <XCircle size={14} /> Reject
                                         </button>
                                         <button
                                             onClick={() => handleApprove(selectedEntry._id)}
-                                            className="flex-1 sm:flex-none px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-tight text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-2"
+                                            className="flex-1 sm:flex-none px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center justify-center gap-2"
                                         >
-                                            <CheckCircle size={18} /> Approve log
+                                            <CheckCircle size={14} /> Approve Log
                                         </button>
                                     </>
                                 )}
                                 {(selectedEntry.status !== 'pending' || !selectedEntry.clockOut) && (
                                     <button
                                         onClick={() => setIsModalOpen(false)}
-                                        className="w-full sm:w-auto px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-tight text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center gap-2"
+                                        className="w-full sm:w-auto px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-md flex items-center justify-center gap-2"
                                     >
-                                        Return to Dashboard
+                                        Close Details
                                     </button>
                                 )}
                             </div>

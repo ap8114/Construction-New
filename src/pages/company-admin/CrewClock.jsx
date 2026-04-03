@@ -22,6 +22,18 @@ const CrewClock = () => {
         offClock: 0,
         totalCrew: 0
     });
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+    const [selectedWorkerForManual, setSelectedWorkerForManual] = useState(null);
+    const [manualEntryData, setManualEntryData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        clockIn: '',
+        clockOut: '',
+        reason: '',
+        projectId: ''
+    });
+    const [isClockInDropdownOpen, setIsClockInDropdownOpen] = useState(false);
+    const [isClockOutDropdownOpen, setIsClockOutDropdownOpen] = useState(false);
+    const [isManualClockOut, setIsManualClockOut] = useState(false);
     const socketRef = useRef();
 
     const fetchData = async () => {
@@ -48,6 +60,7 @@ const CrewClock = () => {
                 return {
                     ...worker,
                     isClockedIn: !!activeLog,
+                    isManual: activeLog?.isManual || false,
                     activeLogId: activeLog?._id,
                     lastClockIn: activeLog?.clockIn,
                     site: activeLog?.projectId?.name || 'Assigned Site'
@@ -97,6 +110,83 @@ const CrewClock = () => {
             setSelectedWorkers([]);
         } else {
             setSelectedWorkers(workers.map(w => w._id));
+        }
+    };
+
+    const handleManualEntrySubmit = async (e) => {
+        if (e) e.preventDefault();
+        if (!selectedWorkerForManual || !manualEntryData.clockIn || !manualEntryData.date) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        const projectId = manualEntryData.projectId || activeJobId;
+        if (!projectId) {
+            alert('Please select a project first.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const baseDate = manualEntryData.date;
+            const clockIn = `${baseDate}T${manualEntryData.clockIn}`;
+            const clockOut = manualEntryData.clockOut ? `${baseDate}T${manualEntryData.clockOut}` : null;
+
+            // Simple validation: No future time
+            if (new Date(clockIn) > new Date()) {
+                alert('Cannot enter future clock-in time.');
+                return;
+            }
+            if (clockOut && new Date(clockOut) > new Date()) {
+                alert('Cannot enter future clock-out time.');
+                return;
+            }
+            if (clockOut && new Date(clockOut) < new Date(clockIn)) {
+                alert('Clock-out must be after clock-in.');
+                return;
+            }
+
+            if (isManualClockOut) {
+                await api.post('/timelogs/clock-out', {
+                    userId: selectedWorkerForManual._id,
+                    isManual: true,
+                    clockOut: clockOut || new Date().toISOString(), // Use provided or now
+                    reason: manualEntryData.reason,
+                    latitude: 0,
+                    longitude: 0,
+                    accuracy: 0
+                });
+            } else {
+                await api.post('/timelogs/clock-in', {
+                    userId: selectedWorkerForManual._id,
+                    projectId,
+                    isManual: true,
+                    clockIn,
+                    clockOut,
+                    reason: manualEntryData.reason,
+                    latitude: 0,
+                    longitude: 0,
+                    accuracy: 0
+                });
+            }
+
+            await fetchData();
+            setIsManualModalOpen(false);
+            setSelectedWorkerForManual(null);
+            setIsManualClockOut(false);
+            setManualEntryData({
+                date: new Date().toISOString().split('T')[0],
+                clockIn: '',
+                clockOut: '',
+                reason: '',
+                projectId: ''
+            });
+            alert('Manual entry recorded successfully.');
+        } catch (error) {
+            console.error('Error in manual entry:', error);
+            alert(error.response?.data?.message || 'Failed to record manual entry.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -260,27 +350,234 @@ const CrewClock = () => {
                     </div>
                 </div>
 
-                <div className="flex gap-3 w-full md:w-auto">
-                    <button
-                        onClick={handleBulkClockIn}
-                        disabled={selectedWorkers.length === 0}
-                        className={`flex-1 md:flex-none px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
-                            ${selectedWorkers.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
-                        `}
-                    >
-                        <Play size={16} fill="currentColor" /> Clock In ({selectedWorkers.length})
-                    </button>
-                    <button
-                        onClick={handleBulkClockOut}
-                        disabled={selectedWorkers.length === 0}
-                        className={`flex-1 md:flex-none px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
-                            ${selectedWorkers.length > 0 ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
-                        `}
-                    >
-                        <Square size={16} fill="currentColor" /> Clock Out ({selectedWorkers.length})
-                    </button>
+                <div className="flex gap-3 w-full md:w-auto relative">
+                    <div className="relative flex-1 md:flex-none">
+                        <button
+                            onClick={() => {
+                                if (user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') {
+                                    setIsClockInDropdownOpen(!isClockInDropdownOpen);
+                                } else {
+                                    handleBulkClockIn();
+                                }
+                            }}
+                            disabled={selectedWorkers.length === 0}
+                            className={`w-full md:w-auto px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
+                                ${selectedWorkers.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
+                            `}
+                        >
+                            <Play size={16} fill="currentColor" /> Clock In ({selectedWorkers.length})
+                            {(user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') && (
+                                <ChevronRight size={16} className={`transition-transform ${isClockInDropdownOpen ? 'rotate-90' : ''}`} />
+                            )}
+                        </button>
+
+                        {isClockInDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-full md:w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <button
+                                    onClick={() => {
+                                        handleBulkClockIn();
+                                        setIsClockInDropdownOpen(false);
+                                    }}
+                                    className="w-full px-5 py-3 text-left hover:bg-blue-50 text-slate-700 hover:text-blue-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-3"
+                                >
+                                    <RefreshCw size={14} /> Auto Clock In
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (selectedWorkers.length > 0) {
+                                            const worker = workers.find(w => w._id === selectedWorkers[0]);
+                                            setSelectedWorkerForManual(worker);
+                                            setIsClockInDropdownOpen(false);
+                                            setIsManualModalOpen(true);
+                                        }
+                                    }}
+                                    className="w-full px-5 py-3 text-left hover:bg-amber-50 text-slate-700 hover:text-amber-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-3 border-t border-slate-50"
+                                >
+                                    <Calendar size={14} /> Manual Entry
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="relative flex-1 md:flex-none">
+                        <button
+                            onClick={() => {
+                                if (user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') {
+                                    setIsClockOutDropdownOpen(!isClockOutDropdownOpen);
+                                } else {
+                                    handleBulkClockOut();
+                                }
+                            }}
+                            disabled={selectedWorkers.length === 0}
+                            className={`w-full md:w-auto px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
+                                ${selectedWorkers.length > 0 ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
+                            `}
+                        >
+                            <Square size={16} fill="currentColor" /> Clock Out ({selectedWorkers.length})
+                            {(user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') && (
+                                <ChevronRight size={16} className={`transition-transform ${isClockOutDropdownOpen ? 'rotate-90' : ''}`} />
+                            )}
+                        </button>
+
+                        {isClockOutDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-2 w-full md:w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <button
+                                    onClick={() => {
+                                        handleBulkClockOut();
+                                        setIsClockOutDropdownOpen(false);
+                                    }}
+                                    className="w-full px-5 py-3 text-left hover:bg-red-50 text-slate-700 hover:text-red-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-3"
+                                >
+                                    <RefreshCw size={14} /> Auto Clock Out
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (selectedWorkers.length > 0) {
+                                            const worker = workers.find(w => w._id === selectedWorkers[0]);
+                                            setSelectedWorkerForManual(worker);
+                                            setIsClockOutDropdownOpen(false);
+                                            setIsManualClockOut(true);
+                                            setIsManualModalOpen(true);
+                                        }
+                                    }}
+                                    className="w-full px-5 py-3 text-left hover:bg-amber-50 text-slate-700 hover:text-amber-600 font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-3 border-t border-slate-50"
+                                >
+                                    <Calendar size={14} /> Manual Entry
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
+
+            {/* Manual Entry Modal */}
+            {isManualModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Manual Time Entry</h3>
+                                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mt-1 underline decoration-blue-500/30 decoration-4 underline-offset-4">
+                                    Recording for {selectedWorkerForManual?.fullName}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsManualModalOpen(false)}
+                                className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all shadow-sm"
+                            >
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleManualEntrySubmit} className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Worker Name</label>
+                                    <div className="relative">
+                                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={selectedWorkerForManual?.fullName || ''}
+                                            className="w-full pl-12 pr-6 py-4 bg-slate-100 border border-slate-100 rounded-2xl outline-none font-bold text-slate-500 cursor-not-allowed"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Target Project</label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <select
+                                            required
+                                            value={manualEntryData.projectId || activeJobId}
+                                            onChange={(e) => setManualEntryData({...manualEntryData, projectId: e.target.value})}
+                                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select Project...</option>
+                                            {projects.map(p => (
+                                                <option key={p._id} value={p._id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Work Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="date"
+                                            required
+                                            value={manualEntryData.date}
+                                            onChange={(e) => setManualEntryData({...manualEntryData, date: e.target.value})}
+                                            max={new Date().toISOString().split('T')[0]}
+                                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Clock In Time</label>
+                                        <div className="relative">
+                                            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                            <input
+                                                type="time"
+                                                required
+                                                value={manualEntryData.clockIn}
+                                                onChange={(e) => setManualEntryData({...manualEntryData, clockIn: e.target.value})}
+                                                className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Clock Out Time (Optional)</label>
+                                        <div className="relative">
+                                            <Square className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                            <input
+                                                type="time"
+                                                value={manualEntryData.clockOut}
+                                                onChange={(e) => setManualEntryData({...manualEntryData, clockOut: e.target.value})}
+                                                className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Reason / Note</label>
+                                    <textarea
+                                        value={manualEntryData.reason}
+                                        onChange={(e) => setManualEntryData({...manualEntryData, reason: e.target.value})}
+                                        placeholder="Explain why this entry is manual..."
+                                        rows="3"
+                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800 placeholder:text-slate-300 resize-none"
+                                    ></textarea>
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsManualModalOpen(false)}
+                                    className="flex-1 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                                    Submit Entry
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Crew Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -344,10 +641,17 @@ const CrewClock = () => {
                         <div className="mt-6 pt-6 border-t border-slate-50 flex items-center justify-between">
                             <div>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Status</p>
-                                <p className={`text-xs font-black uppercase tracking-tight 
+                                <p className={`text-xs font-black uppercase tracking-tight flex flex-col
                                     ${worker.isClockedIn ? 'text-emerald-600' : 'text-slate-400'}
                                 `}>
-                                    {worker.isClockedIn ? 'On Clock' : 'Off Duty'}
+                                    {worker.isClockedIn ? (
+                                        <>
+                                            <span>On Clock {worker.isManual ? '(Manual)' : ''}</span>
+                                            {worker.isManual && (
+                                                <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded mt-0.5 inline-block w-fit">Manual Entry</span>
+                                            )}
+                                        </>
+                                    ) : 'Off Duty'}
                                 </p>
                             </div>
                             <div className="text-right">
