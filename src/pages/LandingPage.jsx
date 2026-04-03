@@ -65,7 +65,7 @@ const LandingPage = () => {
                     <div className="flex justify-between items-center h-20">
                         {/* Logo */}
                         <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-                            <img src={Logo} alt="KAAL Constructions" className="h-16 w-auto" style={{width: "135px", height: "135px"}} />
+                            <img src={Logo} alt="KAAL Constructions" className="h-16 w-auto" style={{width: "90px", height: "90px"}} />
                         </div>
 
                         {/* Desktop Menu */}

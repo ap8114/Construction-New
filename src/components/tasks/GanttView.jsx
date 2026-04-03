@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Layers, ChevronRight, Share2, CornerDownRight, UserCheck } from 'lucide-react';
 
 const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
+    const timelineRef = useRef(null);
+    const sidebarRef = useRef(null);
     const [viewMode, setViewMode] = useState('month');
+    const [selectedTaskId, setSelectedTaskId] = useState(null);
     const [hoveredBar, setHoveredBar] = useState(null);
     const [dragState, setDragState] = useState(null); // { taskId, type: 'move'|'resize-left'|'resize-right', startX, deltaDays }
 
@@ -102,8 +105,41 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
         return 'bg-slate-400 border-slate-500 text-white shadow-slate-200/50';
     };
 
+    // Shared scroll sync logic
+    const handleScrollSync = (source) => {
+        if (source === 'sidebar' && timelineRef.current && sidebarRef.current) {
+            timelineRef.current.scrollTop = sidebarRef.current.scrollTop;
+        } else if (source === 'timeline' && sidebarRef.current && timelineRef.current) {
+            sidebarRef.current.scrollTop = timelineRef.current.scrollTop;
+        }
+    };
+
+    const handleTaskSync = (row) => {
+        const taskId = row._id || row.id;
+        setSelectedTaskId(taskId);
+
+        // Calculate Y position (Row elevation)
+        const rowIndex = rows.findIndex(r => (r._id || r.id) === taskId);
+        const scrollY = rowIndex !== -1 ? rowIndex * 56 - 150 : 0; // Position row with offset for context
+
+        if (row.startDate && timelineRef.current) {
+            const startIdx = days.findIndex(d => d.toDateString() === new Date(row.startDate).toDateString());
+            if (startIdx !== -1) {
+                // Dual-Axis Scroll: Horizontal to date + Vertical to row
+                const scrollX = startIdx * 52 - 100; 
+                timelineRef.current.scrollTo({ top: scrollY, left: scrollX, behavior: 'smooth' });
+            } else {
+                // Vertical-only fallback
+                timelineRef.current.scrollTo({ top: scrollY, behavior: 'smooth' });
+            }
+        } else if (timelineRef.current) {
+            // Vertical-only fallback
+            timelineRef.current.scrollTo({ top: scrollY, behavior: 'smooth' });
+        }
+    };
+
     return (
-        <div className="flex flex-col h-full bg-slate-50 rounded-3xl border border-slate-200/60 shadow-md overflow-hidden animate-fade-in group">
+        <div className="flex flex-col h-[calc(100vh-230px)] min-h-[600px] bg-slate-50 rounded-3xl border border-slate-200/60 shadow-md overflow-hidden animate-fade-in group">
             {/* Toolbar */}
             <div className="p-3 border-b border-slate-200/60 flex items-center justify-between bg-white shadow-sm relative z-20">
                 <div className="flex items-center gap-3">
@@ -140,25 +176,29 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                             <Layers size={13} className="text-slate-400" /> Task Structure
                         </span>
                     </div>
-                    <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    <div 
+                        ref={sidebarRef}
+                        onScroll={() => handleScrollSync('sidebar')}
+                        className="overflow-y-auto flex-1 hide-scrollbar-y max-h-[700px]"
+                    >
                         {rows.map((row) => (
                             <div 
                                 key={row._id || row.id} 
-                                onClick={() => onTaskClick && onTaskClick(row.isSubTask ? { ...row, _id: row._id || row.id } : row)}
-                                className={`h-[56px] border-b border-slate-100 flex flex-col justify-center transition-colors relative group/row cursor-pointer ${row.isSubTask ? 'bg-slate-50/30 pl-10 pr-4' : 'bg-white px-4'}`}
+                                onClick={() => handleTaskSync(row)}
+                                className={`h-[56px] border-b border-slate-100 flex flex-col justify-center transition-all relative group/row cursor-pointer ${selectedTaskId === (row._id || row.id) ? (row.isSubTask ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white') : (row.isSubTask ? 'bg-slate-50/30' : 'bg-white')} hover:bg-slate-100`}
                             >
-                                {/* Row hover indicator */}
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 opacity-0 group-hover/row:opacity-100 transition-opacity ${row.isSubTask ? 'bg-blue-400' : 'bg-purple-500'}`} />
+                                {/* Row selection indicator */}
+                                <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-opacity ${selectedTaskId === (row._id || row.id) ? 'opacity-100 bg-white/40 ring-4 ring-white/20' : 'opacity-0 group-hover/row:opacity-100'} ${row.isSubTask ? 'bg-blue-400' : 'bg-purple-500'}`} />
 
-                                <div className="flex items-center gap-2">
-                                    {row.isSubTask && <CornerDownRight size={12} className="text-slate-300" />}
-                                    <span className={`text-[12px] font-black truncate leading-tight transition-colors ${row.isSubTask ? 'text-slate-600 group-hover/row:text-blue-600' : 'text-slate-800 group-hover/row:text-purple-700'}`}>
+                                <div className="flex items-center gap-2 px-4">
+                                    {row.isSubTask && <CornerDownRight size={12} className={selectedTaskId === (row._id || row.id) ? "text-white/60" : "text-slate-300"} />}
+                                    <span className={`text-[12px] font-black truncate leading-tight transition-colors ${selectedTaskId === (row._id || row.id) ? 'text-white' : (row.isSubTask ? 'text-slate-600' : 'text-slate-800')}`}>
                                         {row.title}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-0.5 opacity-60 group-hover/row:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-1.5 mt-0.5 px-4 opacity-70 group-hover/row:opacity-100 transition-opacity">
                                     {(row.assignedTo || Array.isArray(row.assignedTo)) && (
-                                        <div className={`w-[14px] h-[14px] rounded-full flex items-center justify-center text-[7px] font-bold border ${row.isSubTask ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                        <div className={`w-[14px] h-[14px] rounded-full flex items-center justify-center text-[7px] font-bold border ${selectedTaskId === (row._id || row.id) ? 'bg-white/20 text-white border-white/40' : (row.isSubTask ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200')}`}>
                                             {(() => {
                                                 const assigned = Array.isArray(row.assignedTo) ? row.assignedTo[0] : row.assignedTo;
                                                 const name = assigned?.fullName || assigned?.name || row.jobName || 'A';
@@ -166,7 +206,7 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                             })()}
                                         </div>
                                     )}
-                                    <span className="text-[9px] font-bold text-slate-400 capitalize truncate leading-none">
+                                    <span className={`text-[9px] font-bold uppercase truncate leading-none ${selectedTaskId === (row._id || row.id) ? 'text-white/80' : 'text-slate-400'}`}>
                                         {(row.status || 'todo').replace('_', ' ')}
                                     </span>
                                 </div>
@@ -176,7 +216,11 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                 </div>
 
                 {/* Timeline Grid */}
-                <div className="flex-1 flex flex-col overflow-auto custom-scrollbar relative bg-slate-50/30">
+                <div 
+                    ref={timelineRef}
+                    onScroll={() => handleScrollSync('timeline')}
+                    className="flex-1 flex flex-col overflow-auto hide-scrollbar-y max-h-[700px] relative bg-slate-50/30"
+                >
                     {/* Header Dates */}
                     <div className="flex h-[48px] border-b border-slate-200/60 bg-white shrink-0 sticky top-0 z-30 shadow-sm">
                         {days.map((date, idx) => {
@@ -264,7 +308,16 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                         {/* Task Rows & Connector Lines */}
                         <div className="relative z-10 pt-0">
                             {rows.map((row, i) => {
-                                if (!row.startDate) return null;
+                                const hasSchedule = row.startDate && (row.endDate || row.dueDate);
+                                if (!hasSchedule) {
+                                    return (
+                                        <div 
+                                            key={row._id || row.id} 
+                                            className={`h-[56px] border-b border-slate-100/50 flex items-center relative group/row hover:bg-slate-100/40 transition-all w-full z-10 ${selectedTaskId === (row._id || row.id) ? (row.isSubTask ? 'bg-blue-500/10' : 'bg-purple-500/10') : ''}`}
+                                        />
+                                    );
+                                }
+
                                 const tStart = new Date(row.startDate);
                                 const tEnd = new Date(row.endDate || row.dueDate || row.startDate);
                                 
@@ -272,7 +325,14 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                 const startIdx = days.findIndex(d => d.toDateString() === tStart.toDateString());
                                 const endIdx = days.findIndex(d => d.toDateString() === tEnd.toDateString());
                                 
-                                if (startIdx === -1 && endIdx === -1) return null;
+                                if (startIdx === -1 && endIdx === -1) {
+                                    return (
+                                        <div 
+                                            key={row._id || row.id} 
+                                            className={`h-[56px] border-b border-slate-100/50 flex items-center relative group/row hover:bg-slate-100/40 transition-all w-full z-10 ${selectedTaskId === (row._id || row.id) ? (row.isSubTask ? 'bg-blue-500/10' : 'bg-purple-500/10') : ''}`}
+                                        />
+                                    );
+                                }
 
                                 const displayStart = startIdx === -1 ? 0 : startIdx;
                                 const displayEnd = endIdx === -1 ? days.length - 1 : endIdx;
@@ -282,7 +342,10 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                 const colorClass = row.isSubTask ? 'bg-blue-400 border-blue-500 shadow-blue-200/50' : getStatusColor(row.status, isOverdue);
 
                                 return (
-                                    <div key={row._id || row.id} className="h-[56px] border-b border-transparent flex items-center relative group/row hover:bg-slate-100/40 transition-colors w-full z-10">
+                                    <div 
+                                        key={row._id || row.id} 
+                                        className={`h-[56px] border-b border-transparent flex items-center relative group/row hover:bg-slate-100/40 transition-all w-full z-10 ${selectedTaskId === (row._id || row.id) ? (row.isSubTask ? 'bg-blue-500/10' : 'bg-purple-500/10') : ''}`}
+                                    >
                                         <div
                                             onMouseDown={(e) => {
                                                 if (e.button !== 0) return;
@@ -303,8 +366,8 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                                 });
                                             }}
                                             onMouseLeave={() => setHoveredBar(null)}
-                                            onClick={() => onTaskClick && onTaskClick(row.isSubTask ? { ...row, _id: row._id || row.id } : row)}
-                                            className={`absolute h-[28px] rounded-lg border shadow-sm transition-all duration-75 cursor-grab active:cursor-grabbing z-20 flex items-center hover:ring-2 hover:ring-white/80 group/bar hover:shadow-lg ${colorClass} overflow-visible ${dragState?.taskId === (row._id || row.id) ? 'ring-4 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] border-white scale-[1.01]' : ''}`}
+                                            onClick={(e) => { e.stopPropagation(); handleTaskSync(row); }}
+                                            className={`absolute h-[32px] rounded-lg border-2 shadow-sm transition-all duration-75 cursor-grab active:cursor-grabbing z-20 flex items-center hover:ring-2 hover:ring-white/80 group/bar hover:shadow-lg ${colorClass} overflow-visible ${dragState?.taskId === (row._id || row.id) ? 'ring-4 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] border-white scale-[1.01]' : ''} ${selectedTaskId === (row._id || row.id) ? 'ring-2 ring-white scale-[1.05] z-[55] shadow-[0_0_25px_rgba(37,99,235,0.6)] animate-pulse border-white' : ''}`}
                                             style={{ 
                                                 left: `${(dragState?.taskId === (row._id || row.id) && (dragState.type === 'move' || dragState.type === 'resize-left') 
                                                     ? displayStart + (dragState.deltaDays || 0) 
@@ -316,11 +379,11 @@ const GanttView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-lg" />
                                             
-                                            {/* High-visibility drag edges */}
-                                            {dragState?.taskId === (row._id || row.id) && (
+                                            {/* High-visibility drag/selection edges */}
+                                            {(dragState?.taskId === (row._id || row.id) || selectedTaskId === (row._id || row.id)) && (
                                                 <>
-                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-white shadow-[2px_0_10px_rgba(255,255,255,1)] z-40 rounded-l-lg animate-pulse" />
-                                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[-2px_0_10px_rgba(255,255,255,1)] z-40 rounded-r-lg animate-pulse" />
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-white z-40 rounded-l-lg ${dragState?.taskId === (row._id || row.id) ? 'shadow-[2px_0_10px_rgba(255,255,255,1)] animate-pulse' : ''}`} />
+                                                    <div className={`absolute right-0 top-0 bottom-0 w-1 bg-white z-40 rounded-r-lg ${dragState?.taskId === (row._id || row.id) ? 'shadow-[-2px_0_10px_rgba(255,255,255,1)] animate-pulse' : ''}`} />
                                                 </>
                                             )}
                                             

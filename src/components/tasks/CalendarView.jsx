@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, UserCheck } from '
 
 const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
     const [viewDate, setViewDate] = useState(new Date());
-    const [hoveredTask, setHoveredTask] = useState(null);
+    const [cellSearches, setCellSearches] = useState({}); // { dayIndex: 'query' }
 
     const today = new Date();
     const currentMonth = viewDate.getMonth();
@@ -54,7 +54,7 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
 
     return (
         <>
-            <div className="flex flex-col h-full bg-slate-50 rounded-3xl border border-slate-200/60 shadow-md overflow-hidden p-3 md:p-4 gap-3 animate-fade-in relative z-0">
+            <div className="flex flex-col min-h-[900px] bg-slate-50 rounded-3xl border border-slate-200/60 shadow-md overflow-hidden p-3 md:p-4 gap-3 animate-fade-in relative z-0 mb-20">
                 {/* Header */}
                 <div className="flex items-center justify-between px-2 shrink-0">
                     <div className="flex items-center gap-3">
@@ -104,7 +104,7 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                 </div>
 
                 {/* Calendar Grid */}
-                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col relative z-0">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col relative z-0">
                     <div className="grid grid-cols-7 border-b border-slate-200 bg-white shrink-0 sticky top-0 z-20">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                             <div key={day} className="py-4 text-center border-r border-slate-100 last:border-0 relative group">
@@ -114,7 +114,7 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                         ))}
                     </div>
 
-                    <div className="flex-1 grid grid-cols-7 bg-slate-100/40 gap-[1px] overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-7 bg-slate-100/40 gap-[1px]">
                         {paddingDays.map((_, i) => (
                             <div key={`padding-${i}`} className="bg-slate-50/30 p-2.5 opacity-40 shadow-inner" />
                         ))}
@@ -122,6 +122,9 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                         {days.map(day => {
                             const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
                             const dayTasks = taskMap[day] || [];
+                            const dayKey = `${currentYear}-${currentMonth}-${day}`;
+                            const currentSearch = cellSearches[dayKey] || '';
+                            const filteredDayTasks = dayTasks.filter(t => t.title.toLowerCase().includes(currentSearch.toLowerCase()));
 
                             return (
                                 <div
@@ -144,8 +147,19 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                         {day}
                                     </span>
 
-                                    <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pt-7 pr-0.5 relative z-20">
-                                        {dayTasks.map(t => {
+                                    <div className="overflow-y-auto max-h-[240px] space-y-1 hide-scrollbar-y pt-7 pr-0.5 relative z-20">
+                                        {dayTasks.length > 5 && (
+                                            <div className="mb-2 relative px-0.5">
+                                                <input 
+                                                    type="text"
+                                                    value={currentSearch}
+                                                    onChange={e => setCellSearches({ ...cellSearches, [dayKey]: e.target.value })}
+                                                    placeholder="Search..."
+                                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1 text-[8px] font-bold text-slate-600 outline-none focus:border-blue-300/50 focus:ring-2 focus:ring-blue-500/5 transition-all shadow-sm"
+                                                />
+                                            </div>
+                                        )}
+                                        {filteredDayTasks.map(t => {
                                             const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
                                             const accentColor = t.isSubTask ? '#8b5cf6' : (t.status === 'completed' ? '#10b981' : (isOverdue ? '#ef4444' : '#3b82f6'));
 
@@ -156,13 +170,7 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                                     onDragStart={(e) => {
                                                         e.dataTransfer.setData('taskId', t._id || t.id);
                                                         e.dataTransfer.setData('isSubTask', t.isSubTask ? 'true' : 'false');
-                                                        setHoveredTask(null);
                                                     }}
-                                                    onMouseEnter={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setHoveredTask({ ...t, day, rect });
-                                                    }}
-                                                    onMouseLeave={() => setHoveredTask(null)}
                                                     onClick={() => onTaskClick && onTaskClick(t)}
                                                     className={`p-1.5 rounded-lg border-l-[3px] shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-[1.01] transition-all relative z-10 group/card ${getStatusColor(t.status, isOverdue)} border border-slate-100/50`}
                                                     style={{ borderLeftColor: accentColor }}
@@ -181,6 +189,9 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
                                                 </div>
                                             );
                                         })}
+                                        {filteredDayTasks.length === 0 && dayTasks.length > 0 && (
+                                            <p className="text-[8px] text-slate-400 font-bold text-center py-2 italic">Nothing found</p>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -194,25 +205,6 @@ const CalendarView = ({ tasks, onTaskUpdate, onTaskClick }) => {
 
 
 
-            {/* Hover Tooltip */}
-            {hoveredTask && hoveredTask.rect && (
-                <div
-                    className="fixed pointer-events-none z-[100] animate-in fade-in zoom-in-95 duration-200"
-                    style={{
-                        left: `${hoveredTask.rect.left}px`,
-                        top: `${hoveredTask.rect.top - 90}px`,
-                        width: `${hoveredTask.rect.width}px`
-                    }}
-                >
-                    <div className="bg-slate-950 text-white p-4 rounded-2xl shadow-2xl border border-white/10 backdrop-blur-xl">
-                        <div className="flex items-center justify-between gap-4">
-                            <span className="text-[11px] font-black truncate uppercase">{hoveredTask.title}</span>
-                            <div className={`w-2 h-2 rounded-full ${hoveredTask.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                        </div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase mt-2">{hoveredTask.projectId?.name || 'Project location'}</p>
-                    </div>
-                </div>
-            )}
         </>
     );
 };

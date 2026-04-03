@@ -4,13 +4,14 @@ import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, updateUserData } = useAuth();
   const [profile, setProfile] = useState({
     name: user?.fullName || '',
     email: user?.email || '',
     role: user?.role || '',
-    avatar: null
+    avatar: user?.avatar || null
   });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [password, setPassword] = useState({
     current: '',
     new: '',
@@ -31,11 +32,24 @@ const Settings = () => {
   const handleProfileSave = async (e) => {
     e.preventDefault();
     try {
-      await api.patch('/auth/profile', { fullName: profile.name, email: profile.email });
+      setIsUpdating(true);
+      const updateData = { 
+        fullName: profile.name, 
+        email: profile.email,
+        avatar: profile.avatar // Include avatar in sync
+      };
+      
+      await api.patch('/auth/profile', updateData);
+      
+      // Critical: Sync local auth context so Sidebar/Navbar update immediately
+      updateUserData(updateData);
+      
       alert("Profile details updated successfully.");
     } catch (error) {
       console.error('Error updating profile:', error);
       alert("Failed to update profile.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -127,8 +141,13 @@ const Settings = () => {
               />
             </div>
             <div className="flex justify-end pt-2">
-              <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200">
-                <Save size={18} /> Update Details
+              <button 
+                type="submit" 
+                disabled={isUpdating}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200 disabled:opacity-50"
+              >
+                {isUpdating ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
+                {isUpdating ? 'Updating...' : 'Update Details'}
               </button>
             </div>
           </form>

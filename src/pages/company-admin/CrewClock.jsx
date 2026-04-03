@@ -579,100 +579,108 @@ const CrewClock = () => {
                 </div>
             )}
 
-            {/* Crew Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* Select All Card */}
-                <div
-                    onClick={selectAll}
-                    className="bg-slate-900 rounded-[2.5rem] p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-800 transition-all group border-4 border-transparent active:scale-95 shadow-xl"
-                >
-                    <div className={`w-14 h-14 rounded-full border-2 flex items-center justify-center mb-4 transition-all
-                        ${selectedWorkers.length === workers.length ? 'bg-blue-500 border-blue-400 text-white' : 'border-slate-700 text-slate-500 group-hover:border-slate-500'}
-                    `}>
-                        {selectedWorkers.length === workers.length ? <Check size={24} /> : <Users size={24} />}
-                    </div>
-                    <p className="text-white font-black uppercase tracking-widest text-xs">
-                        {selectedWorkers.length === workers.length ? 'Deselect All' : 'Select Entire Crew'}
-                    </p>
-                    <p className="text-slate-500 text-[10px] font-bold mt-1 uppercase">
-                        {selectedWorkers.length} members currently selected
-                    </p>
-                </div>
-
-                {filteredWorkers.map(worker => (
-                    <div
-                        key={worker._id}
-                        onClick={() => toggleSelection(worker._id)}
-                        className={`relative bg-white rounded-[2.5rem] p-6 border-2 transition-all cursor-pointer overflow-hidden group hover:shadow-xl
-                            ${selectedWorkers.includes(worker._id) ? 'border-blue-500 ring-4 ring-blue-500/5' : 'border-slate-100 hover:border-slate-200'}
-                        `}
-                    >
-                        {/* Status Ripple Background */}
-                        {worker.isClockedIn && (
-                            <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-50 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
-                        )}
-
-                        <div className="flex items-center gap-4 relative z-10">
-                            <div className="relative">
-                                <div className="w-16 h-16 rounded-[1.5rem] bg-slate-100 flex items-center justify-center text-xl font-black text-slate-400 border border-slate-100">
-                                    {worker.fullName.charAt(0)}
-                                </div>
-                                <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-lg border-2 border-white flex items-center justify-center shadow-sm
-                                    ${worker.isClockedIn ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}
-                                `}>
-                                    {worker.isClockedIn ? <Check size={12} /> : <Clock size={12} />}
-                                </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-black text-slate-900 truncate tracking-tight">{worker.fullName}</h3>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <MapPin size={10} className="text-slate-400" />
-                                    <p className="text-[10px] font-black text-slate-400 uppercase truncate">{worker.site}</p>
-                                </div>
-                            </div>
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
-                                ${selectedWorkers.includes(worker._id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}
-                            `}>
-                                {selectedWorkers.includes(worker._id) && <Check size={14} />}
-                            </div>
-                        </div>
-
-                        {/* Worker Action Details */}
-                        <div className="mt-6 pt-6 border-t border-slate-50 flex items-center justify-between">
-                            <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Status</p>
-                                <p className={`text-xs font-black uppercase tracking-tight flex flex-col
-                                    ${worker.isClockedIn ? 'text-emerald-600' : 'text-slate-400'}
-                                `}>
-                                    {worker.isClockedIn ? (
-                                        <>
-                                            <span>On Clock {worker.isManual ? '(Manual)' : ''}</span>
+            {/* Crew List View */}
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-100">
+                                <th className="px-8 py-5 w-20">
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            selectAll();
+                                        }}
+                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all
+                                            ${selectedWorkers.length === workers.length ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' : 'border-slate-300 bg-white hover:border-blue-400'}
+                                        `}
+                                    >
+                                        {selectedWorkers.length === workers.length && <Check size={14} strokeWidth={4} />}
+                                    </div>
+                                </th>
+                                <th className="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Worker Identity</th>
+                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned Jobsite</th>
+                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Current Status</th>
+                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Shift Metrics</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {filteredWorkers.map(worker => (
+                                <tr 
+                                    key={worker._id}
+                                    onClick={() => toggleSelection(worker._id)}
+                                    className={`group hover:bg-slate-50/50 transition-all cursor-pointer ${selectedWorkers.includes(worker._id) ? 'bg-blue-50/30' : ''}`}
+                                >
+                                    <td className="px-8 py-5">
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all
+                                            ${selectedWorkers.includes(worker._id) ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' : 'border-slate-200 bg-white group-hover:border-blue-300'}
+                                        `}>
+                                            {selectedWorkers.includes(worker._id) && <Check size={14} strokeWidth={4} />}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-black text-slate-400 border border-slate-200 shadow-sm overflow-hidden uppercase group-hover:scale-105 transition-transform duration-300">
+                                                {worker.fullName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-900 leading-tight tracking-tight">{worker.fullName}</p>
+                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter mt-1">
+                                                    {worker.role || 'On-Site Specialist'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 bg-slate-100 rounded-lg">
+                                                <MapPin size={12} className="text-slate-400" />
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-600 truncate max-w-[180px]">{worker.site || 'Assigning...'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-5 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm transition-all
+                                                ${worker.isClockedIn ? 'bg-emerald-50 text-emerald-700 border-emerald-100 ring-2 ring-emerald-500/10' : 'bg-slate-50 text-slate-400 border-slate-100'}
+                                            `}>
+                                                {worker.isClockedIn ? 'Live on Site' : 'OFF DUTY'}
+                                            </span>
                                             {worker.isManual && (
-                                                <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded mt-0.5 inline-block w-fit">Manual Entry</span>
+                                                <div className="flex items-center gap-1.5 mt-2 px-2 py-0.5 bg-amber-50 rounded-lg border border-amber-100">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                                    <span className="text-[9px] text-amber-700 font-black uppercase tracking-tighter">Manual Trace</span>
+                                                </div>
                                             )}
-                                        </>
-                                    ) : 'Off Duty'}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Shift Time</p>
-                                <p className="text-xs font-black text-slate-900">
-                                    {worker.isClockedIn ? 'Active' : '-- : --'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {filteredWorkers.length === 0 && (
-                    <div className="col-span-full py-24 text-center">
-                        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
-                            <Search size={40} />
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight">No workers found</h3>
-                        <p className="text-slate-500 font-bold max-w-xs mx-auto mt-2">Try searching with a different name or role filter.</p>
-                    </div>
-                )}
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-5 text-right">
+                                        <div className="flex flex-col items-end">
+                                            <div className={`flex items-center gap-2 ${worker.isClockedIn ? 'text-emerald-500 bg-emerald-50 shadow-sm px-3 py-1.5 rounded-xl border border-emerald-100' : 'text-slate-300'}`}>
+                                                <Clock size={14} strokeWidth={3} />
+                                                <span className="text-xs font-black">{worker.isClockedIn ? 'LOGGED ACTIVE' : '--:--'}</span>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 underline decoration-slate-100 underline-offset-4">Today's Shift Log</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+ 
+                            {filteredWorkers.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="py-24 text-center bg-slate-50/10">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 border border-slate-100 shadow-sm">
+                                                <Search size={32} />
+                                            </div>
+                                            <p className="font-black uppercase tracking-widest text-[11px] text-slate-300">Synchronizing Local Crew Data...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

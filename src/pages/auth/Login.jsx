@@ -61,12 +61,9 @@ const Login = () => {
       />
 
       {/* Left Side: Branding & Demo Access */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-center items-start p-16 z-10 relative overflow-y-auto custom-scrollbar">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <img src={Logo} alt="KAAL Constructions" className="h-20 w-auto invert" />
-          </div>
-          <p className="text-2xl text-slate-300 font-medium tracking-tight">
+      <div className="hidden lg:flex w-1/2 flex-col justify-center items-start p-16 z-10 relative overflow-y-auto custom-scrollbar italic">
+        <div className="mb-0">
+          <p className="text-3xl text-white font-black tracking-tight mb-2 drop-shadow-lg">
             Build Smarter. Manage Better.
           </p>
         </div>
@@ -143,10 +140,14 @@ const Login = () => {
       </div>
 
       {/* Right Side: Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 z-10 bg-white/95 backdrop-blur-sm lg:bg-white">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 z-10 bg-white/95 backdrop-blur-sm lg:bg-white animate-fade-in">
         <div className="w-full max-w-md space-y-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-slate-900">Sign In</h2>
+          <div className="text-center">
+            {/* Logo Relocated here */}
+            <div className="flex justify-center mb-6">
+              <img src={Logo} alt="KAAL Constructions" className="h-[90px] w-auto" />
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Sign In</h2>
             <p className="text-slate-500 mt-2 italic text-sm">Use the guide on the left to copy test credentials</p>
           </div>
 

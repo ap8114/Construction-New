@@ -122,7 +122,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
                     <h4 className="font-black text-slate-900 leading-tight text-[13px] md:text-sm group-hover:text-blue-600 transition-colors">{task.title}</h4>
                     {task.parentTaskTitle && (
                         <span className="text-[7px] font-black bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-tighter shrink-0">
-                           Child Of: {task.parentTaskTitle}
+                            Child Of: {task.parentTaskTitle}
                         </span>
                     )}
                 </div>
@@ -204,7 +204,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
     const taskIds = colTasks.map(t => t._id || t.id);
 
     return (
-        <div ref={setNodeRef} className="flex-1 flex flex-col min-w-[300px] bg-slate-50/50 rounded-[32px] border border-slate-200/60 h-full max-h-full">
+        <div ref={setNodeRef} className="flex-1 flex flex-col min-w-[320px] bg-slate-50/50 rounded-[32px] border border-slate-200/60 pb-5">
             <div className="p-5 pb-2">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
@@ -216,7 +216,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
                     </span>
                 </div>
             </div>
-            <div className="p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+            <div className="p-3 space-y-3 overflow-y-auto max-h-[1200px] hide-scrollbar-y px-5">
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {colTasks.map(task => (
                         <DraggableTask key={task._id || task.id} task={task} onEdit={onEdit} onDelete={onDelete} onClick={onTaskClick} />
@@ -391,8 +391,8 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                             className="w-full bg-white border border-slate-200/80 rounded-xl pl-8 pr-3 py-1.5 text-[11px] font-bold text-slate-700 outline-none focus:border-blue-400 transition-all shadow-sm"
                         />
                     </div>
-                    
-                    <select 
+
+                    <select
                         value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
                         className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm min-w-[100px]"
                     >
@@ -400,7 +400,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
                     </select>
 
-                    <select 
+                    <select
                         value={priority} onChange={e => setPriority(e.target.value)}
                         className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
                     >
@@ -409,7 +409,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         <option value="High">High</option>
                     </select>
 
-                    <select 
+                    <select
                         value={status} onChange={e => setStatus(e.target.value)}
                         className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
                     >
@@ -553,7 +553,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                             {/* SVG Arrowhead at the end */}
                             <div className="absolute -right-[3px] -bottom-[4px] text-slate-400">
                                 <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M9 18l6-6-6-6"/>
+                                    <path d="M9 18l6-6-6-6" />
                                 </svg>
                             </div>
                         </div>
@@ -633,7 +633,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                         </div>
                     ) : (
                         <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
-                           Unassigned
+                            Unassigned
                         </span>
                     )}
                 </td>
@@ -796,7 +796,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 <option value="Medium">Medium</option>
                                 <option value="High">High</option>
                             </select>
-                            <select 
+                            <select
                                 value={childStatus} onChange={e => setChildStatus(e.target.value)}
                                 className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm"
                             >
@@ -1045,7 +1045,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         <option value="Medium">Medium</option>
                         <option value="High">High</option>
                     </select>
-                    <select 
+                    <select
                         value={childStatus} onChange={e => setChildStatus(e.target.value)}
                         className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm"
                     >
@@ -1315,7 +1315,7 @@ const Tasks = () => {
         if (!currentUserId) return false;
 
         // Check assignedTo array (from Task or mapped JobTask)
-        const assignedIds = Array.isArray(task.assignedTo) 
+        const assignedIds = Array.isArray(task.assignedTo)
             ? task.assignedTo.map(u => (u._id || u.id || u).toString())
             : (task.assignedTo ? [(task.assignedTo._id || task.assignedTo.id || task.assignedTo).toString()] : []);
 
@@ -1338,7 +1338,7 @@ const Tasks = () => {
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
             const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
             const matchCategory = !filterCategory || task.category === filterCategory;
-            
+
             // New activeTab filter
             const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
 
@@ -1387,7 +1387,7 @@ const Tasks = () => {
                 const subId = t._id || t.id;
                 // Avoid duplicates if a task appears in both lists
                 if (flat.some(f => (f._id || f.id) === subId)) return;
-                
+
                 flat.push({ ...t, parentTaskTitle: parentTitle });
                 const subs = t.subTasks || subTasksMap[subId] || [];
                 if (subs.length > 0) process(subs, t.title);
@@ -1414,9 +1414,9 @@ const Tasks = () => {
                     return;
                 }
             } else {
-                const isJobTask = (scheduleTasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask) || 
-                                 (tasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask);
-                
+                const isJobTask = (scheduleTasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask) ||
+                    (tasks.find(t => String(t._id || t.id) === String(taskId))?.isJobTask);
+
                 const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
                 let finalUpdates = { ...updates };
                 if (isJobTask) {
@@ -1482,7 +1482,7 @@ const Tasks = () => {
         let newStatus = activeTask.status;
 
         if (columns[overId]) {
-             newStatus = overId;
+            newStatus = overId;
         } else {
             const overTask = allFlattenedTasks.find(t => (t._id || t.id) === overId);
             if (overTask) {
@@ -1495,7 +1495,7 @@ const Tasks = () => {
         try {
             const taskId = activeTask._id || activeTask.id;
             const isSubTask = !!activeTask.parentSubTaskId || !!activeTask.parentTaskTitle;
-            
+
             // OPTIMISTIC UPDATES FOR IMMEDIATE FLUIDITY
             if (!isSubTask) {
                 setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
@@ -1640,7 +1640,7 @@ const Tasks = () => {
                 const isJobTask = editingTask.isJobTask || !!formData.jobId;
                 const taskId = editingTask._id || editingTask.id;
                 const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
-                
+
                 // If it's a JobTask, we may need to adjust the payload (JobTask expects single assignedTo and lowercase priority)
                 const finalPayload = isJobTask ? {
                     ...payload,
@@ -1772,7 +1772,7 @@ const Tasks = () => {
     const canManage = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
 
     return (
-        <div className="space-y-4 animate-fade-in h-[calc(100vh-80px)] flex flex-col">
+        <div className={`space-y-4 animate-fade-in ${['calendar', 'list', 'kanban', 'gantt'].includes(view) ? 'pb-20' : 'h-[calc(100vh-80px)] flex flex-col'}`}>
 
             {/* ── Header ── */}
             <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 shrink-0 w-full">
@@ -1818,16 +1818,16 @@ const Tasks = () => {
 
                     {/* Cell Adjustment Feature */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm shrink-0">
-                        <button 
-                            onClick={() => setIsCompactView(true)} 
+                        <button
+                            onClick={() => setIsCompactView(true)}
                             title="Compact View (Truncate text)"
                             className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                         >
                             <LayoutGrid size={14} />
                             <span className="text-[9px] font-black uppercase tracking-tight hidden sm:inline">Compact</span>
                         </button>
-                        <button 
-                            onClick={() => setIsCompactView(false)} 
+                        <button
+                            onClick={() => setIsCompactView(false)}
                             title="Comfortable View (Wrap text)"
                             className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${!isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                         >
@@ -1913,22 +1913,20 @@ const Tasks = () => {
                     <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200/50 shadow-inner">
                         <button
                             onClick={() => setActiveTab('my_tasks')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                                activeTab === 'my_tasks'
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'my_tasks'
                                     ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
                                     : 'text-slate-400 hover:text-slate-600'
-                            }`}
+                                }`}
                         >
                             <UserCheck size={13} />
                             My Tasks
                         </button>
                         <button
                             onClick={() => setActiveTab('all_tasks')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                                activeTab === 'all_tasks'
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'all_tasks'
                                     ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
                                     : 'text-slate-400 hover:text-slate-600'
-                            }`}
+                                }`}
                         >
                             <Users size={13} />
                             All Tasks
@@ -1938,7 +1936,7 @@ const Tasks = () => {
             )}
 
             {/* ── Content ── */}
-            <div className="flex-1 overflow-hidden min-h-0">
+            <div className={['calendar', 'list', 'kanban', 'gantt'].includes(view) ? 'w-full pb-10' : 'flex-1 overflow-hidden min-h-0'}>
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-4">
                         <div className="w-12 h-12 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin" />
@@ -1951,7 +1949,7 @@ const Tasks = () => {
                         ) : view === 'calendar' ? (
                             <CalendarView tasks={filteredScheduleTasks} onTaskUpdate={handleTaskUpdate} onTaskClick={openDetails} />
                         ) : view === 'kanban' ? (
-                            <div className="flex gap-5 h-full overflow-x-auto pb-4 custom-scrollbar">
+                            <div className="flex gap-5 overflow-x-auto pb-10 hide-scrollbar-y scroll-smooth h-[calc(100vh-230px)] min-h-[600px]">
                                 {Object.entries(columns).map(([status, style]) => (
                                     <DroppableColumn
                                         key={status}
@@ -1966,8 +1964,8 @@ const Tasks = () => {
                             </div>
                         ) : (
                             /* ── List View ── */
-                            <div className="bg-white h-full overflow-hidden flex flex-col">
-                                <div className="overflow-auto flex-1 custom-scrollbar">
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 mb-20 relative h-[calc(100vh-230px)] min-h-[600px] overflow-auto hide-scrollbar-y">
+                                <div className="w-full">
                                     <table className="w-full text-left border-separate border-spacing-0 table-fixed">
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                                             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
@@ -1982,7 +1980,7 @@ const Tasks = () => {
                                                     { key: 'startDate', label: 'Start Date' },
                                                     { key: 'endDate', label: 'End Date' }
                                                 ].map(col => (
-                                                    <th 
+                                                    <th
                                                         key={col.key}
                                                         className="px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0"
                                                         style={{ width: `${columnWidths[col.key]}px`, minWidth: '50px' }}
@@ -1991,7 +1989,7 @@ const Tasks = () => {
                                                             <span className="truncate">{col.label}</span>
                                                         </div>
                                                         {/* Visible Resize Handle */}
-                                                        <div 
+                                                        <div
                                                             onMouseDown={(e) => handleResizeStart(e, col.key)}
                                                             className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group-hover:bg-blue-400/30 active:bg-blue-600 transition-all z-20 flex justify-center items-center"
                                                         >
@@ -2435,7 +2433,7 @@ const Tasks = () => {
                         }
                         try {
                             setIsSubmitting(true);
-                             const outSteps = templateFormData.steps.map(st => ({
+                            const outSteps = templateFormData.steps.map(st => ({
                                 title: st.title || 'Untitled Step',
                                 remarks: st.remarks || '',
                                 priority: st.priority || 'Medium'
@@ -2555,7 +2553,7 @@ const Tasks = () => {
                                 <Plus size={12} /> Add Step
                             </button>
                         </div>
-                        
+
                         <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 flex flex-col gap-2">
                             {templateFormData.steps.length === 0 ? (
                                 <div className="py-6 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/30">
@@ -2616,7 +2614,7 @@ const Tasks = () => {
                         </div>
                         <button
                             onClick={() => {
-                                 setEditingTemplate(null);
+                                setEditingTemplate(null);
                                 setTemplateFormData({ templateName: '', role: '', title: '', description: '', priority: 'Medium', steps: [] });
                                 setIsSaveTemplateModalOpen(true);
                             }}
@@ -2641,78 +2639,78 @@ const Tasks = () => {
                                 return 0;
                             })
                             .map(tmpl => (
-                            <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all">
-                                <div>
-                                    <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        {tmpl.role && (
-                                            <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
-                                                {tmpl.role}
+                                <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all">
+                                    <div>
+                                        <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {tmpl.role && (
+                                                <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
+                                                    {tmpl.role}
+                                                </span>
+                                            )}
+                                            <span className="inline-flex items-center text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-tighter border border-slate-200 leading-none">
+                                                {tmpl.steps?.length || 0} sub-tasks
                                             </span>
-                                        )}
-                                        <span className="inline-flex items-center text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-tighter border border-slate-200 leading-none">
-                                            {tmpl.steps?.length || 0} sub-tasks
-                                        </span>
-                                        <span className={`inline-flex items-center text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority]}`}>
-                                            {tmpl.priority}
-                                        </span>
+                                            <span className={`inline-flex items-center text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority]}`}>
+                                                {tmpl.priority}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingTemplate(tmpl);
+                                                    setTemplateFormData({
+                                                        templateName: tmpl.templateName || '',
+                                                        role: tmpl.role || '',
+                                                        title: tmpl.title || '',
+                                                        description: tmpl.description || '',
+                                                        priority: tmpl.priority || 'Medium',
+                                                        steps: tmpl.steps || []
+                                                    });
+                                                    setIsSaveTemplateModalOpen(true);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
+                                                title="Edit Template"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm('Delete this template?')) {
+                                                        try {
+                                                            await api.delete(`/task-templates/${tmpl._id}`);
+                                                            fetchTemplates();
+                                                        } catch (err) { alert('Failed to delete template'); }
+                                                    }
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
+                                                title="Delete Template"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+
                                         <button
                                             onClick={() => {
-                                                setEditingTemplate(tmpl);
-                                                setTemplateFormData({
-                                                    templateName: tmpl.templateName || '',
-                                                    role: tmpl.role || '',
-                                                    title: tmpl.title || '',
+                                                setFormData({
+                                                    title: tmpl.title,
                                                     description: tmpl.description || '',
                                                     priority: tmpl.priority || 'Medium',
-                                                    steps: tmpl.steps || []
+                                                    projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: '', category: 'TASK'
                                                 });
-                                                setIsSaveTemplateModalOpen(true);
+                                                setSubTasksList(tmpl.steps || []);
+                                                setIsTemplateModalOpen(false);
+                                                setIsModalOpen(true);
                                             }}
-                                            className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
-                                            title="Edit Template"
+                                            className="h-10 px-6 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95 whitespace-nowrap"
                                         >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={async () => {
-                                                if (window.confirm('Delete this template?')) {
-                                                    try {
-                                                        await api.delete(`/task-templates/${tmpl._id}`);
-                                                        fetchTemplates();
-                                                    } catch (err) { alert('Failed to delete template'); }
-                                                }
-                                            }}
-                                            className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
-                                            title="Delete Template"
-                                        >
-                                            <Trash2 size={16} />
+                                            Use Template
                                         </button>
                                     </div>
-
-                                    <button
-                                        onClick={() => {
-                                            setFormData({
-                                                title: tmpl.title,
-                                                description: tmpl.description || '',
-                                                priority: tmpl.priority || 'Medium',
-                                                projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: '', category: 'TASK'
-                                            });
-                                            setSubTasksList(tmpl.steps || []);
-                                            setIsTemplateModalOpen(false);
-                                            setIsModalOpen(true);
-                                        }}
-                                        className="h-10 px-6 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95 whitespace-nowrap"
-                                    >
-                                        Use Template
-                                    </button>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
             </Modal>

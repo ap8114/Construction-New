@@ -174,7 +174,7 @@ const CompanyAdminLayout = () => {
           <img
             src={sidebarlogo}
             alt="KAAL Logo"
-            className="h-14 w-auto opacity-100"
+            className="h-[90px] w-auto opacity-100"
           />
           <div className="text-center">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
