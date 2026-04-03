@@ -234,7 +234,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
 };
 
 // ─── Sortable List Row wrapper ────────────────────────────────────────────────
-const SortableTaskRow = ({ task, ...props }) => {
+const SortableTaskRow = ({ task, isCompactView, columnWidths, ...props }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -275,8 +275,8 @@ const SortableTaskRow = ({ task, ...props }) => {
                         {props.urgency === 'due-soon' && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
                         {props.urgency === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
                         <div>
-                            <div className="flex items-center gap-1.5">
-                                <p className="font-black text-slate-900 text-[13px]">{task.title}</p>
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                                <p className={`font-black text-slate-900 text-[13px] ${isCompactView ? 'truncate' : 'whitespace-normal'}`} title={task.title} style={{ maxWidth: columnWidths ? `${columnWidths.task - 60}px` : '300px' }}>{task.title}</p>
                                 {task.subTaskCount > 0 && (
                                     <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1 py-0.5 rounded-md">
                                         {task.subTaskCount}
@@ -292,7 +292,7 @@ const SortableTaskRow = ({ task, ...props }) => {
                         </div>
                     </div>
                 </td>
-                <td className="px-4 py-2.5 text-xs font-bold text-slate-500">{task.projectId?.name || '—'}</td>
+                <td className={`px-4 py-2.5 text-xs font-bold text-slate-500 ${isCompactView ? 'truncate max-w-[150px]' : 'whitespace-normal'}`}>{task.projectId?.name || '—'}</td>
                 <td className="px-4 py-2.5">
                     {task.assignedTo?.length > 0 ? (
                         <div className="flex items-center gap-2">
@@ -449,7 +449,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
-const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines }) => {
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths }) => {
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -596,8 +596,8 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 <button type="button" onClick={() => setIsEditing(false)} className="p-1 px-2 bg-slate-200 text-slate-500 rounded text-[10px] font-black uppercase tracking-widest">X</button>
                             </form>
                         ) : (
-                            <span className={`text-[13px] font-black truncate max-w-[200px] ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 font-black'
-                                }`}>
+                            <span className={`text-[13px] font-black ${isCompactView ? 'truncate' : 'whitespace-normal'} ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 font-black'
+                                }`} style={{ maxWidth: columnWidths ? `${columnWidths.task - (depth * 32 + 100)}px` : '200px' }} title={subTask.title}>
                                 {subTask.title}
                             </span>
                         )}
@@ -629,7 +629,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                             <div className="w-5 h-5 rounded bg-slate-100 text-slate-600 flex items-center justify-center text-[8px] font-black border border-slate-200 shadow-sm">
                                 {subTask.assignedTo.fullName.charAt(0)}
                             </div>
-                            <span className="text-[10px] font-bold text-slate-700 truncate max-w-[100px]">{subTask.assignedTo.fullName}</span>
+                            <span className={`text-[10px] font-bold text-slate-700 ${isCompactView ? 'truncate max-w-[100px]' : 'whitespace-normal'}`}>{subTask.assignedTo.fullName}</span>
                         </div>
                     ) : (
                         <span className="text-[9px] font-black px-2 py-0.5 rounded border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter whitespace-nowrap">
@@ -1122,6 +1122,40 @@ const Tasks = () => {
     const [scheduleTasks, setScheduleTasks] = useState([]);
     const [activeTab, setActiveTab] = useState('all_tasks'); // 'all_tasks' | 'my_tasks'
     const [jobs, setJobs] = useState([]);
+    const [isCompactView, setIsCompactView] = useState(true);
+    const [columnWidths, setColumnWidths] = useState({
+        task: 300,
+        project: 150,
+        assignee: 150,
+        role: 100,
+        status: 100,
+        priority: 100,
+        startDate: 100,
+        endDate: 100
+    });
+
+    const handleResizeStart = (e, col) => {
+        e.preventDefault();
+        const startX = e.pageX;
+        const startWidth = columnWidths[col];
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const onMouseMove = (moveEvent) => {
+            const newWidth = Math.max(50, startWidth + (moveEvent.pageX - startX));
+            setColumnWidths(prev => ({ ...prev, [col]: newWidth }));
+        };
+
+        const onMouseUp = () => {
+            document.body.style.cursor = 'default';
+            document.body.style.userSelect = 'auto';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    };
 
     // Task Templates State
     const [templates, setTemplates] = useState([]);
@@ -1781,6 +1815,26 @@ const Tasks = () => {
                             <CalendarDays size={14} /> <span className="text-[10px] font-black uppercase tracking-widest hidden 2xl:inline">Calendar</span>
                         </button>
                     </div>
+
+                    {/* Cell Adjustment Feature */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm shrink-0">
+                        <button 
+                            onClick={() => setIsCompactView(true)} 
+                            title="Compact View (Truncate text)"
+                            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <LayoutGrid size={14} />
+                            <span className="text-[9px] font-black uppercase tracking-tight hidden sm:inline">Compact</span>
+                        </button>
+                        <button 
+                            onClick={() => setIsCompactView(false)} 
+                            title="Comfortable View (Wrap text)"
+                            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${!isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                        >
+                            <AlignLeft size={14} />
+                            <span className="text-[9px] font-black uppercase tracking-tight hidden sm:inline">Comfortable</span>
+                        </button>
+                    </div>
                     {canManage && (
                         <div className="flex gap-2 shrink-0">
                             <button onClick={() => setIsTemplateModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-black text-[10px] uppercase tracking-tight">
@@ -1914,18 +1968,38 @@ const Tasks = () => {
                             /* ── List View ── */
                             <div className="bg-white h-full overflow-hidden flex flex-col">
                                 <div className="overflow-auto flex-1 custom-scrollbar">
-                                    <table className="w-full text-left border-separate border-spacing-0">
+                                    <table className="w-full text-left border-separate border-spacing-0 table-fixed">
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                                             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                 <th className="w-10 px-4 py-3"></th>
-                                                <th className="px-4 py-3 min-w-[250px]">Task</th>
-                                                <th className="px-4 py-3 min-w-[120px]">Project</th>
-                                                <th className="px-4 py-3 min-w-[140px]">Assigned To</th>
-                                                <th className="px-4 py-3">Role</th>
-                                                <th className="px-4 py-3">Status</th>
-                                                <th className="px-4 py-3">Priority</th>
-                                                <th className="px-4 py-3">Start Date</th>
-                                                <th className="px-4 py-3">End Date</th>
+                                                {[
+                                                    { key: 'task', label: 'Task' },
+                                                    { key: 'project', label: 'Project' },
+                                                    { key: 'assignee', label: 'Assigned To' },
+                                                    { key: 'role', label: 'Role' },
+                                                    { key: 'status', label: 'Status' },
+                                                    { key: 'priority', label: 'Priority' },
+                                                    { key: 'startDate', label: 'Start Date' },
+                                                    { key: 'endDate', label: 'End Date' }
+                                                ].map(col => (
+                                                    <th 
+                                                        key={col.key}
+                                                        className="px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0"
+                                                        style={{ width: `${columnWidths[col.key]}px`, minWidth: '50px' }}
+                                                    >
+                                                        <div className="flex items-center justify-between pointer-events-none">
+                                                            <span className="truncate">{col.label}</span>
+                                                        </div>
+                                                        {/* Visible Resize Handle */}
+                                                        <div 
+                                                            onMouseDown={(e) => handleResizeStart(e, col.key)}
+                                                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group-hover:bg-blue-400/30 active:bg-blue-600 transition-all z-20 flex justify-center items-center"
+                                                        >
+                                                            {/* Subtle Visual Line */}
+                                                            <div className="w-[1.5px] h-4 bg-slate-200 group-hover:bg-blue-400 active:bg-white rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+                                                        </div>
+                                                    </th>
+                                                ))}
                                                 {canManage && <th className="px-4 py-3 text-right">Actions</th>}
                                             </tr>
                                         </thead>
@@ -1951,6 +2025,8 @@ const Tasks = () => {
                                                             task={task}
                                                             urgency={urgency}
                                                             isExpanded={isExpanded}
+                                                            isCompactView={isCompactView}
+                                                            columnWidths={columnWidths}
                                                             canManage={canManage}
                                                             onTaskClick={openDetails}
                                                             onToggleExpansion={toggleTaskExpansion}
@@ -1979,6 +2055,8 @@ const Tasks = () => {
                                                                             renderChildren={renderSubTaskRows}
                                                                             isLast={index === nodes.length - 1}
                                                                             levelLines={levelLines}
+                                                                            isCompactView={isCompactView}
+                                                                            columnWidths={columnWidths}
                                                                         />
                                                                     ));
                                                                 };
