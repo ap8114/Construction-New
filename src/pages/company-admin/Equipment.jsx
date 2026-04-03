@@ -6,7 +6,7 @@ import {
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
     Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap, LayoutGrid, List,
     Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon, Briefcase,
-    History, FileText, Printer
+    History, FileText, Printer, DollarSign
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
