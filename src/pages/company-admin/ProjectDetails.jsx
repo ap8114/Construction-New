@@ -84,6 +84,16 @@ const ProjectDetails = () => {
     const [taskSearch, setTaskSearch] = useState('');
     const [expandedTasks, setExpandedTasks] = useState(new Set());
     
+    // Selection states
+    const [activeDropdown, setActiveDropdown] = useState(null); // 'pm' or 'phase'
+    
+    // Global click handler to close dropdowns
+    useEffect(() => {
+        const handleClick = () => setActiveDropdown(null);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
     // Contacts states
     const [isAddingContact, setIsAddingContact] = useState(false);
     const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' });
@@ -336,17 +346,18 @@ const ProjectDetails = () => {
             </div>
 
             {/* ── Project Hero Card ── */}
-            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[40px] overflow-hidden relative">
-                {/* Background image */}
-                {project?.image && (
-                    <div className="absolute inset-0">
-                        <img src={project.image} alt="" className="w-full h-full object-cover opacity-20" />
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-800/80 to-blue-900/90" />
-                    </div>
-                )}
-                {/* Decorative blobs */}
-                <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-600/20 blur-3xl" />
-                <div className="absolute -bottom-8 -left-8 w-40 h-40 rounded-full bg-blue-400/10 blur-2xl" />
+            <div className="rounded-[40px] relative">
+                {/* Background image & blobs (constrained by overflow-hidden) */}
+                <div className="absolute inset-0 rounded-[40px] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+                    {project?.image && (
+                        <div className="absolute inset-0">
+                            <img src={project.image} alt="" className="w-full h-full object-cover opacity-20" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-800/80 to-blue-900/90" />
+                        </div>
+                    )}
+                    <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-600/20 blur-3xl" />
+                    <div className="absolute -bottom-8 -left-8 w-40 h-40 rounded-full bg-blue-400/10 blur-2xl" />
+                </div>
 
                 <div className="relative z-10 p-10">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -378,20 +389,35 @@ const ProjectDetails = () => {
                                                     {project?.pmId?.fullName || users.find(u => u._id === (project?.pmId?._id || project?.pmId))?.fullName || 'Unassigned'}
                                                 </span>
                                                 {user?.role === 'COMPANY_OWNER' && (
-                                                    <div className="relative flex items-center">
-                                                        <select
-                                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                                            value={project?.pmId?._id || (typeof project?.pmId === 'string' ? project.pmId : '')}
-                                                            onChange={(e) => handleAssignPM(e.target.value)}
+                                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                                        <button 
+                                                            onClick={() => setActiveDropdown(activeDropdown === 'pm' ? null : 'pm')}
+                                                            className="text-[9px] font-black text-blue-400 uppercase tracking-widest cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-1"
                                                         >
-                                                            <option value="">Change PM</option>
-                                                            {users.filter(u => u.role === 'PM').map(u => (
-                                                                <option key={u._id} value={u._id} className="bg-slate-800">{u.fullName}</option>
-                                                            ))}
-                                                        </select>
-                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-1">
-                                                            EDIT <ChevronDown size={10} />
-                                                        </span>
+                                                            EDIT <ChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === 'pm' ? 'rotate-180' : ''}`} />
+                                                        </button>
+
+                                                        {activeDropdown === 'pm' && (
+                                                            <div className="absolute top-full left-0 mt-2 w-48 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+                                                                <div className="px-3 py-2 border-b border-white/5 bg-white/5">
+                                                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Select Manager</p>
+                                                                </div>
+                                                                {users.filter(u => u.role === 'PM').map(u => (
+                                                                    <button
+                                                                        key={u._id}
+                                                                        onClick={() => handleAssignPM(u._id)}
+                                                                        className={`w-full text-left px-3 py-2.5 text-[11px] font-bold transition-all hover:bg-blue-600 text-white flex items-center justify-between group
+                                                                            ${(project?.pmId?._id || project?.pmId) === u._id ? 'bg-blue-600/20' : ''}`}
+                                                                    >
+                                                                        {u.fullName}
+                                                                        {(project?.pmId?._id || project?.pmId) === u._id && <CheckCircle size={10} className="text-blue-400" />}
+                                                                    </button>
+                                                                ))}
+                                                                {users.filter(u => u.role === 'PM').length === 0 && (
+                                                                    <p className="px-3 py-4 text-center text-[10px] text-slate-500 font-bold italic">No PMs available</p>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -410,19 +436,32 @@ const ProjectDetails = () => {
                                                     {project?.currentPhase || 'Planning'}
                                                 </span>
                                                 {['COMPANY_OWNER', 'PM'].includes(user?.role) && (
-                                                    <div className="relative flex items-center">
-                                                        <select
-                                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                                            value={project?.currentPhase || 'Planning'}
-                                                            onChange={(e) => handleUpdatePhase(e.target.value)}
+                                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                                        <button 
+                                                            onClick={() => setActiveDropdown(activeDropdown === 'phase' ? null : 'phase')}
+                                                            className="text-[9px] font-black text-blue-400 uppercase tracking-widest cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-1"
                                                         >
-                                                            {['Planning', 'Foundation', 'Structure', 'Plumbing', 'Electrical', 'Finishing', 'Handover'].map(phase => (
-                                                                <option key={phase} value={phase} className="bg-slate-800">{phase}</option>
-                                                            ))}
-                                                        </select>
-                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-1">
-                                                            CHANGE <ChevronDown size={10} />
-                                                        </span>
+                                                            CHANGE <ChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === 'phase' ? 'rotate-180' : ''}`} />
+                                                        </button>
+
+                                                        {activeDropdown === 'phase' && (
+                                                            <div className="absolute top-full left-0 mt-2 w-48 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-left">
+                                                                <div className="px-3 py-2 border-b border-white/5 bg-white/5">
+                                                                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Select Phase</p>
+                                                                </div>
+                                                                {['Planning', 'Foundation', 'Structure', 'Plumbing', 'Electrical', 'Finishing', 'Handover'].map(phase => (
+                                                                    <button
+                                                                        key={phase}
+                                                                        onClick={() => handleUpdatePhase(phase)}
+                                                                        className={`w-full text-left px-3 py-2.5 text-[11px] font-bold transition-all hover:bg-emerald-600 text-white flex items-center justify-between
+                                                                            ${project?.currentPhase === phase ? 'bg-emerald-600/20' : ''}`}
+                                                                    >
+                                                                        {phase}
+                                                                        {project?.currentPhase === phase && <CheckCircle size={10} className="text-emerald-400" />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

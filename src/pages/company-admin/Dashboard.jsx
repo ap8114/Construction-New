@@ -510,7 +510,9 @@ const CompanyAdminDashboard = () => {
             jobId: t.projectId // Map projectId to jobId for UI consistency
           }));
 
-          setMyTasks([...(jobTasksRes.data || []), ...normalizedGlobal]);
+          const combined = [...(jobTasksRes.data || []), ...normalizedGlobal]
+            .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          setMyTasks(combined);
         } catch (taskErr) {
           console.error('Error fetching tasks for dashboard:', taskErr);
         }
@@ -944,7 +946,14 @@ const CompanyAdminDashboard = () => {
 
               {isSubcontractor && (
                 <>
-                  <QuickActionButton label={isClockedIn ? "Stop Clock Out" : "Start Clock In"} icon={Clock} bg={isClockedIn ? "bg-red-500" : "bg-orange-500"} color="text-white" onClick={handleToggle} />
+                  <QuickActionButton 
+                    label={loading ? "Processing..." : (isClockedIn ? "Stop Clock Out" : "Start Clock In")} 
+                    icon={loading ? RefreshCw : Clock} 
+                    bg={loading ? "bg-slate-400" : (isClockedIn ? "bg-red-500" : "bg-orange-500")} 
+                    color="text-white" 
+                    onClick={handleToggle} 
+                    disabled={loading}
+                  />
                   <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
                 </>
               )}

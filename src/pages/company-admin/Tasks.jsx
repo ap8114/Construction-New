@@ -2328,6 +2328,7 @@ const Tasks = () => {
                                 )}
                                 {subTasks
                                     .filter(st => !st.parentSubTaskId)
+                                    .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                                     .map(root => (
                                         <SubTaskTreeNode
                                             key={root._id}
