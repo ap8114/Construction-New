@@ -18,6 +18,12 @@ const WorkerPunch = () => {
     const [assignedProjects, setAssignedProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [history, setHistory] = useState([]);
+    const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type, visible: true });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    };
 
     // Fetch active log on mount
     useEffect(() => {
@@ -98,7 +104,7 @@ const WorkerPunch = () => {
     const handleToggle = async () => {
         try {
             if (!isClockedIn && !selectedProjectId && assignedProjects.length > 0) {
-                alert('Please select a project to clock into.');
+                showToast('Please select a project to clock into.', 'error');
                 return;
             }
 
@@ -144,10 +150,11 @@ const WorkerPunch = () => {
                 const res = await api.get('/timelogs');
                 const userLogs = res.data.filter(log => log.userId?._id === user?._id);
                 setHistory(userLogs.slice(0, 5));
+                showToast(isClockedIn ? 'Clocked out successfully.' : 'Clocked in successfully.');
             }
         } catch (error) {
             console.error('Error toggling clock:', error);
-            alert(error.response?.data?.message || 'Failed to update attendance status');
+            showToast(error.response?.data?.message || 'Failed to update attendance status', 'error');
         } finally {
             setLoading(false);
         }
@@ -156,9 +163,21 @@ const WorkerPunch = () => {
     return (
         <div className="space-y-8 pb-12 animate-fade-in">
             {/* Header */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 relative">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Time Clock</h1>
                 <p className="text-slate-500 font-bold text-sm tracking-widest uppercase">Precision Tracking for Your Day</p>
+                
+                {/* Custom Toast Notification */}
+                {toast.visible && (
+                    <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-3xl shadow-2xl animate-in slide-in-from-top-10 duration-500 flex items-center gap-4 border backdrop-blur-md ${
+                        toast.type === 'success' ? 'bg-emerald-500/95 text-white border-emerald-400' : 'bg-red-500/95 text-white border-red-400'
+                    }`}>
+                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                            {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <span className="font-black text-sm uppercase tracking-widest leading-none mt-0.5">{toast.message}</span>
+                    </div>
+                )}
             </div>
 
             {/* Main Punch Card */}
@@ -202,19 +221,22 @@ const WorkerPunch = () => {
                     <div className="w-full space-y-4">
                         <button
                             onClick={handleToggle}
+                            disabled={loading}
                             className={`w-full py-6 rounded-3xl font-black text-xl uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isClockedIn
                                 ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 hover:-translate-y-1'
                                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:-translate-y-1'
-                                }`}
+                                } ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
                         >
-                            {isClockedIn ? (
-                                <>
-                                    <Square size={24} fill="currentColor" /> Stop Timer & Clock Out
-                                </>
-                            ) : (
-                                <>
-                                    <Play size={24} fill="currentColor" /> Start Timer & Clock In
-                                </>
+                            {loading ? <RefreshCw className="animate-spin" size={24} /> : (
+                                isClockedIn ? (
+                                    <>
+                                        <Square size={24} fill="currentColor" /> Stop Timer & Clock Out
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play size={24} fill="currentColor" /> Start Timer & Clock In
+                                    </>
+                                )
                             )}
                         </button>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Auto-syncing your GPS location...</p>

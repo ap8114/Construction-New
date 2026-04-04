@@ -70,22 +70,26 @@ const AlertItem = ({ count, label, color, onClick }) => (
   </div>
 );
 
-const DailyLogCard = ({ job, date, foreman, foremanRole, photos }) => (
-  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 md:p-3.5 rounded-xl md:rounded-2xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 hover:border-slate-200 bg-white sm:bg-transparent">
-    <div className="flex items-center gap-3 flex-1 min-w-0">
-      <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg md:rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 shadow-sm border border-slate-200 flex items-center justify-center">
-        <Briefcase className="text-slate-300" size={20} />
+const UpcomingTaskCard = ({ title, project, dueDate, priority, onClick }) => (
+  <div
+    onClick={onClick}
+    className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer group"
+  >
+    <div className="flex items-center gap-3 min-w-0">
+      <div className={`w-1.5 h-8 rounded-full shrink-0 ${
+        priority === 'High' ? 'bg-red-500' : 
+        priority === 'Medium' ? 'bg-orange-500' : 'bg-blue-500'
+      }`} />
+      <div className="min-w-0">
+        <h4 className="text-[12px] font-black text-slate-900 truncate uppercase tracking-tight leading-none">{title}</h4>
+        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase truncate">{project}</p>
       </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-[11px] md:text-xs font-black text-slate-900 truncate tracking-tight uppercase leading-tight">{job}</h4>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-          <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight">{date}</p>
-          <span className="w-0.5 h-0.5 rounded-full bg-slate-300 hidden sm:block"></span>
-          <p className="text-[9px] md:text-[10px] text-slate-500 truncate font-black uppercase tracking-tighter">
-            {foremanRole === 'PM' ? 'PM' : 'Foreman'}: {foreman}
-          </p>
-        </div>
-      </div>
+    </div>
+    <div className="text-right shrink-0">
+      <p className="text-[10px] font-black text-slate-900 leading-none">
+        {new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+      </p>
+      <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Due Date</p>
     </div>
   </div>
 );
@@ -124,7 +128,7 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
       const isForcedAssignmentRole = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
 
       if (isForcedAssignmentRole && !assignedTo) {
-        alert('Please select a user to assign this task.');
+        showToast('Please select a user to assign this task.', 'error');
         setSubmitting(false);
         return;
       }
@@ -142,9 +146,10 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
       setSearchTerm('');
       setShowDropdown(false);
       onTaskCreated();
+      showToast('Task created successfully!');
     } catch (err) {
       console.error('Failed to create todo:', err);
-      alert(err.response?.data?.message || 'Failed to create To-Do');
+      showToast(err.response?.data?.message || 'Failed to create To-Do', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -274,14 +279,25 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
   const [workerFilter, setWorkerFilter] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const filteredTodos = todos.filter(todo => {
     const matchesWorker = !workerFilter || todo.assignedTo?._id === workerFilter || todo.assignedTo === workerFilter;
     const matchesSearch = !searchFilter || todo.title.toLowerCase().includes(searchFilter.toLowerCase());
     return matchesWorker && matchesSearch;
   });
 
+  const totalPages = Math.ceil(filteredTodos.length / itemsPerPage);
+  const paginatedTodos = filteredTodos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [workerFilter, searchFilter]);
+
   return (
-    <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-3xl border border-slate-200/60 overflow-hidden shadow-sm flex flex-col min-h-[400px]">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{title}</h3>
@@ -334,13 +350,13 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
         </div>
       )}
 
-      <div className="p-2 space-y-1 max-h-[500px] overflow-y-auto no-scrollbar">
-        {filteredTodos.length === 0 ? (
+      <div className="p-2 space-y-1 flex-1 overflow-y-auto no-scrollbar">
+        {paginatedTodos.length === 0 ? (
           <div className="py-8 text-center text-slate-400 font-bold text-xs">
             {todos.length > 0 ? "No results match filters" : "No pending todos"}
           </div>
         ) : (
-          filteredTodos.map(todo => (
+          paginatedTodos.map(todo => (
             <div key={todo._id} className="flex items-center justify-between p-3.5 rounded-2xl hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100">
               <div className="flex items-center gap-4 min-w-0">
                 <button
@@ -376,6 +392,30 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
           ))
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-all"
+            >
+              Prev
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white transition-all"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -417,7 +457,14 @@ const CompanyAdminDashboard = () => {
   const [taskToCancel, setTaskToCancel] = useState(null);
   const [timer, setTimer] = useState(0);
   const [overdueTasksList, setOverdueTasksList] = useState([]);
+  const [upcomingTasks, setUpcomingTasks] = useState([]);
+  const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
   const socketRef = useRef();
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+  };
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState('');
@@ -503,8 +550,15 @@ const CompanyAdminDashboard = () => {
           const allTasks = Array.isArray(tasksRes.data) ? tasksRes.data : [];
           const overdue = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed');
           setOverdueTasksList(overdue);
+
+          // Get upcoming 7 tasks
+          const upcoming = allTasks
+            .filter(t => t.dueDate && new Date(t.dueDate) >= new Date() && t.status !== 'completed')
+            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+            .slice(0, 7);
+          setUpcomingTasks(upcoming);
         } catch (err) {
-          console.error('Error fetching overdue tasks for dashboard:', err);
+          console.error('Error fetching overdue/upcoming tasks for dashboard:', err);
         }
       }
 
@@ -582,7 +636,7 @@ const CompanyAdminDashboard = () => {
   const handleToggle = async () => {
     try {
       if (!isClockedIn && !selectedProjectId && workerMetrics.assignedProjects?.length > 0) {
-        alert('Please select a project to clock into.');
+        showToast('Please select a project to clock into.', 'error');
         return;
       }
 
@@ -634,6 +688,7 @@ const CompanyAdminDashboard = () => {
         });
         setIsClockedIn(true);
         fetchDashboardData();
+        showToast('Clocked in successfully!');
       } else {
         const coords = await getPosition();
         await api.post('/timelogs/clock-out', {
@@ -643,10 +698,11 @@ const CompanyAdminDashboard = () => {
         setIsClockedIn(false);
         setTimer(0);
         fetchDashboardData();
+        showToast('Clocked out successfully.');
       }
     } catch (error) {
       console.error('Error toggling clock:', error);
-      alert(error.response?.data?.message || 'Failed to update attendance status');
+      showToast(error.response?.data?.message || 'Failed to update attendance status', 'error');
     } finally {
       setLoading(false);
     }
@@ -731,6 +787,18 @@ const CompanyAdminDashboard = () => {
             Own Your Time. Control Your Site.
           </p>
         </div>
+
+        {/* Custom Toast Notification */}
+        {toast.visible && (
+            <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-3xl shadow-2xl animate-in slide-in-from-top-10 duration-500 flex items-center gap-4 border backdrop-blur-md ${
+                toast.type === 'success' ? 'bg-emerald-500/95 text-white border-emerald-400' : 'bg-red-500/95 text-white border-red-400'
+            }`}>
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                    {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                </div>
+                <span className="font-black text-sm uppercase tracking-widest leading-none mt-0.5">{toast.message}</span>
+            </div>
+        )}
       </div>
 
       {/* Worker / Subcontractor Clock Widget */}
@@ -781,12 +849,13 @@ const CompanyAdminDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               <button
                 onClick={handleToggle}
-                className={`flex-1 md:flex-none px-12 py-5 rounded-2xl font-black text-lg uppercase tracking-tight shadow-lg transition-all transform active:scale-95 ${isClockedIn
+                disabled={loading}
+                className={`flex-1 md:flex-none px-12 py-5 rounded-2xl font-black text-lg uppercase tracking-tight shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-3 ${isClockedIn
                   ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200'
                   : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                  }`}
+                  } ${loading ? 'opacity-80 scale-95' : ''}`}
               >
-                {isClockedIn ? 'Stop Clock Out' : 'Start Clock In'}
+                {loading ? <RefreshCw className="animate-spin" size={24} /> : (isClockedIn ? 'Stop Clock Out' : 'Start Clock In')}
               </button>
             </div>
           </div>
@@ -1317,19 +1386,38 @@ const CompanyAdminDashboard = () => {
             </div>
           )}
 
-          {/* Recent Daily Logs - Hidden for Worker */}
+          {/* Recent Daily Logs - Removed as per request */}
           {(isOwner || isPM || isForeman) && (
-            <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-lg font-black text-slate-800 tracking-tight">Recent Daily Logs</h3>
-              </div>
-              <div className="space-y-2">
-                {recentDailyLogs.map((log, idx) => (
-                  <DailyLogCard key={idx} job={log.job} date={log.date} foreman={log.foreman} foremanRole={log.foremanRole} />
-                ))}
-                {recentDailyLogs.length === 0 && (
-                  <div className="p-10 text-center text-slate-400 text-sm font-bold italic">No daily logs submitted yet.</div>
-                )}
+            <div className="space-y-6">
+              {/* Upcoming Tasks Section */}
+              <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none">Upcoming Tasks</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                      Next 7 Priorities
+                    </p>
+                  </div>
+                  <button onClick={() => navigate('/company-admin/tasks')} className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest p-1">View All</button>
+                </div>
+                <div className="space-y-3">
+                  {upcomingTasks.map((task) => (
+                    <UpcomingTaskCard
+                      key={task._id}
+                      title={task.title}
+                      project={task.projectId?.name || 'Unassigned Project'}
+                      dueDate={task.dueDate}
+                      priority={task.priority}
+                      onClick={() => navigate('/company-admin/tasks')}
+                    />
+                  ))}
+                  {upcomingTasks.length === 0 && (
+                    <div className="p-10 text-center border-2 border-dashed border-slate-50 rounded-2xl">
+                      <p className="text-slate-400 text-xs font-bold uppercase tracking-widest italic">All tasks cleared!</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

@@ -34,7 +34,14 @@ const CrewClock = () => {
     const [isClockInDropdownOpen, setIsClockInDropdownOpen] = useState(false);
     const [isClockOutDropdownOpen, setIsClockOutDropdownOpen] = useState(false);
     const [isManualClockOut, setIsManualClockOut] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
     const socketRef = useRef();
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type, visible: true });
+        setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    };
 
     const fetchData = async () => {
         try {
@@ -116,33 +123,33 @@ const CrewClock = () => {
     const handleManualEntrySubmit = async (e) => {
         if (e) e.preventDefault();
         if (!selectedWorkerForManual || !manualEntryData.clockIn || !manualEntryData.date) {
-            alert('Please fill in all required fields.');
+            showToast('Please fill in all required fields.', 'error');
             return;
         }
 
         const projectId = manualEntryData.projectId || activeJobId;
         if (!projectId) {
-            alert('Please select a project first.');
+            showToast('Please select a project first.', 'error');
             return;
         }
 
         try {
-            setLoading(true);
+            setIsProcessing(true);
             const baseDate = manualEntryData.date;
             const clockIn = `${baseDate}T${manualEntryData.clockIn}`;
             const clockOut = manualEntryData.clockOut ? `${baseDate}T${manualEntryData.clockOut}` : null;
 
             // Simple validation: No future time
             if (new Date(clockIn) > new Date()) {
-                alert('Cannot enter future clock-in time.');
+                showToast('Cannot enter future clock-in time.', 'error');
                 return;
             }
             if (clockOut && new Date(clockOut) > new Date()) {
-                alert('Cannot enter future clock-out time.');
+                showToast('Cannot enter future clock-out time.', 'error');
                 return;
             }
             if (clockOut && new Date(clockOut) < new Date(clockIn)) {
-                alert('Clock-out must be after clock-in.');
+                showToast('Clock-out must be after clock-in.', 'error');
                 return;
             }
 
@@ -181,24 +188,24 @@ const CrewClock = () => {
                 reason: '',
                 projectId: ''
             });
-            alert('Manual entry recorded successfully.');
+            showToast('Manual entry recorded successfully.');
         } catch (error) {
             console.error('Error in manual entry:', error);
-            alert(error.response?.data?.message || 'Failed to record manual entry.');
+            showToast(error.response?.data?.message || 'Failed to record manual entry.', 'error');
         } finally {
-            setLoading(false);
+            setIsProcessing(false);
         }
     };
 
     const handleBulkClockIn = async () => {
         if (selectedWorkers.length === 0) return;
         if (!activeJobId) {
-            alert('Please select a project first.');
+            showToast('Please select a project first.', 'error');
             return;
         }
 
         try {
-            setLoading(true);
+            setIsProcessing(true);
             
             // Get Admin's current position for the logs
             const getPosition = () => new Promise((resolve) => {
@@ -217,7 +224,7 @@ const CrewClock = () => {
                     return api.post('/timelogs/clock-in', {
                         userId: wid,
                         projectId: activeJobId,
-                        latitude: coords?.latitude || 0, // Fallback to 0 if blocked, backend will be updated to allow this for admins
+                        latitude: coords?.latitude || 0, 
                         longitude: coords?.longitude || 0,
                         accuracy: coords?.accuracy || 0,
                         deviceInfo: `Admin Force Clock-in: ${navigator.userAgent}`
@@ -227,22 +234,23 @@ const CrewClock = () => {
             }));
             await fetchData();
             setSelectedWorkers([]);
-            alert('Selected crew members clocked in successfully.');
+            showToast('Selected crew members clocked in successfully.');
         } catch (error) {
             console.error('Error in bulk clock in:', error);
+            showToast('Failed to clock in some crew members.', 'error');
         } finally {
-            setLoading(false);
+            setIsProcessing(false);
         }
     };
 
     const handleBulkClockOut = async () => {
         if (selectedWorkers.length === 0) return;
         try {
-            setLoading(true);
+            setIsProcessing(true);
             await Promise.all(selectedWorkers.map(async wid => {
                 const worker = workers.find(w => w._id === wid);
                 if (worker.isClockedIn) {
-                    // Try to get position but don't block if unavailable for bulk clock out
+                    // Try to get position but don't block if unavailable
                     const getPosition = () => new Promise((resolve) => {
                         if (!navigator.geolocation) return resolve(null);
                         navigator.geolocation.getCurrentPosition((pos) => resolve(pos.coords), () => resolve(null), { timeout: 2000 });
@@ -260,11 +268,12 @@ const CrewClock = () => {
             }));
             await fetchData();
             setSelectedWorkers([]);
-            alert('Selected crew members clocked out successfully.');
+            showToast('Selected crew members clocked out successfully.');
         } catch (error) {
             console.error('Error in bulk clock out:', error);
+            showToast('Failed to clock out some crew members.', 'error');
         } finally {
-            setLoading(false);
+            setIsProcessing(false);
         }
     };
 
@@ -283,6 +292,18 @@ const CrewClock = () => {
                         Manage on-site workforce attendance
                     </p>
                 </div>
+
+                {/* Custom Toast Notification */}
+                {toast.visible && (
+                    <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-3xl shadow-2xl animate-in slide-in-from-top-10 duration-500 flex items-center gap-4 border backdrop-blur-md ${
+                        toast.type === 'success' ? 'bg-emerald-500/95 text-white border-emerald-400' : 'bg-red-500/95 text-white border-red-400'
+                    }`}>
+                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                            {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                        </div>
+                        <span className="font-black text-sm uppercase tracking-widest leading-none mt-0.5">{toast.message}</span>
+                    </div>
+                )}
                 <div className="flex gap-3">
                     <div className="bg-white px-4 py-2.5 rounded-xl border border-slate-200 flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -360,12 +381,13 @@ const CrewClock = () => {
                                     handleBulkClockIn();
                                 }
                             }}
-                            disabled={selectedWorkers.length === 0}
+                            disabled={selectedWorkers.length === 0 || isProcessing}
                             className={`w-full md:w-auto px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
-                                ${selectedWorkers.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
+                                ${selectedWorkers.length > 0 && !isProcessing ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
                             `}
                         >
-                            <Play size={16} fill="currentColor" /> Clock In ({selectedWorkers.length})
+                            {isProcessing ? <RefreshCw className="animate-spin" size={16} /> : <Play size={16} fill="currentColor" />}
+                            Clock In ({selectedWorkers.length})
                             {(user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') && (
                                 <ChevronRight size={16} className={`transition-transform ${isClockInDropdownOpen ? 'rotate-90' : ''}`} />
                             )}
@@ -408,12 +430,13 @@ const CrewClock = () => {
                                     handleBulkClockOut();
                                 }
                             }}
-                            disabled={selectedWorkers.length === 0}
+                            disabled={selectedWorkers.length === 0 || isProcessing}
                             className={`w-full md:w-auto px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg
-                                ${selectedWorkers.length > 0 ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
+                                ${selectedWorkers.length > 0 && !isProcessing ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}
                             `}
                         >
-                            <Square size={16} fill="currentColor" /> Clock Out ({selectedWorkers.length})
+                            {isProcessing ? <RefreshCw className="animate-spin" size={16} /> : <Square size={16} fill="currentColor" />}
+                            Clock Out ({selectedWorkers.length})
                             {(user?.role === 'COMPANY_OWNER' || user?.role === 'PM' || user?.role === 'SUPER_ADMIN') && (
                                 <ChevronRight size={16} className={`transition-transform ${isClockOutDropdownOpen ? 'rotate-90' : ''}`} />
                             )}
@@ -567,10 +590,10 @@ const CrewClock = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={isProcessing}
                                     className="flex-1 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
-                                    {loading ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                                    {isProcessing ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle size={16} />}
                                     Submit Entry
                                 </button>
                             </div>

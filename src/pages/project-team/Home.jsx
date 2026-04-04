@@ -40,6 +40,13 @@ const ProjectTeamHome = () => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workHours, setWorkHours] = useState('0.0h');
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+  };
 
   // Timer for current clock
   useEffect(() => {
@@ -75,7 +82,11 @@ const ProjectTeamHome = () => {
     return () => clearInterval(interval);
   }, [sessionData, clockedIn, history]);
 
-  const handleClockAction = () => {
+  const handleClockAction = async () => {
+    setLoading(true);
+    // Simulate API delay for better UX feel
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
     const now = new Date();
 
     if (!clockedIn) {
@@ -87,6 +98,7 @@ const ProjectTeamHome = () => {
       // Save to local storage
       localStorage.setItem('project_team_clocked_in', 'true');
       localStorage.setItem('project_team_session', JSON.stringify(newData));
+      showToast('Clocked in successfully!');
     } else {
       // Clock Out Logic
       const checkInTime = new Date(sessionData.checkIn);
@@ -109,7 +121,9 @@ const ProjectTeamHome = () => {
       localStorage.setItem('project_team_clocked_in', 'false');
       localStorage.setItem('project_team_session', JSON.stringify(newData));
       localStorage.setItem('project_team_history', JSON.stringify(newHistory));
+      showToast('Shift completed. Clocked out!');
     }
+    setLoading(false);
   };
 
   const tasks = [
@@ -119,7 +133,19 @@ const ProjectTeamHome = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Custom Toast Notification */}
+      {toast.visible && (
+          <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[1000] px-6 py-4 rounded-3xl shadow-2xl animate-in slide-in-from-top-10 duration-500 flex items-center gap-4 border backdrop-blur-md ${
+              toast.type === 'success' ? 'bg-emerald-500/95 text-white border-emerald-400' : 'bg-red-500/95 text-white border-red-400'
+          }`}>
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+              </div>
+              <span className="font-black text-sm uppercase tracking-widest leading-none mt-0.5">{toast.message}</span>
+          </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -151,16 +177,23 @@ const ProjectTeamHome = () => {
 
             <button
               onClick={handleClockAction}
+              disabled={loading}
               className={`w-40 h-40 rounded-full border-8 flex flex-col items-center justify-center transition-all transform active:scale-95 shadow-2xl mx-auto
                 ${clockedIn
                   ? 'border-red-100 bg-red-600 text-white shadow-red-200 hover:bg-red-700'
                   : 'border-emerald-100 bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700'
-                }`}
+                } ${loading ? 'opacity-80 scale-95' : ''}`}
             >
-              <Timer size={36} className="mb-2" />
-              <span className="text-xl font-black uppercase tracking-tight">
-                {clockedIn ? 'Clock Out' : 'Clock In'}
-              </span>
+              {loading ? (
+                <Clock size={36} className="animate-spin" />
+              ) : (
+                <>
+                  <Timer size={36} className="mb-2" />
+                  <span className="text-xl font-black uppercase tracking-tight">
+                    {clockedIn ? 'Clock Out' : 'Clock In'}
+                  </span>
+                </>
+              )}
             </button>
 
             <div className="mt-6 flex flex-col items-center gap-2">
