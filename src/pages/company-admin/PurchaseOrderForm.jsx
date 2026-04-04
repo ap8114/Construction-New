@@ -150,7 +150,7 @@ const PurchaseOrderForm = () => {
     if (loading && isEdit) return <div className="flex h-96 items-center justify-center">Loading...</div>;
 
     return (
-        <div className="max-w-5xl mx-auto pb-20 space-y-8 animate-fade-in">
+        <div className="pb-20 space-y-8 animate-fade-in">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

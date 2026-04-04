@@ -166,7 +166,7 @@ const Deficiencies = () => {
     }
 
     return (
-        <div className="deficiencies-container space-y-8 max-w-[1400px] mx-auto pb-12">
+        <div className="deficiencies-container space-y-8 w-full pb-12">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>

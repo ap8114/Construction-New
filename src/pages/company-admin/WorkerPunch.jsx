@@ -154,7 +154,7 @@ const WorkerPunch = () => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-8 pb-12 animate-fade-in">
+        <div className="space-y-8 pb-12 animate-fade-in">
             {/* Header */}
             <div className="text-center space-y-2">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Time Clock</h1>

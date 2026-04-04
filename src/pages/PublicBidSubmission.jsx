@@ -45,7 +45,7 @@ const PublicBidSubmission = () => {
             data.append('bidAmount', formData.bidAmount);
             data.append('notes', formData.notes);
             data.append('companyId', drawing.companyId);
-            
+
             attachments.forEach(file => {
                 data.append('files', file);
             });
@@ -105,12 +105,12 @@ const PublicBidSubmission = () => {
 
     return (
         <div className="min-h-screen bg-[#f3f4f7] py-12 px-4">
-            <div className="max-w-4xl mx-auto space-y-8">
+            <div className="space-y-8">
                 {/* Header Section */}
-                <div className="bg-[#2e3647] p-8 rounded-2xl shadow-2xl text-white relative overflow-hidden">
+                <div className="bg-[#2e3647] p-6 sm:p-8 rounded-2xl shadow-2xl text-white relative overflow-hidden">
                     <div className="relative z-10">
                         <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 block">New Invitation to Bid</span>
-                        <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight leading-none mb-4">{drawing.title}</h1>
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight leading-tight mb-4">{drawing.title}</h1>
                         <div className="flex flex-wrap gap-4 text-sm font-bold opacity-80">
                             <span className="bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest text-[10px]">Project: {drawing.projectId?.name}</span>
                             <span className="bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest text-[10px]">Trade: {drawing.category}</span>
@@ -164,7 +164,7 @@ const PublicBidSubmission = () => {
                     </div>
 
                     {/* Right: Submission Form */}
-                    <div className="bg-white p-8 rounded-2xl shadow-xl border border-blue-100">
+                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-blue-100">
                         <h3 className="text-xl font-black text-slate-800 mb-8 uppercase tracking-tight flex items-center gap-2">
                             <DollarSign className="text-emerald-500" />
                             Submit Your Quotation
@@ -202,14 +202,14 @@ const PublicBidSubmission = () => {
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supporting Documents (PDF, Images, DOCS)</label>
                                 <div className="flex flex-wrap gap-3">
                                     <label className="cursor-pointer group">
-                                        <input 
-                                            type="file" 
-                                            multiple 
-                                            onChange={handleFileChange} 
-                                            className="hidden" 
+                                        <input
+                                            type="file"
+                                            multiple
+                                            onChange={handleFileChange}
+                                            className="hidden"
                                             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
                                         />
-                                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 w-32 h-32 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 w-full h-32 hover:border-blue-400 hover:bg-blue-50 transition-all">
                                             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-2 group-hover:bg-blue-100 group-hover:text-blue-600 transition">
                                                 <Plus size={20} />
                                             </div>
@@ -218,7 +218,7 @@ const PublicBidSubmission = () => {
                                     </label>
 
                                     {attachments.map((file, idx) => (
-                                        <div key={idx} className="w-32 h-32 bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col justify-between relative group animate-fade-in">
+                                        <div key={idx} className="w-full sm:w-32 h-32 bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col justify-between relative group animate-fade-in">
                                             <button 
                                                 type="button"
                                                 onClick={() => removeAttachment(idx)}

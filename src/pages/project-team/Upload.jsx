@@ -103,7 +103,7 @@ const UploadPage = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in space-y-6 pb-12">
+    <div className="animate-fade-in space-y-6 pb-12">
       <div className="flex flex-col md:flex-row gap-8">
 
         {/* Left: Uploader Interface */}

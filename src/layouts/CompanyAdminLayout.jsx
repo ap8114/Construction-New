@@ -9,7 +9,7 @@ import {
   Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle, Activity
 } from 'lucide-react';
 import api from '../utils/api';
-import sidebarlogo from './../assets/images/sidebarlogo.png';
+import Logo from '../assets/images/Logo.png';
 
 const CompanyAdminLayout = () => {
   const { user, logout, updateUserData } = useAuth();
@@ -115,46 +115,71 @@ const CompanyAdminLayout = () => {
     navigate('/login');
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
-    { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
-    { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS' },
-    { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
-    { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
-    { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
-    { icon: FileText, label: 'Daily Logs', path: '/company-admin/daily-logs', permission: 'VIEW_DAILY_LOGS' },
-    { icon: Users, label: 'Trade Management', path: '/company-admin/trades', permission: 'VIEW_DAILY_LOGS' }, // Reusing permission or add specific
-    { icon: AlertCircle, label: 'Issues', path: '/company-admin/issues', permission: 'VIEW_ISSUES' },
-    { icon: PenTool, label: 'Drawings', path: '/company-admin/drawings', permission: 'VIEW_DRAWINGS' },
-    { icon: Camera, label: 'Photos', path: '/company-admin/photos', permission: 'VIEW_PHOTOS' },
-    { icon: MapPin, label: 'GPS Tracking', path: '/company-admin/gps', permission: 'VIEW_GPS' },
-    { icon: Wrench, label: 'Equipment', path: '/company-admin/equipment', permission: 'VIEW_EQUIPMENT' },
-    { icon: ClipboardList, label: 'Purchase Orders', path: '/company-admin/purchase-orders', permission: 'VIEW_PO' },
-    { icon: FileText, label: 'Invoices', path: '/company-admin/invoices', permission: 'VIEW_INVOICES' },
-    { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT' },
-    { icon: FileQuestion, label: 'RFI', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
-    { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
-    { icon: Activity, label: 'Attendance Reports', path: '/company-admin/attendance-reports', permission: 'VIEW_REPORTS' },
-    { icon: BarChart2, label: 'Daily Log Reports', path: '/company-admin/daily-log-reports', permission: 'VIEW_REPORTS' },
-    { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
-    { icon: Users, label: 'Users', path: '/company-admin/team', permission: 'VIEW_TEAM' },
-    { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },
+  const menuGroups = [
+    {
+      title: 'Core Management',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
+        { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
+        { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS', badge: 5 },
+        { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT', badge: chatUnreadCount },
+      ]
+    },
+    {
+      title: 'Field Operations',
+      items: [
+        { icon: Clock, label: 'My Clock', path: '/company-admin/clock', permission: 'CLOCK_IN_OUT' },
+        { icon: Users, label: 'Clock In Crew', path: '/company-admin/crew-clock', permission: 'CLOCK_IN_CREW' },
+        { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
+        { icon: FileText, label: 'Daily Logs', path: '/company-admin/daily-logs', permission: 'VIEW_DAILY_LOGS' },
+        { icon: Users, label: 'Trade Management', path: '/company-admin/trades', permission: 'VIEW_DAILY_LOGS' },
+        { icon: AlertCircle, label: 'Issues', path: '/company-admin/issues', permission: 'VIEW_ISSUES', badge: 'Alert' },
+        { icon: MapPin, label: 'GPS Tracking', path: '/company-admin/gps', permission: 'VIEW_GPS' },
+      ]
+    },
+    {
+      title: 'Documentation',
+      items: [
+        { icon: PenTool, label: 'Drawings', path: '/company-admin/drawings', permission: 'VIEW_DRAWINGS' },
+        { icon: Camera, label: 'Photos', path: '/company-admin/photos', permission: 'VIEW_PHOTOS' },
+        { icon: Wrench, label: 'Equipment', path: '/company-admin/equipment', permission: 'VIEW_EQUIPMENT' },
+        { icon: FileQuestion, label: 'RFIs', path: '/company-admin/rfi', permission: 'VIEW_RFI' },
+      ]
+    },
+    {
+      title: 'Finance & Admin',
+      items: [
+        { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
+        { icon: ClipboardList, label: 'Purchase Orders', path: '/company-admin/purchase-orders', permission: 'VIEW_PO' },
+        { icon: FileText, label: 'Invoices', path: '/company-admin/invoices', permission: 'VIEW_INVOICES' },
+        { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
+        { icon: Users, label: 'Team', path: '/company-admin/team', permission: 'VIEW_TEAM' },
+        { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },
+      ]
+    }
   ];
 
-  const filteredNavItems = navItems.filter(item => {
-    // Role-specific strict overrides
-    if (user?.role === 'COMPANY_OWNER') {
-      // Owner sees everything EXCEPT worker-specific tactical tools like "My Clock"
-      if (['My Clock'].includes(item.label)) return false;
-      return true;
-    }
+  const getFilteredGroups = () => {
+    return menuGroups.map(group => ({
+      ...group,
+      items: group.items.filter(item => {
+        if (user?.role === 'COMPANY_OWNER') {
+          if (['My Clock'].includes(item.label)) return false;
+          return true;
+        }
+        return user?.permissions?.includes(item.permission);
+      })
+    })).filter(group => group.items.length > 0);
+  };
 
-    // For all other roles (PM, FOREMAN, WORKER, CLIENT, etc.), use dynamic permissions stored in DB
-    return user?.permissions?.includes(item.permission);
-  });
+  const filteredGroups = getFilteredGroups();
 
   return (
     <div className="flex h-screen bg-[#f3f4f7] text-slate-900 font-sans overflow-hidden">
+      <style>{`
+        .sidebar-nav-hide-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-nav-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -166,73 +191,96 @@ const CompanyAdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-52 h-screen bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-50 w-60 h-screen bg-[#0f172a] text-white flex flex-col transition-transform duration-300 ease-in-out border-r border-[#1e293b]
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="px-4 py-5 flex flex-col items-center justify-center border-b border-white/5 space-y-2 bg-slate-800/20">
-          <img
-            src={sidebarlogo}
-            alt="KAAL Logo"
-            className="h-[90px] w-auto opacity-100"
-          />
-          <div className="text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 capitalize">
-              {user?.role?.replace(/_/g, ' ') || 'Company Admin'}
-            </p>
+        {/* grid overlay */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(21,93,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(21,93,255,0.03) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+
+        <div className="px-6 py-6 flex flex-col items-center justify-center relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#155dff] to-[#4e8cff] rounded-full blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+            <div className="relative w-12 h-12 bg-[#0f172a] border border-[#1e293b] rounded-full flex items-center justify-center overflow-hidden">
+              <img
+                src={Logo}
+                alt="KAAL Logo"
+                className="h-8 w-auto"
+              />
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+             <div className="h-[2px] w-8 bg-[#155dff] mx-auto mb-2 rounded-full"></div>
+             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">{user?.role?.replace(/_/g, ' ') || 'Admin'}</p>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-0.5 custom-scrollbar">
-          {filteredNavItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== '/company-admin' && location.pathname.startsWith(item.path));
-            return (
-              <Link
-                key={item.label}
-                to={item.path}
-                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-semibold
-                  ${isActive
-                    ? 'bg-[#3f4759] text-white'
-                    : 'text-slate-400 hover:bg-[#3f4759] hover:text-white'
-                  }
-                `}
-              >
-                <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-500'} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-6 sidebar-nav-hide-scroll relative z-10">
+          {filteredGroups.map((group) => (
+            <div key={group.title} className="space-y-1.5">
+              <h3 className="px-3 text-[10px] font-bold text-[#64748b] uppercase tracking-widest">{group.title}</h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path || (item.path !== '/company-admin' && location.pathname.startsWith(item.path));
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      className={`group flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all duration-200 relative
+                        ${isActive
+                          ? 'bg-[#155dff] text-white shadow-lg shadow-[#155dff]/25'
+                          : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
+                        }
+                      `}
+                    >
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                        ${isActive ? 'bg-white/20' : 'bg-white/[0.04] border border-white/[0.05] group-hover:border-white/10 group-hover:bg-white/[0.08]'}
+                      `}>
+                        <item.icon size={15} />
+                      </div>
+                      <span className="text-xs font-semibold tracking-tight flex-1">{item.label}</span>
+                      
+                      {item.badge && (
+                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold
+                          ${isActive ? 'bg-white text-[#155dff]' : 'bg-[#155dff]/10 text-[#155dff] border border-[#155dff]/20'}
+                        `}>
+                          {item.badge}
+                        </div>
+                      )}
+
+                      {isActive && (
+                        <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Sidebar Bottom */}
-        <div className="p-3 border-t border-slate-600/50 space-y-3">
-          {/* User Profile Mini */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-500 shadow-md bg-slate-400 flex items-center justify-center">
+        <div className="p-5 border-t border-[#1e293b] space-y-4 relative z-10 bg-[#0f172a]/80 backdrop-blur-md">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3 flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black overflow-hidden
+              ${user?.role === 'COMPANY_OWNER' ? 'bg-[#155dff]/10 text-[#155dff] border border-[#155dff]/20' : 'bg-white/[0.05] text-[#94a3b8] border border-white/[0.1]'}
+            `}>
               {user?.avatar ? (
                 <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <Users className="text-white w-6 h-6" />
+                (user?.fullName || 'A').charAt(0)
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-white">{user?.fullName || ''}</p>
-              <p className={`text-[10px] uppercase tracking-wider font-extrabold truncate ${user?.role === 'SUBCONTRACTOR' ? 'text-orange-400' :
-                user?.role === 'WORKER' ? 'text-emerald-400' :
-                  user?.role === 'FOREMAN' ? 'text-blue-400' :
-                    user?.role === 'PM' ? 'text-violet-400' :
-                      'text-slate-400'
-                }`}>
-                {user?.role?.replace(/_/g, ' ') || ''}
-              </p>
+              <p className="text-xs font-bold truncate text-white leading-none">{user?.fullName || 'Admin'}</p>
+              <p className="text-[9px] uppercase tracking-wider font-bold text-slate-500 mt-1">{user?.role?.replace(/_/g, ' ') || 'Platform Root'}</p>
             </div>
           </div>
-
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 w-full px-3.5 py-2 text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition text-[13px] font-bold uppercase tracking-tight bg-slate-700/30"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-[#94a3b8] hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider"
           >
-            <LogOut size={18} /> Log Out
+            <LogOut size={14} /> Log Out
           </button>
         </div>
       </aside>
@@ -471,8 +519,8 @@ const CompanyAdminLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto bg-[#f3f4f7] scroll-smooth p-4 md:p-6">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-auto bg-[#f3f4f7] scroll-smooth p-3 md:p-4 px-1 md:px-2">
+          <div className="w-full">
             <Outlet />
           </div>
         </main>

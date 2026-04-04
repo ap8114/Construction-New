@@ -555,7 +555,7 @@ const JobDetails = () => {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-[1600px] mx-auto pb-12">
+        <div className="space-y-6 animate-fade-in pb-12">
             {/* Header / Breadcrumbs */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div className="space-y-1">

@@ -63,7 +63,7 @@ const PurchaseOrderDetail = () => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto pb-20 space-y-8 animate-fade-in">
+        <div className="pb-20 space-y-8 animate-fade-in">
             {/* Header / Actions Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="flex items-center gap-4">

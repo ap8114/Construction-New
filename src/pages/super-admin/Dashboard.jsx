@@ -79,7 +79,7 @@ const SuperAdminDashboard = () => {
   const { stats, growth, revenueData, recentSignups } = data;
 
   return (
-    <div className="space-y-10 animate-fade-in max-w-[1600px] mx-auto pb-16">
+    <div className="space-y-10 animate-fade-in w-full pb-16">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>

@@ -126,7 +126,7 @@ const SubcontractorDashboard = () => {
                 </div>
             </header>
 
-            <div className="p-6 max-w-7xl mx-auto space-y-8">
+            <div className="p-6 w-full space-y-8">
                 {/* Welcome Banner */}
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 p-6 shadow-2xl shadow-orange-500/20">
                     <div className="absolute top-0 right-0 w-64 h-64 opacity-10 translate-x-16 -translate-y-16">

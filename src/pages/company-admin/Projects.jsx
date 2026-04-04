@@ -393,7 +393,7 @@ const Projects = () => {
           'bg-slate-500/90   text-white border-slate-400';
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in max-w-[1600px] mx-auto pb-8">
+    <div className="space-y-4 md:space-y-6 animate-fade-in w-full pb-8">
 
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-6">

@@ -316,7 +316,7 @@ const Issues = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12 h-[calc(100vh-140px)] flex flex-col">
+    <div className="space-y-8 animate-fade-in pb-12 h-[calc(100vh-140px)] flex flex-col">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Site Issues & Snags</h1>

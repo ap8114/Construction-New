@@ -2,14 +2,13 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import Logo from '../assets/images/Logo.png';
-import sidebarlogo from '../assets/images/sidebarlogo.png';
 import {
   PieChart, Clock, Image, FileCheck, DollarSign,
   MessageCircle, LogOut, Menu, X, Bell, User,
   Building2, LayoutDashboard, FileText, ClipboardList, Briefcase, MessageSquare
 } from 'lucide-react';
 import api from '../utils/api';
+import Logo from '../assets/images/Logo.png';
 
 const ClientPortalLayout = () => {
   const { logout, user } = useAuth();
@@ -93,32 +92,52 @@ const ClientPortalLayout = () => {
     navigate('/login');
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/client-portal', permission: 'VIEW_DASHBOARD' },
-    { icon: Briefcase, label: 'Jobs', path: '/client-portal/projects', permission: 'VIEW_PROJECTS' },
-    { icon: FileCheck, label: 'RFI', path: '/client-portal/rfi', permission: 'VIEW_RFI' },
-    { icon: Image, label: 'Photos', path: '/client-portal/photos', permission: 'VIEW_PHOTOS' },
-    { icon: FileText, label: 'Drawings', path: '/client-portal/drawings', permission: 'VIEW_DRAWINGS' },
-    { icon: ClipboardList, label: 'Daily Logs', path: '/client-portal/daily-logs', permission: 'VIEW_DAILY_LOGS' },
-    { icon: DollarSign, label: 'Invoices', path: '/client-portal/invoices', permission: 'VIEW_INVOICES' },
-    { icon: MessageCircle, label: 'Chat', path: '/client-portal/messages', permission: 'VIEW_CHAT' },
-    { icon: User, label: 'My Profile', path: '/client-portal/profile', permission: 'VIEW_PROFILE' },
+  const menuGroups = [
+    {
+      title: 'Project Overview',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/client-portal', permission: 'VIEW_DASHBOARD' },
+        { icon: Briefcase, label: 'Jobs/Projects', path: '/client-portal/projects', permission: 'VIEW_PROJECTS' },
+      ]
+    },
+    {
+      title: 'Project Details',
+      items: [
+        { icon: FileCheck, label: 'RFIs', path: '/client-portal/rfi', permission: 'VIEW_RFI' },
+        { icon: Image, label: 'Project Photos', path: '/client-portal/photos', permission: 'VIEW_PHOTOS' },
+        { icon: FileText, label: 'Drawings/Docs', path: '/client-portal/drawings', permission: 'VIEW_DRAWINGS' },
+        { icon: ClipboardList, label: 'Daily Reports', path: '/client-portal/daily-logs', permission: 'VIEW_DAILY_LOGS' },
+      ]
+    },
+    {
+      title: 'Financial & Account',
+      items: [
+        { icon: DollarSign, label: 'Invoices', path: '/client-portal/invoices', permission: 'VIEW_INVOICES' },
+        { icon: MessageSquare, label: 'Chat', path: '/client-portal/messages', permission: 'VIEW_CHAT', badge: chatUnreadCount },
+        { icon: User, label: 'My Profile', path: '/client-portal/profile', permission: 'VIEW_PROFILE' },
+      ]
+    }
   ];
 
-  const filteredNavItems = navItems.filter(item => {
-    if (user?.role === 'COMPANY_OWNER') return true;
-    // Always show My Profile
-    if (item.permission === 'VIEW_PROFILE') return true;
-    return user?.permissions?.includes(item.permission);
-  }); 
-
-  const getHeaderTitle = () => {
-    const currentItem = navItems.find(item => item.path === location.pathname);
-    return currentItem ? currentItem.label : 'Client Portal';
+  const getFilteredGroups = () => {
+    return menuGroups.map(group => ({
+      ...group,
+      items: group.items.filter(item => {
+        if (user?.role === 'COMPANY_OWNER') return true;
+        if (item.permission === 'VIEW_PROFILE') return true;
+        return user?.permissions?.includes(item.permission);
+      })
+    })).filter(group => group.items.length > 0);
   };
+
+  const filteredGroups = getFilteredGroups();
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+      <style>{`
+        .sidebar-nav-hide-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-nav-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -130,54 +149,93 @@ const ClientPortalLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-30 w-52 h-screen bg-slate-900 text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-50 w-60 h-screen bg-[#0f172a] text-white flex flex-col transition-transform duration-300 ease-in-out border-r border-[#1e293b]
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="px-4 py-8 flex flex-col items-center justify-center border-b border-slate-700/50 space-y-3 bg-slate-800/20">
-          <img
-            src={sidebarlogo}
-            alt="KAAL Logo"
-            className="h-14 w-auto opacity-100"
-          />
-          <div className="text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Client Portal</p>
+        {/* grid overlay */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(21,93,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(21,93,255,0.03) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+
+        <div className="px-6 py-6 flex flex-col items-center justify-center relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#155dff] to-[#4e8cff] rounded-full blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+            <div className="relative w-12 h-12 bg-[#0f172a] border border-[#1e293b] rounded-full flex items-center justify-center overflow-hidden">
+              <img
+                src={Logo}
+                alt="KAAL Logo"
+                className="h-8 w-auto"
+              />
+            </div>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden absolute top-4 right-4 text-slate-400 hover:text-white">
-            <X size={20} />
-          </button>
+          <div className="mt-4 text-center">
+             <div className="h-[2px] w-8 bg-[#155dff] mx-auto mb-2 rounded-full"></div>
+             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Client Portal</p>
+          </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
-          {filteredNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const isChat = item.label === 'Chat';
-            return (
-              <Link
-                key={item.label}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm font-medium relative
-                  ${isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }
-                `}
-              >
-                <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'} />
-                {item.label}
-                {isChat && chatUnreadCount > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-black animate-pulse">
-                    {chatUnreadCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-6 sidebar-nav-hide-scroll relative z-10">
+          {filteredGroups.map((group) => (
+            <div key={group.title} className="space-y-1.5">
+              <h3 className="px-3 text-[10px] font-bold text-[#64748b] uppercase tracking-widest">{group.title}</h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      className={`group flex items-center gap-3 px-3 py-1.5 rounded-xl transition-all duration-200 relative
+                        ${isActive
+                          ? 'bg-[#155dff] text-white shadow-lg shadow-[#155dff]/25'
+                          : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
+                        }
+                      `}
+                    >
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                        ${isActive ? 'bg-white/20' : 'bg-white/[0.04] border border-white/[0.05] group-hover:border-white/10 group-hover:bg-white/[0.08]'}
+                      `}>
+                        <item.icon size={15} />
+                      </div>
+                      <span className="text-xs font-semibold tracking-tight flex-1">{item.label}</span>
+                      
+                      {item.badge && (
+                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold
+                          ${isActive ? 'bg-white text-[#155dff]' : 'bg-[#155dff]/10 text-[#155dff] border border-[#155dff]/20'}
+                        `}>
+                          {item.badge}
+                        </div>
+                      )}
+
+                      {isActive && (
+                        <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition text-sm">
-            <LogOut size={18} /> Logout
+        <div className="p-5 border-t border-[#1e293b] space-y-4 relative z-10 bg-[#0f172a]/80 backdrop-blur-md">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#155dff]/10 border border-[#155dff]/20 flex items-center justify-center text-[#155dff] font-black text-sm overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                (user?.fullName || 'C').charAt(0)
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold truncate text-white leading-none">{user?.fullName || 'Client User'}</p>
+              <p className="text-[9px] uppercase tracking-wider font-bold text-slate-500 mt-1">Project Stakeholder</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-[#94a3b8] hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider"
+          >
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </aside>
@@ -327,7 +385,7 @@ const ClientPortalLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto p-4 bg-slate-50 scroll-smooth">
+        <main className="flex-1 overflow-auto p-4 px-2 md:px-4 bg-slate-50 scroll-smooth">
           <Outlet />
         </main>
       </div>

@@ -40,25 +40,45 @@ const SuperAdminLayout = () => {
     navigate('/login');
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/super-admin' },
-    { icon: Building, label: 'Companies', path: '/super-admin/companies' },
-    { icon: CreditCard, label: 'Subscriptions', path: '/super-admin/subscriptions' },
-    { icon: Bookmark, label: 'Plans & Pricing', path: '/super-admin/plans' },
-    { icon: TrendingUp, label: 'Revenue', path: '/super-admin/revenue' },
-    { icon: Users, label: 'Global Users', path: '/super-admin/users' },
-    { icon: Ticket, label: 'Support Tickets', path: '/super-admin/tickets' },
-    { icon: FileText, label: 'System Logs', path: '/super-admin/logs' },
-    { icon: Settings, label: 'Settings', path: '/super-admin/settings' },
+  const menuGroups = [
+    {
+      title: 'Management',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/super-admin' },
+        { icon: Building, label: 'Companies', path: '/super-admin/companies' },
+        { icon: CreditCard, label: 'Subscriptions', path: '/super-admin/subscriptions', badge: 3 },
+        { icon: Bookmark, label: 'Plans & Pricing', path: '/super-admin/plans' },
+      ]
+    },
+    {
+      title: 'Analytics',
+      items: [
+        { icon: TrendingUp, label: 'Revenue Tracking', path: '/super-admin/revenue' },
+        { icon: Ticket, label: 'Support Tickets', path: '/super-admin/tickets', badge: 12 },
+      ]
+    },
+    {
+      title: 'System',
+      items: [
+        { icon: Users, label: 'Global Users', path: '/super-admin/users' },
+        { icon: FileText, label: 'System Logs', path: '/super-admin/logs' },
+        { icon: Settings, label: 'Settings', path: '/super-admin/settings' },
+      ]
+    }
   ];
 
   const getHeaderTitle = () => {
-    const currentItem = navItems.find(item => item.path === location.pathname);
+    const allItems = menuGroups.flatMap(g => g.items);
+    const currentItem = allItems.find(item => item.path === location.pathname);
     return currentItem ? currentItem.label : 'Super Admin Center';
   };
 
   return (
     <div className="flex h-screen bg-[#f3f4f7] text-slate-900 font-sans overflow-hidden">
+      <style>{`
+        .sidebar-nav-hide-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-nav-hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -70,57 +90,89 @@ const SuperAdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-52 h-screen bg-[#2e3647] text-white flex flex-col shadow-xl transition-transform duration-300 ease-in-out
+          fixed md:static inset-y-0 left-0 z-50 w-56 h-screen bg-[#0f172a] text-white flex flex-col transition-transform duration-300 ease-in-out border-r border-[#1e293b]
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
-        <div className="px-4 py-8 flex flex-col items-center justify-center border-b border-white/5 space-y-3 bg-slate-800/20">
-          <img
-            src={sidebarlogo}
-            alt="KAAL Logo"
-            className="h-14 w-auto opacity-100"
-          />
-          <div className="text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Super Admin</p>
+        {/* grid overlay */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(21,93,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(21,93,255,0.03) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+
+        <div className="px-6 py-8 flex flex-col items-center justify-center relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#155dff] to-[#4e8cff] rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+            <div className="relative w-14 h-14 bg-[#0f172a] border border-[#1e293b] rounded-full flex items-center justify-center overflow-hidden">
+              <img
+                src={Logo}
+                alt="KAAL Logo"
+                className="h-10 w-auto"
+              />
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+             <div className="h-[2px] w-8 bg-[#155dff] mx-auto mb-2 rounded-full"></div>
+             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Super Admin</p>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.label}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-semibold
-                  ${isActive
-                    ? 'bg-[#3f4759] text-white'
-                    : 'text-slate-400 hover:bg-[#3f4759] hover:text-white'
-                  }
-                `}
-              >
-                <item.icon size={20} className={isActive ? 'text-white' : 'text-slate-500'} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-6 sidebar-nav-hide-scroll relative z-10">
+          {menuGroups.map((group) => (
+            <div key={group.title} className="space-y-1.5">
+              <h3 className="px-3 text-[10px] font-bold text-[#64748b] uppercase tracking-widest">{group.title}</h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.label}
+                      to={item.path}
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 relative
+                        ${isActive
+                          ? 'bg-[#155dff] text-white shadow-lg shadow-[#155dff]/25'
+                          : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
+                        }
+                      `}
+                    >
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                        ${isActive ? 'bg-white/20' : 'bg-white/[0.04] border border-white/[0.05] group-hover:border-white/10 group-hover:bg-white/[0.08]'}
+                      `}>
+                        <item.icon size={15} />
+                      </div>
+                      <span className="text-xs font-semibold tracking-tight flex-1">{item.label}</span>
+                      
+                      {item.badge && (
+                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold
+                          ${isActive ? 'bg-white text-[#155dff]' : 'bg-[#155dff]/10 text-[#155dff] border border-[#155dff]/20'}
+                        `}>
+                          {item.badge}
+                        </div>
+                      )}
+
+                      {isActive && (
+                        <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-600/50 space-y-4">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white border-2 border-slate-500 shadow-md font-black">
-              SA
+        <div className="p-5 border-t border-[#1e293b] space-y-4 relative z-10 bg-[#0f172a]/80 backdrop-blur-md">
+          <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#155dff]/10 border border-[#155dff]/20 flex items-center justify-center text-[#155dff] font-black text-sm">
+              {user?.name?.charAt(0) || 'S'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate text-white">{user?.name || 'Super Admin'}</p>
-              <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400 truncate">Platform Root</p>
+              <p className="text-xs font-bold truncate text-white leading-none">{user?.name || 'Super Admin'}</p>
+              <p className="text-[9px] uppercase tracking-wider font-bold text-slate-500 mt-1">Platform Root</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-lg transition text-sm font-bold uppercase tracking-tight bg-slate-700/30"
+            className="flex items-center justify-center gap-2 w-full py-2.5 text-[#94a3b8] hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider"
           >
-            <LogOut size={18} /> Logout
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </aside>
@@ -184,7 +236,7 @@ const SuperAdminLayout = () => {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-auto p-4 bg-[#f3f4f7] scroll-smooth relative custom-scrollbar">
+        <main className="flex-1 overflow-auto bg-[#f3f4f7] p-3 md:p-4 px-1 md:px-2 scroll-smooth relative custom-scrollbar">
           <Outlet />
         </main>
       </div>

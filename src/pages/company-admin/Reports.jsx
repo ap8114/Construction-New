@@ -113,7 +113,7 @@ const Reports = () => {
     ];
 
     return (
-        <div className="space-y-8 pb-12 animate-fade-in max-w-[1600px] mx-auto">
+        <div className="space-y-8 pb-12 animate-fade-in">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>

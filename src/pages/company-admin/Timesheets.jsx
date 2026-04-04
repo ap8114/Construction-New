@@ -296,7 +296,7 @@ const Timesheets = () => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+        <div className="space-y-8 animate-fade-in pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{isWorker ? 'My Hours' : 'Timesheets'}</h1>

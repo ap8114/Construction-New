@@ -320,7 +320,7 @@ const ProjectDetails = () => {
     }
 
     return (
-        <div className="space-y-8 max-w-[1400px] mx-auto pb-12">
+        <div className="space-y-8 pb-12">
 
             {/* ── Breadcrumb + Back ── */}
             <div className="flex items-center gap-3 text-sm font-bold text-slate-400">

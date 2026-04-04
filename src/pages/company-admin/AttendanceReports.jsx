@@ -138,7 +138,7 @@ const AttendanceReports = () => {
     const totalCount = reportData.length;
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-fade-in">
+        <div className="p-8 space-y-8 animate-fade-in">
             {/* Header section with Stats */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div>

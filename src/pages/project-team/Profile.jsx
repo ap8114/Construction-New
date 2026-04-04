@@ -92,7 +92,7 @@ const Profile = () => {
     ];
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
+        <div className="space-y-8 animate-fade-in pb-12">
             <div>
                 <h1 className="text-3xl font-bold text-slate-800">My Profile</h1>
                 <p className="text-slate-500 text-sm">Manage your account settings, view work history, and check sync status.</p>

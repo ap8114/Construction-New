@@ -276,7 +276,7 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, ...props }) => {
                         {props.urgency === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
                         <div>
                             <div className="flex items-center gap-1.5 overflow-hidden">
-                                <p className={`font-black text-slate-900 text-[13px] ${isCompactView ? 'truncate' : 'whitespace-normal'}`} title={task.title} style={{ maxWidth: columnWidths ? `${columnWidths.task - 60}px` : '300px' }}>{task.title}</p>
+                                <p className={`font-black text-slate-900 text-[13px] ${isCompactView ? 'truncate' : 'whitespace-normal'}`} title={task.title}>{task.title}</p>
                                 {task.subTaskCount > 0 && (
                                     <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1 py-0.5 rounded-md">
                                         {task.subTaskCount}
@@ -292,7 +292,7 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, ...props }) => {
                         </div>
                     </div>
                 </td>
-                <td className={`px-4 py-2.5 text-xs font-bold text-slate-500 ${isCompactView ? 'truncate max-w-[150px]' : 'whitespace-normal'}`}>{task.projectId?.name || '—'}</td>
+                <td className={`px-4 py-2.5 text-xs font-bold text-slate-500 ${isCompactView ? 'truncate' : 'whitespace-normal'}`}>{task.projectId?.name || '—'}</td>
                 <td className="px-4 py-2.5">
                     {task.assignedTo?.length > 0 ? (
                         <div className="flex items-center gap-2">
@@ -597,7 +597,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                             </form>
                         ) : (
                             <span className={`text-[13px] font-black ${isCompactView ? 'truncate' : 'whitespace-normal'} ${subTask.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900 font-black'
-                                }`} style={{ maxWidth: columnWidths ? `${columnWidths.task - (depth * 32 + 100)}px` : '200px' }} title={subTask.title}>
+                                }`} title={subTask.title}>
                                 {subTask.title}
                             </span>
                         )}
@@ -1124,14 +1124,15 @@ const Tasks = () => {
     const [jobs, setJobs] = useState([]);
     const [isCompactView, setIsCompactView] = useState(true);
     const [columnWidths, setColumnWidths] = useState({
-        task: 300,
-        project: 150,
-        assignee: 150,
-        role: 100,
-        status: 100,
-        priority: 100,
-        startDate: 100,
-        endDate: 100
+        task: 500,
+        project: 180,
+        assignee: 180,
+        role: 120,
+        status: 120,
+        priority: 120,
+        startDate: 120,
+        endDate: 120,
+        actions: 100
     });
 
     const handleResizeStart = (e, col) => {
@@ -1966,7 +1967,8 @@ const Tasks = () => {
                             /* ── List View ── */
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 mb-20 relative h-[calc(100vh-230px)] min-h-[600px] overflow-auto hide-scrollbar-y">
                                 <div className="w-full">
-                                    <table className="w-full text-left border-separate border-spacing-0 table-fixed">
+                                  
+                                    <table className="text-left border-separate border-spacing-0 w-full" style={{ width: 'max-content', minWidth: '100%' }}>
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                                             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                                                 <th className="w-10 px-4 py-3"></th>
@@ -1982,8 +1984,11 @@ const Tasks = () => {
                                                 ].map(col => (
                                                     <th
                                                         key={col.key}
-                                                        className="px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0"
-                                                        style={{ width: `${columnWidths[col.key]}px`, minWidth: '50px' }}
+                                                        className={`px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0 ${col.key === 'task' ? 'w-full' : ''}`}
+                                                       style={{ 
+    width: col.key === 'task' ? 'auto' : `${columnWidths[col.key]}px`, 
+    minWidth: col.key === 'task' ? '300px' : '50px' 
+}}
                                                     >
                                                         <div className="flex items-center justify-between pointer-events-none">
                                                             <span className="truncate">{col.label}</span>
@@ -1998,7 +2003,7 @@ const Tasks = () => {
                                                         </div>
                                                     </th>
                                                 ))}
-                                                {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                                                {canManage && <th className="px-4 py-3 text-right" style={{ width: `${columnWidths.actions}px` }}>Actions</th>}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">

@@ -229,7 +229,7 @@ const InvoiceDetail = () => {
     }
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
             {/* Action Bar */}
             <div className="flex justify-between items-center print:hidden">
                 <button
