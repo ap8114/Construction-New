@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X } from 'lucide-react';
+import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Loader } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -351,7 +351,24 @@ const Chat = () => {
 
     const displayItems = getItemsForDisplay(activeTab);
 
-    if (loading) return <div className="p-10 text-center">Loading encrypted frequencies...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-100 animate-fade-in">
+            <div className="relative">
+                <div className="w-16 h-16 border-4 border-blue-50 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader size={24} className="text-blue-600 animate-spin" />
+                </div>
+            </div>
+            <div className="mt-6 flex flex-col items-center gap-2">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest animate-pulse">
+                    Initializing Link
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                    Ensuring Secure Channel
+                </p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-fade-in shadow-2xl">

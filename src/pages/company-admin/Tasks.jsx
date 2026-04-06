@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Plus, Search, Filter, Calendar, MoreVertical,
     CheckCircle, Clock, AlertCircle, LayoutGrid, List, Loader,
@@ -62,7 +63,7 @@ const priorityStyles = {
 };
 
 // ─── Kanban Task Card ──────────────────────────────────────────────────────────
-const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
+const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id || task.id });
     const [menuOpen, setMenuOpen] = useState(false);
     const urgency = getTaskUrgency(task);
@@ -77,11 +78,12 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
     return (
         <div
             ref={setNodeRef}
+            id={`task-card-${task._id || task.id}`}
             style={style}
             {...attributes}
             {...listeners}
             onClick={() => onClick(task)}
-            className={`p-3.5 md:p-4 rounded-xl md:rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''}`}
+            className={`p-3.5 md:p-4 rounded-xl md:rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-slate-200/50 cursor-pointer active:cursor-grabbing transition-all group relative overflow-hidden ${uStyle.card} ${isDragging ? 'z-50 ring-2 ring-blue-500/20' : ''} ${isHighlighted ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/50' : ''}`}
         >
             {/* Urgency strip */}
             {urgency !== 'normal' && (
@@ -198,7 +200,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick }) => {
 };
 
 // ─── Kanban Column ─────────────────────────────────────────────────────────────
-const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick }) => {
+const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick, highlightTaskId }) => {
     const { setNodeRef } = useDroppable({ id: status });
     const colTasks = filteredTasks.filter(t => t.status === status);
     const taskIds = colTasks.map(t => t._id || t.id);
@@ -219,7 +221,14 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
             <div className="p-3 space-y-3 overflow-y-auto max-h-[1200px] hide-scrollbar-y px-5">
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {colTasks.map(task => (
-                        <DraggableTask key={task._id || task.id} task={task} onEdit={onEdit} onDelete={onDelete} onClick={onTaskClick} />
+                        <DraggableTask 
+                            key={task._id || task.id} 
+                            task={task} 
+                            onEdit={onEdit} 
+                            onDelete={onDelete} 
+                            onClick={onTaskClick} 
+                            isHighlighted={highlightTaskId === (task._id || task.id)}
+                        />
                     ))}
                 </SortableContext>
                 {colTasks.length === 0 && (
@@ -234,7 +243,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
 };
 
 // ─── Sortable List Row wrapper ────────────────────────────────────────────────
-const SortableTaskRow = ({ task, isCompactView, columnWidths, ...props }) => {
+const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...props }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -248,9 +257,10 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, ...props }) => {
         <React.Fragment>
             <tr
                 ref={setNodeRef}
+                id={`task-row-${task._id}`}
                 style={style}
                 onClick={() => props.onTaskClick(task)}
-                className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''}`}
+                className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''} ${isHighlighted ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/20 relative z-[20]' : ''}`}
             >
                 <td className="w-10 px-4 py-2.5">
                     <div
@@ -1101,6 +1111,8 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
 // ─── Main Tasks Page ───────────────────────────────────────────────────────────
 const Tasks = () => {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
+    const highlightTaskId = searchParams.get('taskId');
     const [view, setView] = useState('list');
     const [tasks, setTasks] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -1123,6 +1135,20 @@ const Tasks = () => {
     const [activeTab, setActiveTab] = useState('all_tasks'); // 'all_tasks' | 'my_tasks'
     const [jobs, setJobs] = useState([]);
     const [isCompactView, setIsCompactView] = useState(true);
+
+    // Scroll to highlighted task
+    useEffect(() => {
+        if (highlightTaskId && !loading && tasks.length > 0) {
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`task-row-${highlightTaskId}`) || 
+                               document.getElementById(`task-card-${highlightTaskId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightTaskId, loading, tasks]);
     const [columnWidths, setColumnWidths] = useState({
         task: 500,
         project: 180,
@@ -1996,6 +2022,7 @@ const Tasks = () => {
                                         onEdit={openEdit}
                                         onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
                                         onTaskClick={openDetails}
+                                        highlightTaskId={highlightTaskId}
                                     />
                                 ))}
                             </div>
@@ -2067,6 +2094,7 @@ const Tasks = () => {
                                                             isCompactView={isCompactView}
                                                             columnWidths={columnWidths}
                                                             canManage={canManage}
+                                                            isHighlighted={highlightTaskId === task._id}
                                                             onTaskClick={openDetails}
                                                             onToggleExpansion={toggleTaskExpansion}
                                                             onEdit={openEdit}

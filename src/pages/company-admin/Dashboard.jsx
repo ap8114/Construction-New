@@ -1337,7 +1337,7 @@ const CompanyAdminDashboard = () => {
                       <div className="bg-red-50/50 rounded-2xl p-3 border border-red-100 flex flex-col gap-2">
                         <p className="text-[9px] font-black text-red-600 uppercase tracking-widest px-1">Overdue Details:</p>
                         {overdueTasksList.slice(0, 5).map(task => (
-                          <div key={task._id} className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-red-100/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/company-admin/tasks')}>
+                          <div key={task._id} className="flex items-center justify-between gap-2 p-2 bg-white rounded-xl border border-red-100/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/company-admin/tasks?taskId=' + task._id)}>
                             <div className="min-w-0">
                               <p className="text-xs font-black text-slate-800 truncate">{task.title}</p>
                               <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{task.projectId?.name || 'Project'}</p>
@@ -1418,7 +1418,7 @@ const CompanyAdminDashboard = () => {
                       project={task.projectId?.name || 'Unassigned Project'}
                       dueDate={task.dueDate}
                       priority={task.priority}
-                      onClick={() => navigate('/company-admin/tasks')}
+                      onClick={() => navigate('/company-admin/tasks?taskId=' + task._id)}
                     />
                   ))}
                   {upcomingTasks.length === 0 && (

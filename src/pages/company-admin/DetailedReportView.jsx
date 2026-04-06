@@ -47,10 +47,10 @@ const JobCard = ({ job }) => {
                     {/* Cost Breakdown Strip */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6">
                         {[
-                            { label: 'Worker Cost', value: job.breakdown.workerCost, color: 'text-blue-600', bg: 'bg-blue-50' },
-                            { label: 'Subcontractor', value: job.breakdown.subcontractorCost, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                            { label: 'Equipment', value: job.breakdown.equipmentCost, color: 'text-orange-600', bg: 'bg-orange-50' },
-                            { label: 'Materials', value: job.breakdown.materialCost, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                            { label: 'Worker Cost', value: job.financials?.workerCost || 0, color: 'text-blue-600', bg: 'bg-blue-50' },
+                            { label: 'Subcontractor', value: job.financials?.subcontractorCost || 0, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                            { label: 'Equipment', value: job.financials?.equipmentCost || 0, color: 'text-orange-600', bg: 'bg-orange-50' },
+                            { label: 'Materials', value: job.financials?.materialCost || 0, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                         ].map((stat, i) => (
                             <div key={i} className={`p-4 rounded-xl border border-slate-100/50 ${stat.bg}`}>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>

@@ -26,6 +26,8 @@ const CompanyAdminLayout = () => {
   const [projectsList, setProjectsList] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [taskCount, setTaskCount] = useState(0);
+  const [issueCount, setIssueCount] = useState(0);
   const socketRef = useRef();
 
   // Determine current project for dynamic header label
@@ -59,11 +61,48 @@ const CompanyAdminLayout = () => {
     }
   };
 
+  const fetchTaskCount = async () => {
+    try {
+      const res = await api.get('/tasks/schedule');
+      const taskList = res.data || [];
+      let totalCount = 0;
+
+      const countNode = (node) => {
+        if (node.status !== 'completed') {
+          totalCount++;
+        }
+        if (node.subTasks && Array.isArray(node.subTasks)) {
+          node.subTasks.forEach(countNode);
+        }
+      };
+
+      taskList.forEach(countNode);
+      setTaskCount(totalCount);
+    } catch (error) {
+      console.error('Error fetching task count:', error);
+    }
+  };
+
+  const fetchIssueCount = async () => {
+    try {
+      const res = await api.get('/issues');
+      // Only count specifically active issues (not fixed/resolved/closed)
+      const count = (res.data || []).filter(i => 
+        ['open', 'in_progress', 'in_review'].includes(i.status)
+      ).length;
+      setIssueCount(count);
+    } catch (error) {
+      console.error('Error fetching issue count:', error);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
       fetchUnreadCount();
       fetchProjects();
+      fetchTaskCount();
+      fetchIssueCount();
 
       const token = localStorage.getItem('token');
       const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
@@ -84,6 +123,8 @@ const CompanyAdminLayout = () => {
         fetchNotifications();
         fetchUnreadCount();
         fetchProjects();
+        fetchTaskCount();
+        fetchIssueCount();
       }, 60000); // Pulse every minute for safety
 
       return () => {
@@ -121,7 +162,7 @@ const CompanyAdminLayout = () => {
       items: [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/company-admin', permission: 'VIEW_DASHBOARD' },
         { icon: Briefcase, label: 'Projects/Jobs', path: '/company-admin/projects', permission: 'VIEW_PROJECTS' },
-        { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS', badge: 5 },
+        { icon: ClipboardList, label: 'Tasks', path: '/company-admin/tasks', permission: 'VIEW_TASKS', badge: taskCount },
         { icon: MessageSquare, label: 'Chat', path: '/company-admin/chat', permission: 'VIEW_CHAT', badge: chatUnreadCount },
       ]
     },
@@ -133,7 +174,7 @@ const CompanyAdminLayout = () => {
         { icon: Clock, label: 'Timesheets', path: '/company-admin/timesheets', permission: 'VIEW_TIMESHEETS' },
         { icon: FileText, label: 'Daily Logs', path: '/company-admin/daily-logs', permission: 'VIEW_DAILY_LOGS' },
         { icon: Users, label: 'Trade Management', path: '/company-admin/trades', permission: 'VIEW_DAILY_LOGS' },
-        { icon: AlertCircle, label: 'Issues', path: '/company-admin/issues', permission: 'VIEW_ISSUES', badge: 'Alert' },
+        { icon: AlertCircle, label: 'Issues', path: '/company-admin/issues', permission: 'VIEW_ISSUES', badge: issueCount > 0 ? issueCount : null },
         { icon: MapPin, label: 'GPS Tracking', path: '/company-admin/gps', permission: 'VIEW_GPS' },
       ]
     },
@@ -152,7 +193,8 @@ const CompanyAdminLayout = () => {
         { icon: DollarSign, label: 'Payroll', path: '/company-admin/payroll', permission: 'VIEW_PAYROLL' },
         { icon: ClipboardList, label: 'Purchase Orders', path: '/company-admin/purchase-orders', permission: 'VIEW_PO' },
         { icon: FileText, label: 'Invoices', path: '/company-admin/invoices', permission: 'VIEW_INVOICES' },
-        { icon: BarChart2, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
+        { icon: BarChart2, label: 'Reports', path: '/company-admin/project-intel', permission: 'VIEW_REPORTS' },
+        // { icon: Activity, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
         { icon: Users, label: 'Team', path: '/company-admin/team', permission: 'VIEW_TEAM' },
         { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },
       ]

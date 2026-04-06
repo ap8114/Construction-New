@@ -51,6 +51,7 @@ import Equipment from './pages/company-admin/Equipment';
 import WorkerPunch from './pages/company-admin/WorkerPunch';
 import CrewClock from './pages/company-admin/CrewClock';
 import TradeManagement from './pages/company-admin/TradeManagement';
+import ProjectIntelligence from './pages/company-admin/ProjectIntelligence';
 import Deficiencies from './pages/jobs/Deficiencies';
 import JobDetails from './pages/jobs/JobDetails';
 
@@ -165,6 +166,7 @@ function App() {
         <Route path="clock" element={<WorkerPunch />} />
         <Route path="crew-clock" element={<CrewClock />} />
         <Route path="trades" element={<TradeManagement />} />
+        <Route path="project-intel" element={<ProjectIntelligence />} />
         <Route path="settings" element={<Settings />} />
 
         {/* RFI Routes */}
