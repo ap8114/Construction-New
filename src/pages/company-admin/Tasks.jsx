@@ -11,7 +11,7 @@ import Modal from '../../components/Modal';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 
@@ -1472,11 +1472,47 @@ const Tasks = () => {
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
-        if (!over) return;
+        if (!over || active.id === over.id) return;
 
         const activeId = active.id;
         const overId = over.id;
 
+        // --- List View Reordering ---
+        if (view === 'list') {
+            const oldIndex = filteredTasks.findIndex(t => (t._id || t.id) === activeId);
+            const newIndex = filteredTasks.findIndex(t => (t._id || t.id) === overId);
+
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const newOrderedTasks = arrayMove(filteredTasks, oldIndex, newIndex);
+
+                // Optimistic UI update: Replace sorted visible tasks in the main tasks array
+                setTasks(prev => {
+                    const otherTasks = prev.filter(t => !filteredTasks.some(ft => (ft._id || ft.id) === (t._id || t.id)));
+                    return [...newOrderedTasks, ...otherTasks];
+                });
+
+                try {
+                    console.log('DRAG_EVENT: Reordering', newOrderedTasks.length, 'tasks');
+                    const reorderPayload = newOrderedTasks.map((t, idx) => ({
+                        id: t._id || t.id,
+                        position: idx,
+                        status: t.status,
+                        isJobTask: !!t.isJobTask,
+                        isSubTask: !!t.isSubTask
+                    }));
+                    console.log('DRAG_EVENT: Payload:', reorderPayload);
+                    
+                    await api.patch('/tasks/reorder', { tasks: reorderPayload });
+                    console.log('DRAG_EVENT: Reorder call successful');
+                } catch (error) {
+                    console.error('DRAG_EVENT: Failed to reorder tasks:', error);
+                    fetchData();
+                }
+            }
+            return;
+        }
+
+        // --- Kanban View Drag & Drop (Status change) ---
         const activeTask = allFlattenedTasks.find(t => (t._id || t.id) === activeId);
         if (!activeTask) return;
 
@@ -1499,7 +1535,7 @@ const Tasks = () => {
 
             // OPTIMISTIC UPDATES FOR IMMEDIATE FLUIDITY
             if (!isSubTask) {
-                setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
+                setTasks(prev => prev.map(t => (t._id || t.id) === taskId ? { ...t, status: newStatus } : t));
             }
 
             // Always Optimistically update `scheduleTasks` tree to immediately reflect in Board View
