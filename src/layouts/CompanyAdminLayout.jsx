@@ -194,7 +194,8 @@ const CompanyAdminLayout = () => {
         { icon: ClipboardList, label: 'Purchase Orders', path: '/company-admin/purchase-orders', permission: 'VIEW_PO' },
         { icon: FileText, label: 'Invoices', path: '/company-admin/invoices', permission: 'VIEW_INVOICES' },
         { icon: BarChart2, label: 'Reports', path: '/company-admin/project-intel', permission: 'VIEW_REPORTS' },
-        // { icon: Activity, label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
+        // { icon: Activity
+        // , label: 'Reports', path: '/company-admin/reports', permission: 'VIEW_REPORTS' },
         { icon: Users, label: 'Team', path: '/company-admin/team', permission: 'VIEW_TEAM' },
         { icon: Settings, label: 'Settings', path: '/company-admin/settings', permission: 'ACCESS_SETTINGS' },
       ]

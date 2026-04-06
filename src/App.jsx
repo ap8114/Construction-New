@@ -102,6 +102,7 @@ function App() {
 
       {/* Public Pages */}
       <Route path="/submit-bid/:drawingId" element={<PublicBidSubmission />} />
+      <Route path="/public/purchase-order/:id" element={<PurchaseOrderDetail isPublic={true} />} />
 
       {/* Super Admin Routes */}
       <Route

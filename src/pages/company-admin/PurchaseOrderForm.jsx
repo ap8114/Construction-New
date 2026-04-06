@@ -267,53 +267,73 @@ const PurchaseOrderForm = () => {
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {formData.items.map((item, index) => (
-                                <div key={index} className="grid grid-cols-12 gap-4 p-4 rounded-3xl bg-slate-50/50 border border-slate-100 group">
-                                    <div className="col-span-4 space-y-1">
-                                        <input
-                                            type="text"
-                                            placeholder="Item Name"
-                                            className="w-full bg-transparent border-none p-0 font-black text-slate-800 text-sm focus:ring-0"
-                                            value={item.itemName}
-                                            onChange={e => handleItemChange(index, 'itemName', e.target.value)}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Description"
-                                            className="w-full bg-transparent border-none p-0 font-bold text-slate-400 text-[10px] focus:ring-0"
-                                            value={item.description}
-                                            onChange={e => handleItemChange(index, 'description', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <input
-                                            type="number"
-                                            placeholder="Qty"
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 font-black text-slate-800 text-sm text-center"
-                                            value={item.quantity}
-                                            onChange={e => handleItemChange(index, 'quantity', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <input
-                                            type="number"
-                                            placeholder="Rate"
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 font-black text-slate-800 text-sm text-right"
-                                            value={item.unitPrice}
-                                            onChange={e => handleItemChange(index, 'unitPrice', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-span-3 flex items-center justify-end font-black text-slate-900 pr-2">
-                                        ${item.total.toLocaleString()}
-                                    </div>
-                                    <div className="col-span-1 flex items-center justify-center">
-                                        <button
-                                            onClick={() => handleRemoveItem(index)}
-                                            className="text-slate-300 hover:text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                <div key={index} className="group relative bg-slate-50/50 hover:bg-white p-5 rounded-[28px] border border-slate-100 hover:border-blue-200/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
+                                    <div className="flex flex-col md:flex-row gap-6">
+                                        {/* Item Identification */}
+                                        <div className="flex-1 space-y-3">
+                                            <div className="space-y-1">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Item Name (e.g. Concrete mix)"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-black text-slate-800 text-sm outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all"
+                                                    value={item.itemName}
+                                                    onChange={e => handleItemChange(index, 'itemName', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Detailed description or SKU..."
+                                                    className="w-full bg-white/50 border border-slate-100 rounded-xl px-4 py-2 font-bold text-slate-500 text-[10px] outline-none focus:border-blue-400/30 focus:ring-4 focus:ring-blue-400/5 transition-all"
+                                                    value={item.description}
+                                                    onChange={e => handleItemChange(index, 'description', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Pricing & Math */}
+                                        <div className="flex items-start gap-4 md:w-auto w-full">
+                                            <div className="w-24">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Qty</label>
+                                                <input
+                                                    type="number"
+                                                    placeholder="0"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 font-black text-slate-800 text-sm text-center outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all"
+                                                    value={item.quantity}
+                                                    onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="w-32">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Unit Price</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="0.00"
+                                                        className="w-full bg-white border border-slate-200 rounded-xl pl-6 pr-3 py-2.5 font-black text-slate-800 text-sm text-right outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all"
+                                                        value={item.unitPrice}
+                                                        onChange={e => handleItemChange(index, 'unitPrice', e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="min-w-[100px]">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 text-right mr-1">Total</label>
+                                                <div className="py-2.5 px-3 bg-blue-50/50 border border-blue-100/50 rounded-xl text-right font-black text-blue-600 text-sm">
+                                                    ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
+                                            <div className="pt-8">
+                                                <button
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Remove Item"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
