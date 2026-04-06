@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import {
     Plus, Search, Filter, Calendar, MoreVertical,
@@ -350,6 +351,13 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                 {props.canManage && (
                     <td className="px-4 py-2.5 text-right">
                         <div className="flex justify-end gap-1">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); props.onSaveAsTemplate && props.onSaveAsTemplate(task); }} 
+                                title="Save as Template"
+                                className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                            >
+                                <Briefcase size={13} />
+                            </button>
                             <button onClick={(e) => { e.stopPropagation(); props.onEdit(task); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                                 <Edit size={13} />
                             </button>
@@ -459,7 +467,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
-const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths }) => {
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName }) => {
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -622,7 +630,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                 </td>
 
                 {/* Project (Column 3) */}
-                <td className="px-4 py-2.5 text-xs font-bold text-slate-300">—</td>
+                <td className={`px-4 py-2.5 text-xs font-bold text-slate-300 ${isCompactView ? 'truncate' : 'whitespace-normal'}`}>{projectName || '—'}</td>
 
                 <td className="px-4 py-2.5">
                     {isEditing ? (
@@ -838,7 +846,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
             )}
 
             {/* ── Recursive children ── */}
-            {childrenOpen && hasChildren && renderChildren(subTask._id, depth + 1, [...levelLines, !isLast])}
+            {childrenOpen && hasChildren && renderChildren(subTask._id, depth + 1, [...levelLines, !isLast], projectName)}
         </React.Fragment>
     );
 };
@@ -1136,6 +1144,11 @@ const Tasks = () => {
     const [jobs, setJobs] = useState([]);
     const [isCompactView, setIsCompactView] = useState(true);
 
+    // Quick Template States
+    const [isQuickTemplateModalOpen, setIsQuickTemplateModalOpen] = useState(false);
+    const [quickTemplateName, setQuickTemplateName] = useState('');
+    const [taskForQuickTemplate, setTaskForQuickTemplate] = useState(null);
+
     // Scroll to highlighted task
     useEffect(() => {
         if (highlightTaskId && !loading && tasks.length > 0) {
@@ -1192,10 +1205,11 @@ const Tasks = () => {
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [templateFormData, setTemplateFormData] = useState({
         templateName: '',
-        role: '',
-        title: '',
+        assignedRole: '',
+        taskTitle: '',
         description: '',
         priority: 'Medium',
+        estimatedHours: 0,
         steps: []
     });
     const [subTasksList, setSubTasksList] = useState([]);
@@ -1275,6 +1289,33 @@ const Tasks = () => {
             const res = await api.get('/task-templates');
             setTemplates(res.data);
         } catch (error) { console.error('Error fetching templates:', error); }
+    };
+
+    const handleSaveAsTemplate = (task) => {
+        setTaskForQuickTemplate(task);
+        setQuickTemplateName(`${task.title} Template`);
+        setIsQuickTemplateModalOpen(true);
+    };
+
+    const confirmQuickSaveTemplate = async () => {
+        if (!taskForQuickTemplate || !quickTemplateName.trim()) return;
+        try {
+            setIsSubmitting(true);
+            await api.post('/task-templates/from-task', {
+                taskId: taskForQuickTemplate._id || taskForQuickTemplate.id,
+                isJobTask: !!taskForQuickTemplate.isJobTask,
+                templateName: quickTemplateName.trim()
+            });
+            toast.success('Task saved as template!');
+            setIsQuickTemplateModalOpen(false);
+            setTaskForQuickTemplate(null);
+            fetchTemplates();
+        } catch (error) {
+            console.error('Error saving task as template:', error);
+            toast.error('Failed to save template');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const fetchData = async () => {
@@ -1704,7 +1745,6 @@ const Tasks = () => {
                 const taskId = editingTask._id || editingTask.id;
                 const endpoint = isJobTask ? `/job-tasks/${taskId}` : `/tasks/${taskId}`;
 
-                // If it's a JobTask, we may need to adjust the payload (JobTask expects single assignedTo and lowercase priority)
                 const finalPayload = isJobTask ? {
                     ...payload,
                     assignedTo: payload.assignedTo[0] || undefined,
@@ -1712,28 +1752,33 @@ const Tasks = () => {
                 } : payload;
 
                 await api.patch(endpoint, finalPayload);
+                toast.success('Task updated successfully');
             } else {
                 if (formData.jobId) {
-                    // Create JobTask
                     const jobTaskPayload = {
                         jobId: formData.jobId,
                         title: formData.title,
                         description: formData.description,
                         assignedTo: formData.assignedTo[0],
+                        assignedRoleType: formData.assignedRoleType || '',
                         priority: formData.priority.toLowerCase(),
                         status: formData.status === 'todo' ? 'pending' : formData.status,
-                        dueDate: formData.dueDate || undefined
+                        dueDate: formData.dueDate || undefined,
+                        startDate: formData.startDate || undefined,
+                        subTasksList: subTasksList.length > 0 ? subTasksList : undefined
                     };
                     await api.post('/job-tasks', jobTaskPayload);
                 } else {
                     await api.post('/tasks', payload);
                 }
+                toast.success('Task created successfully');
             }
             if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             await fetchData();
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving task:', error);
+            toast.error('Failed to save task');
         } finally {
             setIsSubmitting(false);
         }
@@ -1750,8 +1795,10 @@ const Tasks = () => {
             if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
             setIsDeleteModalOpen(false);
             setTaskToDelete(null);
+            toast.success('Task deleted successfully');
         } catch (error) {
             console.error('Error deleting task:', error);
+            toast.error('Failed to delete task');
         } finally {
             setIsSubmitting(false);
         }
@@ -1776,8 +1823,10 @@ const Tasks = () => {
             }
 
             fetchData(); // Refresh main task progress
+            toast.success('Sub-task added');
         } catch (error) {
             console.error('Error saving quick sub-task:', error);
+            toast.error('Failed to add sub-task');
         } finally {
             setIsSubmittingSubTask(false);
         }
@@ -1807,6 +1856,7 @@ const Tasks = () => {
                         return prev.filter(st => !toRemove.has(st._id));
                     });
                 }
+                toast.success('Sub-task deleted');
             } else {
                 const res = await api.patch(`/tasks/${taskId}/subtasks/${subTask._id}`, updates);
 
@@ -1818,11 +1868,12 @@ const Tasks = () => {
                 if (selectedTask?._id === taskId) {
                     setSubTasks(prev => prev.map(st => st._id === subTask._id ? res.data : st));
                 }
+                toast.success('Sub-task updated');
             }
             fetchData();
         } catch (error) {
             console.error('Error updating sub-task:', error);
-            alert('Failed to update sub-task');
+            toast.error('Failed to update sub-task');
         }
     };
 
@@ -2097,10 +2148,11 @@ const Tasks = () => {
                                                             isHighlighted={highlightTaskId === task._id}
                                                             onTaskClick={openDetails}
                                                             onToggleExpansion={toggleTaskExpansion}
+                                                            onSaveAsTemplate={handleSaveAsTemplate}
                                                             onEdit={openEdit}
                                                             onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
                                                             renderChildren={() => {
-                                                                const renderSubTaskRows = (parentId, depth, levelLines = []) => {
+                                                                const renderSubTaskRows = (parentId, depth, levelLines = [], currentProjectName) => {
                                                                     const nodes = taskSubTasks.filter(st =>
                                                                         parentId === null
                                                                             ? !st.parentSubTaskId
@@ -2124,12 +2176,13 @@ const Tasks = () => {
                                                                             levelLines={levelLines}
                                                                             isCompactView={isCompactView}
                                                                             columnWidths={columnWidths}
+                                                                            projectName={currentProjectName}
                                                                         />
                                                                     ));
                                                                 };
                                                                 return (
                                                                     <>
-                                                                        {renderSubTaskRows(null, 0, [true])}
+                                                                        {renderSubTaskRows(null, 0, [true], task.projectId?.name || task.jobName || '—')}
                                                                         {canManage && (
                                                                             <QuickAddSubTask
                                                                                 taskId={task._id}
@@ -2313,8 +2366,31 @@ const Tasks = () => {
                         />
                     </div>
 
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-3">
+                        <div className="flex gap-2">
+                           <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
+                           {!editingTask && (
+                               <button 
+                                   type="button" 
+                                   onClick={() => {
+                                       setTemplateFormData({
+                                           templateName: formData.title + ' Template',
+                                           assignedRole: formData.assignedRoleType || '',
+                                           taskTitle: formData.title,
+                                           description: formData.description || '',
+                                           priority: formData.priority || 'Medium',
+                                           estimatedHours: 0,
+                                           steps: []
+                                       });
+                                       setIsSaveTemplateModalOpen(true);
+                                   }}
+                                   disabled={!formData.title}
+                                   className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2 transition-all disabled:opacity-50"
+                               >
+                                   <Save size={12} /> Save Template
+                               </button>
+                           )}
+                        </div>
                         <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-tight hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2 disabled:opacity-60">
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
                             {editingTask ? 'Save Changes' : 'Create Task'}
@@ -2465,21 +2541,7 @@ const Tasks = () => {
                         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                             {canManage && (
                                 <button
-                                    onClick={() => {
-                                        setTemplateFormData({
-                                            templateName: selectedTask.title + ' Template',
-                                            role: selectedTask.assignedRoleType || '',
-                                            title: selectedTask.title,
-                                            description: selectedTask.description || '',
-                                            priority: selectedTask.priority || 'Medium',
-                                            steps: subTasks.map(st => ({
-                                                title: st.title || '',
-                                                remarks: st.remarks || '',
-                                                priority: st.priority || 'Medium'
-                                            }))
-                                        });
-                                        setIsSaveTemplateModalOpen(true);
-                                    }}
+                                    onClick={() => handleSaveAsTemplate(selectedTask)}
                                     className="px-6 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-xs uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2"
                                 >
                                     <Save size={14} /> Save as Template
@@ -2497,7 +2559,7 @@ const Tasks = () => {
                 <form
                     onSubmit={async (e) => {
                         e.preventDefault();
-                        if (!templateFormData.templateName || !templateFormData.title || !templateFormData.role) {
+                        if (!templateFormData.templateName || !templateFormData.taskTitle || !templateFormData.assignedRole) {
                             alert('Template Name, Role, and Task Title are required');
                             return;
                         }
@@ -2562,9 +2624,9 @@ const Tasks = () => {
                             <div className="relative">
                                 <select
                                     required
-                                    value={templateFormData.role}
-                                    onChange={e => setTemplateFormData({ ...templateFormData, role: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none appearance-none focus:border-blue-500 cursor-pointer"
+                                    value={templateFormData.assignedRole}
+                                    onChange={e => setTemplateFormData({ ...templateFormData, assignedRole: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none appearance-none focus:border-blue-500 cursor-pointer text-sm"
                                 >
                                     <option value="">Select Role...</option>
                                     <option value="ELECTRICIAN">Electrician</option>
@@ -2572,6 +2634,8 @@ const Tasks = () => {
                                     <option value="CARPENTER">Carpenter</option>
                                     <option value="FOREMAN">Foreman</option>
                                     <option value="PM">PM</option>
+                                    <option value="WORKER">Worker</option>
+                                    <option value="SUBCONTRACTOR">Subcontractor</option>
                                     <option value="OTHER">Other</option>
                                 </select>
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
@@ -2590,17 +2654,29 @@ const Tasks = () => {
                             />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 flex-1">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <Target size={12} className="text-blue-500" /> Default Task Title
                             </label>
                             <input
                                 required
                                 type="text"
-                                value={templateFormData.title}
-                                onChange={e => setTemplateFormData({ ...templateFormData, title: e.target.value })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500"
+                                value={templateFormData.taskTitle}
+                                onChange={e => setTemplateFormData({ ...templateFormData, taskTitle: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500 text-sm"
                                 placeholder="Main task name when applied"
+                            />
+                        </div>
+                        <div className="space-y-1.5 w-32 shrink-0">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <Clock size={12} className="text-blue-500" /> est. Hours
+                            </label>
+                            <input
+                                type="number"
+                                value={templateFormData.estimatedHours}
+                                onChange={e => setTemplateFormData({ ...templateFormData, estimatedHours: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500 text-sm"
+                                placeholder="0"
                             />
                         </div>
                     </div>
@@ -2713,14 +2789,19 @@ const Tasks = () => {
                                     <div>
                                         <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            {tmpl.role && (
+                                            {tmpl.assignedRole && (
                                                 <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
-                                                    {tmpl.role}
+                                                    {tmpl.assignedRole}
                                                 </span>
                                             )}
                                             <span className="inline-flex items-center text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-tighter border border-slate-200 leading-none">
                                                 {tmpl.steps?.length || 0} sub-tasks
                                             </span>
+                                            {tmpl.estimatedHours > 0 && (
+                                                <span className="inline-flex items-center text-[9px] font-black text-blue-400 bg-blue-50/50 px-2 py-1 rounded-md uppercase tracking-tighter border border-blue-100 leading-none">
+                                                    <Clock size={10} className="mr-1" /> {tmpl.estimatedHours}h
+                                                </span>
+                                            )}
                                             <span className={`inline-flex items-center text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority]}`}>
                                                 {tmpl.priority}
                                             </span>
@@ -2733,9 +2814,10 @@ const Tasks = () => {
                                                     setEditingTemplate(tmpl);
                                                     setTemplateFormData({
                                                         templateName: tmpl.templateName || '',
-                                                        role: tmpl.role || '',
-                                                        title: tmpl.title || '',
+                                                        assignedRole: tmpl.assignedRole || '',
+                                                        taskTitle: tmpl.taskTitle || '',
                                                         description: tmpl.description || '',
+                                                        estimatedHours: tmpl.estimatedHours || 0,
                                                         priority: tmpl.priority || 'Medium',
                                                         steps: tmpl.steps || []
                                                     });
@@ -2751,8 +2833,9 @@ const Tasks = () => {
                                                     if (window.confirm('Delete this template?')) {
                                                         try {
                                                             await api.delete(`/task-templates/${tmpl._id}`);
+                                                            toast.success('Template deleted');
                                                             fetchTemplates();
-                                                        } catch (err) { alert('Failed to delete template'); }
+                                                        } catch (err) { toast.error('Failed to delete template'); }
                                                     }
                                                 }}
                                                 className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
@@ -2765,10 +2848,11 @@ const Tasks = () => {
                                         <button
                                             onClick={() => {
                                                 setFormData({
-                                                    title: tmpl.title,
+                                                    title: tmpl.taskTitle,
                                                     description: tmpl.description || '',
                                                     priority: tmpl.priority || 'Medium',
-                                                    projectId: '', assignedTo: [], assignedRoleType: '', status: 'todo', dueDate: '', startDate: '', category: 'TASK'
+                                                    assignedRoleType: tmpl.assignedRole,
+                                                    projectId: '', assignedTo: [], status: 'todo', dueDate: '', startDate: '', category: 'TASK'
                                                 });
                                                 setSubTasksList(tmpl.steps || []);
                                                 setIsTemplateModalOpen(false);
@@ -2781,6 +2865,58 @@ const Tasks = () => {
                                     </div>
                                 </div>
                             ))}
+                    </div>
+                </div>
+            </Modal>
+            {/* ── Quick Save Template Modal ── */}
+            <Modal
+                isOpen={isQuickTemplateModalOpen}
+                onClose={() => setIsQuickTemplateModalOpen(false)}
+                title="Save as Template"
+            >
+                <div className="p-2 space-y-6">
+                    <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-100 flex flex-col items-center justify-center text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 mb-4 transition-transform hover:scale-110">
+                            <Briefcase size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Create Reusable Template</h3>
+                        <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-2 px-6">
+                            Convert "{taskForQuickTemplate?.title}" and all its nested subtasks into a permanent template.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4 px-4 pb-2">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-2 block">
+                                Template Name
+                            </label>
+                            <input
+                                autoFocus
+                                required
+                                type="text"
+                                value={quickTemplateName}
+                                onChange={e => setQuickTemplateName(e.target.value)}
+                                placeholder="Enter template name..."
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-black text-slate-800 outline-none focus:border-emerald-400 focus:bg-white transition-all shadow-sm shadow-slate-100"
+                            />
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <button
+                                onClick={() => setIsQuickTemplateModalOpen(false)}
+                                className="flex-1 px-6 py-4 rounded-2xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmQuickSaveTemplate}
+                                disabled={isSubmitting || !quickTemplateName.trim()}
+                                className="flex-1 px-6 py-4 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition shadow-lg shadow-emerald-200 active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+                            >
+                                {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Save size={16} />}
+                                Confirm Save
+                            </button>
+                        </div>
                     </div>
                 </div>
             </Modal>

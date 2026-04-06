@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
@@ -93,7 +94,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 function App() {
   return (
-    <Routes>
+    <>
+      <Toaster position="top-right" reverseOrder={false} />
+      <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -223,6 +226,7 @@ function App() {
       </Route>
 
     </Routes>
+    </>
   );
 }
 

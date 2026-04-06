@@ -6,10 +6,11 @@ import {
     Users, MapPin, DollarSign, ChevronRight, Layout,
     Trash2, Edit, Save, X, ArrowLeft, TrendingUp,
     AlertTriangle, ShoppingCart, Download, History, UserPlus,
-    ChevronDown, ChevronUp, Check, Loader, MessageSquare
+    ChevronDown, ChevronUp, Check, Loader, MessageSquare, Info
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/Modal';
 import TaskModal from '../../components/jobs/TaskModal';
 import CancellationModal from '../../components/jobs/CancellationModal';
 
@@ -50,6 +51,8 @@ const JobDetails = () => {
     const [newNote, setNewNote] = useState('');
     const [notesLoading, setNotesLoading] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState(null);
+    const [templates, setTemplates] = useState([]);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     const fetchJobDetails = async () => {
         try {
@@ -84,7 +87,30 @@ const JobDetails = () => {
 
     useEffect(() => {
         fetchJobDetails();
+        fetchTemplates();
     }, [jobId]);
+
+    const fetchTemplates = async () => {
+        try {
+            const res = await api.get('/task-templates');
+            setTemplates(res.data);
+        } catch (err) { console.error('Error fetching templates:', err); }
+    };
+
+    const handleApplyTemplate = async (templateId) => {
+        try {
+            setSubmitting(true);
+            await api.post(`/task-templates/${templateId}/apply`, { jobId });
+            setIsTemplateModalOpen(false);
+            fetchJobDetails();
+            alert('Template applied successfully!');
+        } catch (err) {
+            console.error('Error applying template:', err);
+            alert(err.response?.data?.message || 'Failed to apply template');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     // Handle assigning a worker to a task (Foreman action)
     const handleAssignWorker = async (workerId) => {
@@ -677,6 +703,14 @@ const JobDetails = () => {
                                 <button className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                                     Priority: All
                                 </button>
+                                {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                    <button 
+                                        onClick={() => setIsTemplateModalOpen(true)}
+                                        className="flex-1 md:flex-none px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-100 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                    >
+                                        <Briefcase size={14} /> Import Template
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -1255,6 +1289,56 @@ const JobDetails = () => {
                     </div>
                 </div>
             )}
+            {/* Template Library Modal */}
+            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Import Task Template">
+                <div className="space-y-4">
+                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
+                        <Info size={18} className="text-blue-500 mt-0.5" />
+                        <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
+                            Select a task structure to import into this job. This will create a new main task and all associated subtasks automatically.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                        {templates.length === 0 ? (
+                            <div className="p-12 text-center rounded-[32px] border-2 border-dashed border-slate-100 bg-slate-50/30">
+                                <Briefcase size={32} className="mx-auto text-slate-200 mb-3" />
+                                <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest leading-none">No templates found</p>
+                                <p className="text-slate-300 text-[10px] mt-2 font-bold leading-none">Create templates in the main Tasks page.</p>
+                            </div>
+                        ) : (
+                            templates.map(tmpl => (
+                                <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all duration-300">
+                                    <div className="flex-1">
+                                        <h3 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{tmpl.templateName}</h3>
+                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                            <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
+                                                {tmpl.assignedRole || 'Any Role'}
+                                            </span>
+                                            <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2.5 py-1 rounded-md uppercase tracking-tight border border-slate-200 leading-none">
+                                                {tmpl.steps?.length || 0} Subtasks
+                                            </span>
+                                            {tmpl.estimatedHours > 0 && (
+                                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md uppercase tracking-tight border border-emerald-100 leading-none">
+                                                    {tmpl.estimatedHours}h
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleApplyTemplate(tmpl._id)}
+                                        disabled={submitting}
+                                        className="h-10 px-6 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {submitting ? <Loader size={14} className="animate-spin" /> : <Plus size={14} />}
+                                        Apply
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

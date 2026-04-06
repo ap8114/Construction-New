@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
     ShoppingCart, Plus, Search, Filter, CheckCircle, XCircle,
     FileText, Truck, AlertCircle, DollarSign, Trash2, Loader,
@@ -9,6 +10,7 @@ import {
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/PurchaseOrders.css';
+import Modal from '../../components/Modal';
 
 const PurchaseOrders = () => {
     const navigate = useNavigate();
@@ -21,6 +23,9 @@ const PurchaseOrders = () => {
     const [orders, setOrders] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [poToDelete, setPoToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,15 +72,27 @@ const PurchaseOrders = () => {
         };
         fetchJobs();
     }, [projectFilter]);
-    const handleDelete = async (e, id) => {
+    const handleDelete = (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this purchase order?')) {
-            try {
-                await api.delete(`/purchase-orders/${id}`);
-                setOrders(orders.filter(o => o._id !== id));
-            } catch (error) {
-                console.error('Error deleting purchase order:', error);
-            }
+        const po = orders.find(o => o._id === id);
+        setPoToDelete(po);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!poToDelete) return;
+        try {
+            setIsDeleting(true);
+            await api.delete(`/purchase-orders/${poToDelete._id}`);
+            setOrders(orders.filter(o => o._id !== poToDelete._id));
+            toast.success('Purchase order deleted');
+            setIsDeleteModalOpen(false);
+            setPoToDelete(null);
+        } catch (error) {
+            console.error('Error deleting purchase order:', error);
+            toast.error('Failed to delete purchase order');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -302,6 +319,41 @@ const PurchaseOrders = () => {
                     </table>
                 </div>
             </div>
+            {/* ── Delete Confirmation Modal ── */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Delete Purchase Order"
+            >
+                <div className="p-2 space-y-6">
+                    <div className="bg-red-50 rounded-3xl p-6 border border-red-100 flex flex-col items-center justify-center text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-red-500 shadow-sm border border-red-100 mb-4 transition-transform hover:scale-110">
+                            <Trash2 size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Destructive Action</h3>
+                        <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-2 px-6 leading-relaxed">
+                            Are you sure you want to delete <span className="text-red-600 font-black">PO #{poToDelete?.poNumber}</span>? This action cannot be undone.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 px-2 pb-2">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 px-6 py-4 rounded-2xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+                        >
+                            {isDeleting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            Delete Forever
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

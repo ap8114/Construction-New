@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
     ChevronLeft, Printer, Mail, Truck,
     CheckCircle, XCircle, Clock, Package,
@@ -13,6 +14,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logo from '../../assets/images/Logo.png';
 import '../../styles/PurchaseOrders.css';
+import Modal from '../../components/Modal';
 
 const PurchaseOrderDetail = ({ isPublic = false }) => {
     const { id } = useParams();
@@ -23,6 +25,9 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
     const [loading, setLoading] = useState(true);
     const [sendingEmail, setSendingEmail] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState(null);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
     const isAdmin = !isPublic && (user?.role === 'COMPANY_OWNER');
     const isPM = !isPublic && (user?.role === 'PM');
@@ -52,16 +57,25 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
         fetchPO();
     }, [id]);
 
-    const handleStatusUpdate = async (newStatus) => {
-        if (!window.confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+    const handleStatusUpdate = (newStatus) => {
+        setPendingStatus(newStatus);
+        setIsStatusModalOpen(true);
+    };
+
+    const confirmStatusUpdate = async () => {
+        if (!pendingStatus) return;
         try {
-            await api.patch(`/purchase-orders/${id}`, { status: newStatus });
-            setPo({ ...po, status: newStatus });
-            return true;
+            setIsUpdatingStatus(true);
+            await api.patch(`/purchase-orders/${id}`, { status: pendingStatus });
+            setPo({ ...po, status: pendingStatus });
+            toast.success(`Status updated to ${pendingStatus}`);
+            setIsStatusModalOpen(false);
+            setPendingStatus(null);
         } catch (error) {
             console.error('Error updating status:', error);
-            alert('Failed to update status');
-            return false;
+            toast.error('Failed to update status');
+        } finally {
+            setIsUpdatingStatus(false);
         }
     };
 
@@ -236,7 +250,7 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
         } catch (error) {
             console.error('PDF Generation Error:', error);
             if (isDirectDownload) {
-                alert('Generation failed. Please refresh the page.');
+                toast.error('Generation failed. Please refresh the page.');
             }
         }
     };
@@ -244,11 +258,9 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
     const handleSendPO = async () => {
         const vendorEmail = po.vendorEmail || po.vendorId?.email;
         if (!vendorEmail) {
-            alert("Vendor email is missing! Please update the vendor's email before sending.");
+            toast.error("Vendor email is missing! Please update the vendor's email before sending.");
             return;
         }
-
-        if (!window.confirm(`This will send PO ${po.poNumber} to ${vendorEmail}. Continue?`)) return;
 
         setSendingEmail(true);
         try {
@@ -288,11 +300,11 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             // If email sent successfully, update status to "Sent"
             const success = await handleStatusUpdate('Sent');
             if (success) {
-                alert('Purchase Order sent successfully to vendor!');
+                toast.success('Purchase Order sent successfully to vendor!');
             }
         } catch (error) {
             console.error('FAILED to send PO email:', error);
-            alert('Failed to send email. Please check your EmailJS configuration.');
+            toast.error('Failed to send email. Please check your EmailJS configuration.');
         } finally {
             setSendingEmail(false);
         }
@@ -581,6 +593,54 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                     </div>
                 </div>
             </div>
+
+            {/* ── Status Confirmation Modal ── */}
+            <Modal
+                isOpen={isStatusModalOpen}
+                onClose={() => setIsStatusModalOpen(false)}
+                title="Update PO Status"
+            >
+                <div className="p-2 space-y-6">
+                    <div className="bg-blue-50 rounded-3xl p-6 border border-blue-100 flex flex-col items-center justify-center text-center">
+                        <div className={`w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-blue-100 mb-4 transition-transform hover:scale-110 ${
+                            (pendingStatus === 'Approved' || pendingStatus === 'Delivered') ? 'text-emerald-500' : 
+                            pendingStatus === 'Cancelled' ? 'text-red-500' : 
+                            pendingStatus === 'Sent' ? 'text-indigo-500' : 'text-blue-500'
+                        }`}>
+                            {(pendingStatus === 'Approved' || pendingStatus === 'Delivered') ? <CheckCircle size={32} /> : 
+                             pendingStatus === 'Cancelled' ? <XCircle size={32} /> : 
+                             pendingStatus === 'Sent' ? <Send size={32} /> : <FileText size={32} />}
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Confirm Status Change</h3>
+                        <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-2 px-6 leading-relaxed">
+                            Are you sure you want to change the status of <span className="text-blue-600">PO #{po?.poNumber}</span> to <span className="font-black text-slate-800">"{pendingStatus}"</span>?
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 px-2 pb-2">
+                        <button
+                            onClick={() => setIsStatusModalOpen(false)}
+                            className="flex-1 px-6 py-4 rounded-2xl border-2 border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmStatusUpdate}
+                            disabled={isUpdatingStatus}
+                            className={`flex-1 px-6 py-4 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition shadow-lg active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2 ${
+                                (pendingStatus === 'Approved' || pendingStatus === 'Delivered') ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 
+                                pendingStatus === 'Cancelled' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 
+                                pendingStatus === 'Sent' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                            }`}
+                        >
+                            {isUpdatingStatus ? <Clock size={16} className="animate-spin" /> : 
+                             (pendingStatus === 'Approved' || pendingStatus === 'Delivered') ? <CheckCircle size={16} /> : 
+                             pendingStatus === 'Sent' ? <Send size={16} /> : <FileText size={16} />}
+                            Confirm {pendingStatus}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
