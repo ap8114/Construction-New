@@ -7,7 +7,7 @@ import {
     FileText, User, Calendar, DollarSign,
     MoreVertical, Trash2, Send, Archive, Download
 } from 'lucide-react';
-import api from '../../utils/api';
+import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import emailjs from '@emailjs/browser';
 import { jsPDF } from 'jspdf';
@@ -90,10 +90,10 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             const pageWidth = doc.internal.pageSize.width;
 
             // Robust data for Public View
-            const companyName = data.projectId?.companyId?.name || user?.companyName || "Kaal Construction";
-            const companyEmail = data.projectId?.companyId?.email || user?.email || "procurement@kaal.ca";
-            const companyPhone = data.projectId?.companyId?.phone || user?.phone || "+1 (555) 000-0000";
-            const companyAddress = data.projectId?.companyId?.address || user?.companyAddress || "123 Construction Road";
+            const companyName = data.companyId?.name || data.projectId?.companyId?.name || user?.companyName || "Kaal Construction";
+            const companyEmail = data.companyId?.email || data.projectId?.companyId?.email || user?.email || "procurement@kaal.ca";
+            const companyPhone = data.companyId?.phone || data.projectId?.companyId?.phone || user?.phone || "+1 (555) 000-0000";
+            const companyAddress = data.companyId?.address || data.projectId?.companyId?.address || user?.companyAddress || "123 Construction Road";
 
             // 1. Header Section
             // Company Logo - WAIT FOR LOAD
@@ -265,12 +265,14 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
         setSendingEmail(true);
         try {
             // Robust company name retrieval
-            const fetchedCompany = po?.projectId?.companyId || user?.companyId;
-            const finalCompanyName = fetchedCompany?.name || user?.companyName || "Kaal Construction";
-            const finalCompanyAddress = fetchedCompany?.address || user?.companyAddress || "123 Construction Road";
+            const fetchedCompany = po?.companyId || po?.projectId?.companyId || user?.companyId;
+            const finalCompanyName = (typeof fetchedCompany === 'object' ? fetchedCompany?.name : null) || user?.companyName || "Kaal Construction";
+            const finalCompanyAddress = (typeof fetchedCompany === 'object' ? fetchedCompany?.address : null) || user?.companyAddress || "123 Construction Road";
             
             // Public Logo URL (Swap the link below with your hosted Kaal Logo)
-            const publicLogoUrl = fetchedCompany?.logo || "https://img.icons8.com/color/96/ring.png"; // Colorful ring fallback
+            const publicLogoUrl = (typeof fetchedCompany === 'object' && fetchedCompany?.logo) 
+                ? getServerUrl(fetchedCompany.logo) 
+                : "https://img.icons8.com/color/96/ring.png"; // Colorful ring fallback
 
             // EmailJS Integration
             const templateParams = {
@@ -291,10 +293,10 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             };
 
             await emailjs.send(
-                'service_0p44gs3', 
-                'template_ids6voz', 
+                'service_nwnykea', 
+                'template_0edtxvt', 
                 templateParams, 
-                'ZwLj_o67UwVllxpWX'
+                'Vr5-H0-BgfNboKu2q'
             );
 
             // If email sent successfully, update status to "Sent"

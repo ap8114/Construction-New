@@ -171,26 +171,31 @@ const Drawings = () => {
       // 2. EmailJS Logic
       const selectedTradeData = trades.filter(t => selectedTrades.includes(t._id));
 
-      const emailPromises = selectedTradeData.map(trade => {
-        // Prepare template parameters matching your screenshot EXACTLY
-        const templateParams = {
-          to_email: trade.email,
-          trade_name: trade.name,
-          drawing_title: selectedDrawing.title,
-          project_name: selectedDrawing.projectId?.name || 'Construction Project',
-          title: selectedDrawing.title, // Contact Us: {{title}}
-          name: user?.fullName || 'Company Admin', // Maps to {{name}} in your screenshot
-          email: user?.email || 'admin@kaal.com', // Maps to {{email}} in your screenshot
-          download_link: getServerUrl(selectedDrawing.versions?.[selectedDrawing.versions.length - 1]?.fileUrl),
-          bid_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`
-        };
+        const fetchedCompany = selectedDrawing?.companyId || user?.companyId;
+        const publicLogoUrl = (typeof fetchedCompany === 'object' && fetchedCompany?.logo) 
+          ? getServerUrl(fetchedCompany.logo) 
+          : "https://img.icons8.com/color/96/ring.png";
+
+        const emailPromises = selectedTradeData.map(trade => {
+          const templateParams = {
+            to_email: trade.email,
+            trade_name: trade.name,
+            drawing_title: selectedDrawing.title,
+            project_name: selectedDrawing.projectId?.name || 'Construction Project',
+            title: selectedDrawing.title, // Contact Us: {{title}}
+            name: user?.fullName || 'Company Admin', // Maps to {{name}} in your screenshot
+            email: user?.email || 'admin@kaal.com', // Maps to {{email}} in your screenshot
+            logoUrl: publicLogoUrl, // Maps to {{logoUrl}}
+            download_link: getServerUrl(selectedDrawing.versions?.[selectedDrawing.versions.length - 1]?.fileUrl),
+            bid_link: `${window.location.origin}/submit-bid/${selectedDrawing._id}?vendorId=${trade._id}`
+          };
 
         // Note: Please replace these with your actual IDs from EmailJS Dashboard
         return emailjs.send(
-          'service_1aid9rt', // Your Service ID
-          'template_wflydl5', // Your Template ID
+          'service_nwnykea', // Your Service ID
+          'template_zfy7qdu', // Your Template ID
           templateParams,
-          '2L1gfv6cdJc9YuzdP' // Your Public Key
+          'Vr5-H0-BgfNboKu2q' // Your Public Key
         );
       });
 

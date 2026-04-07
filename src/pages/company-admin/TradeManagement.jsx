@@ -31,6 +31,8 @@ const TradeManagement = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+    const [isDeleteBidModalOpen, setIsDeleteBidModalOpen] = useState(false);
+    const [bidToDelete, setBidToDelete] = useState(null);
     const [bids, setBids] = useState([]);
     const [view, setView] = useState('trades'); // 'trades' or 'bids'
 
@@ -152,6 +154,22 @@ const TradeManagement = () => {
         }
     };
 
+    const handleDeleteBid = (id) => {
+        setBidToDelete(id);
+        setIsDeleteBidModalOpen(true);
+    };
+
+    const confirmDeleteBid = async () => {
+        try {
+            await api.delete(`/vendors/bids/${bidToDelete}`);
+            setBids(bids.filter(b => b._id !== bidToDelete));
+            setIsDeleteBidModalOpen(false);
+        } catch (err) {
+            console.error('Error deleting bid:', err);
+            alert('Error deleting bid.');
+        }
+    };
+
     const handleUpdateBidStatus = async (id, status) => {
         try {
             const bidToUpdate = bids.find(b => b._id === id);
@@ -159,6 +177,11 @@ const TradeManagement = () => {
 
             // EmailJS Notification
             if (bidToUpdate && bidToUpdate.vendorId?.email) {
+                const fetchedCompany = bidToUpdate?.companyId || user?.companyId;
+                const publicLogoUrl = (typeof fetchedCompany === 'object' && fetchedCompany?.logo) 
+                    ? getServerUrl(fetchedCompany.logo) 
+                    : "https://img.icons8.com/color/96/ring.png";
+
                 const templateParams = {
                     to_email: bidToUpdate.vendorId.email,
                     email: bidToUpdate.vendorId.email,
@@ -167,6 +190,7 @@ const TradeManagement = () => {
                     to_name: bidToUpdate.vendorId.name,
                     drawing_title: bidToUpdate.drawingId?.title || 'Construction Drawing',
                     title: bidToUpdate.drawingId?.title || 'Construction Drawing',
+                    logoUrl: publicLogoUrl,
                     status: status.toUpperCase(),
                     message: status === 'Approved'
                         ? 'Congratulations! Your bid has been approved. We will be in touch shortly with contract details.'
@@ -176,10 +200,10 @@ const TradeManagement = () => {
                 try {
                     // Using your existing credentials
                     await emailjs.send(
-                        'service_1aid9rt',
-                        'template_n5du8sy',
+                        'service_nwnykea',
+                        'template_zfy7qdu',
                         templateParams,
-                        '2L1gfv6cdJc9YuzdP'
+                        'Vr5-H0-BgfNboKu2q'
                     );
                     alert(`Bid ${status.toLowerCase()}! Email sent to ${bidToUpdate.vendorId.name} successfully.`);
                 } catch (emailErr) {
@@ -351,7 +375,9 @@ const TradeManagement = () => {
                                 {bids.length > 0 ? (
                                     bids.map((bid) => (
                                         <tr key={bid._id} className="hover:bg-slate-50 transition">
-                                            <td className="px-6 py-4 font-bold text-slate-800">{bid.vendorId?.name || 'Unknown'}</td>
+                                            <td className="px-6 py-4 font-bold text-slate-800">
+                                                {bid.vendorId?.name || bid.vendorName || `ID: ${bid.vendorId?._id?.slice(-6) || 'Unknown'}`}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-slate-800 font-medium">{bid.drawingId?.title || 'Unknown'}</div>
                                             </td>
@@ -397,6 +423,13 @@ const TradeManagement = () => {
                                                             </button>
                                                         </>
                                                     )}
+                                                    <button
+                                                        onClick={() => handleDeleteBid(bid._id)}
+                                                        className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition" 
+                                                        title="Delete Bid"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -560,6 +593,36 @@ const TradeManagement = () => {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Delete Bid Confirmation Modal */}
+            <Modal isOpen={isDeleteBidModalOpen} onClose={() => setIsDeleteBidModalOpen(false)} title="Delete Bid">
+                <div className="text-center space-y-4">
+                    <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                        <Trash2 className="text-red-600" size={32} />
+                    </div>
+                    <div>
+                        <p className="font-bold text-slate-800">Delete this bid?</p>
+                        <p className="text-sm text-slate-500 mt-1">
+                            This will permanently remove this bid from the records.
+                            This action cannot be undone.
+                        </p>
+                    </div>
+                    <div className="flex justify-center gap-3 pt-2">
+                        <button 
+                            onClick={() => setIsDeleteBidModalOpen(false)} 
+                            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-medium"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDeleteBid} 
+                            className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-medium shadow-lg shadow-red-200"
+                        >
+                            Confirm Delete
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
