@@ -263,6 +263,14 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                 onClick={() => props.onTaskClick(task)}
                 className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''} ${isHighlighted ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/20 relative z-[20]' : ''}`}
             >
+                <td className="w-10 px-4 py-2.5" onClick={e => e.stopPropagation()}>
+                    <input 
+                        type="checkbox"
+                        checked={props.isSelected}
+                        onChange={(e) => props.onSelect(task._id, e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                </td>
                 <td className="w-10 px-4 py-2.5">
                     <div
                         {...attributes}
@@ -393,6 +401,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     return (
         <tr className="bg-slate-50/10 relative group">
             <td className="w-10 px-4 py-2" />
+            <td className="w-10 px-4 py-2" />
             <td className="py-2 pr-6 pl-4 relative" colSpan={9} style={{ paddingLeft: '58px' }}>
                 <div className="absolute left-0 top-0 bottom-0 pointer-events-none">
                     <div className="absolute top-0 h-full w-[1px] bg-slate-200/40" style={{ left: '26px' }} />
@@ -467,7 +476,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
-const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName }) => {
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName, isSelected, onSelect }) => {
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -527,6 +536,15 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
         <React.Fragment>
             {/* ── Subtask Row ── */}
             <tr className={`bg-white hover:bg-slate-50/40 transition-colors border-b border-slate-50 relative group`}>
+                {/* Selection Checkbox */}
+                <td className="w-10 px-4 py-2.5">
+                    <input 
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => onSelect(subTask._id, e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                </td>
                 {/* Grip placeholder column (Column 1) */}
                 <td className="w-10 px-4 py-2.5" />
 
@@ -786,6 +804,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
             {/* ── Inline Add Child Row ── */}
             {addingHere && (
                 <tr className="bg-blue-50/20 border-l-[3px] border-blue-400 relative">
+                    <td className="w-10 px-4 py-2.5 text-center" />
                     <td className="w-10 px-4 py-2.5" />
                     <td colSpan={9} style={{ paddingLeft: `${indentPx + step}px` }} className="py-2.5 px-4 relative">
                         {/* Tree connector for adding child */}
@@ -1143,6 +1162,7 @@ const Tasks = () => {
     const [activeTab, setActiveTab] = useState('all_tasks'); // 'all_tasks' | 'my_tasks'
     const [jobs, setJobs] = useState([]);
     const [isCompactView, setIsCompactView] = useState(true);
+    const [selectedTasks, setSelectedTasks] = useState(new Set());
 
     // Quick Template States
     const [isQuickTemplateModalOpen, setIsQuickTemplateModalOpen] = useState(false);
@@ -1213,6 +1233,11 @@ const Tasks = () => {
         steps: []
     });
     const [subTasksList, setSubTasksList] = useState([]);
+    const [selectedTemplates, setSelectedTemplates] = useState(new Set());
+    const [isBulkSaveConfirmModalOpen, setIsBulkSaveConfirmModalOpen] = useState(false);
+    const [isBulkDeleteTemplateModalOpen, setIsBulkDeleteTemplateModalOpen] = useState(false);
+    const [isSubTaskDeleteModalOpen, setIsSubTaskDeleteModalOpen] = useState(false);
+    const [subTaskToDeleteInfo, setSubTaskToDeleteInfo] = useState(null);
 
     // Filters
     const [filterStatus, setFilterStatus] = useState('');
@@ -1282,6 +1307,120 @@ const Tasks = () => {
             }
         }
         setExpandedTasks(newExpanded);
+    };
+
+    const handleSelectTask = (taskId, isSelected) => {
+        setSelectedTasks(prev => {
+            const next = new Set(prev);
+            if (isSelected) next.add(taskId);
+            else next.delete(taskId);
+            return next;
+        });
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            // Include all root tasks AND their subtasks currently in the flat list
+            const allIds = tasks.map(t => t._id || t.id);
+            // Also recursively find subtasks in the map
+            Object.values(subTasksMap).forEach(list => {
+                list.forEach(st => allIds.push(st._id || st.id));
+            });
+            setSelectedTasks(new Set(allIds));
+        } else {
+            setSelectedTasks(new Set());
+        }
+    };
+
+    const handleSelectTemplate = (id, checked) => {
+        const next = new Set(selectedTemplates);
+        if (checked) next.add(id);
+        else next.delete(id);
+        setSelectedTemplates(next);
+    };
+
+    const handleSelectAllTemplates = (checked) => {
+        if (checked) {
+            setSelectedTemplates(new Set(templates.map(t => t._id)));
+        } else {
+            setSelectedTemplates(new Set());
+        }
+    };
+
+    const handleBulkDeleteTemplates = () => {
+        if (selectedTemplates.size === 0) return;
+        setIsBulkDeleteTemplateModalOpen(true);
+    };
+
+    const confirmBulkDeleteTemplates = async () => {
+        try {
+            setIsSubmitting(true);
+            setIsBulkDeleteTemplateModalOpen(false);
+            await api.post('/task-templates/bulk-delete', { ids: Array.from(selectedTemplates) });
+            toast.success('Templates deleted successfully');
+            setSelectedTemplates(new Set());
+            fetchTemplates();
+        } catch (err) {
+            console.error('Bulk delete error:', err);
+            toast.error(err.response?.data?.message || 'Failed to delete templates');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleBulkSaveAsTemplate = () => {
+        if (selectedTasks.size === 0) return;
+        setIsBulkSaveConfirmModalOpen(true);
+    };
+
+    const confirmBulkSaveAsTemplate = async () => {
+        try {
+            setIsSubmitting(true);
+            setIsBulkSaveConfirmModalOpen(false);
+            
+            // All tasks and subtasks flat list
+            const allTasksFull = [...tasks];
+            Object.values(subTasksMap).forEach(list => allTasksFull.push(...list));
+
+            // Logic to filter top-most selected items to avoid redundancy
+            const topMostSelected = Array.from(selectedTasks).filter(id => {
+                const task = allTasksFull.find(t => (t._id || t.id) === id);
+                if (!task) return false;
+                
+                // If it has a parent in the selection, skip it (because parent will include it)
+                let current = task;
+                while (current) {
+                    const pid = current.parentSubTaskId || current.taskId || current.parentTask?._id || current.parentTask?.id;
+                    if (pid && selectedTasks.has(pid)) return false;
+                    
+                    // Traverse up
+                    if (pid) {
+                        current = allTasksFull.find(t => (t._id || t.id) === pid);
+                    } else {
+                        break;
+                    }
+                }
+                return true;
+            });
+
+            const promises = topMostSelected.map(taskId => {
+                const task = allTasksFull.find(t => (t._id || t.id) === taskId);
+                return api.post('/task-templates/from-task', { 
+                    taskId, 
+                    isJobTask: !!task?.isJobTask 
+                });
+            });
+
+            await Promise.all(promises);
+            setSelectedTasks(new Set());
+            fetchTemplates();
+            toast.success(`Successfully saved ${topMostSelected.length} templates!`);
+        } catch (err) {
+            console.error('Error bulk saving templates:', err);
+            toast.error('Failed to save templates');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const fetchTemplates = async () => {
@@ -1420,6 +1559,17 @@ const Tasks = () => {
             return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
         });
     }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
+
+    const isAllSelected = useMemo(() => {
+        if (tasks.length === 0) return false;
+        const allFilteredIds = filteredTasks.map(t => t._id || t.id);
+        // Also check subtasks of expanded tasks
+        expandedTasks.forEach(pId => {
+            const list = subTasksMap[pId] || [];
+            list.forEach(st => allFilteredIds.push(st._id || st.id));
+        });
+        return allFilteredIds.length > 0 && allFilteredIds.every(id => selectedTasks.has(id));
+    }, [filteredTasks, expandedTasks, subTasksMap, selectedTasks]);
 
     // Apply all filters to specialized schedule data
     const filteredScheduleTasks = useMemo(() => {
@@ -1669,21 +1819,51 @@ const Tasks = () => {
     };
 
     // Delete a subtask (cascade handled by backend)
-    const handleDeleteSubTask = async (subTask) => {
-        if (!window.confirm(`Delete "${subTask.title}"? All nested subtasks will be removed too.`)) return;
+    const handleDeleteSubTask = (subTask) => {
+        setSubTaskToDeleteInfo({ subTask, taskId: selectedTask._id });
+        setIsSubTaskDeleteModalOpen(true);
+    };
+
+    const confirmSubTaskDelete = async () => {
+        if (!subTaskToDeleteInfo) return;
+        const { subTask, taskId } = subTaskToDeleteInfo;
+        
         try {
-            await api.delete(`/tasks/${selectedTask._id}/subtasks/${subTask._id}`);
-            // Remove this and all its descendants from local state
-            const removeIds = (id, list) => {
-                const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
-                const childIds = children.flatMap(c => removeIds(c._id, list));
-                return [id, ...childIds];
-            };
-            const toRemove = new Set(removeIds(subTask._id, subTasks));
-            setSubTasks(prev => prev.filter(s => !toRemove.has(s._id)));
+            setIsSubmitting(true);
+            await api.delete(`/tasks/${taskId}/subtasks/${subTask._id}`);
+            
+            // Handle List View map update
+            setSubTasksMap(prev => {
+                const current = prev[taskId] || [];
+                const removeDescendants = (id, list) => {
+                    const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
+                    return [id, ...children.flatMap(c => removeDescendants(c._id, list))];
+                };
+                const toRemove = new Set(removeDescendants(subTask._id, current));
+                return { ...prev, [taskId]: current.filter(st => !toRemove.has(st._id)) };
+            });
+
+            // Handle Modal View state update
+            if (selectedTask?._id === taskId) {
+                setSubTasks(prev => {
+                    const removeDescendants = (id, list) => {
+                        const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
+                        return [id, ...children.flatMap(c => removeDescendants(c._id, list))];
+                    };
+                    const toRemove = new Set(removeDescendants(subTask._id, prev));
+                    return prev.filter(st => !toRemove.has(st._id));
+                });
+            }
+
+            setIsSubTaskDeleteModalOpen(false);
+            setSubTaskToDeleteInfo(null);
             fetchData();
+            toast.success('Sub-task deleted');
         } catch (error) {
             console.error('Error deleting subtask:', error);
+            toast.error('Failed to delete sub-task');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -1807,7 +1987,7 @@ const Tasks = () => {
     const handleQuickSubTaskSave = async (taskId, subTaskData) => {
         try {
             setIsSubmittingSubTask(true);
-            const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
+const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
 
             // Update local map
             setSubTasksMap(prev => ({
@@ -1835,41 +2015,23 @@ const Tasks = () => {
     const handleSubTaskUpdateInList = async (taskId, subTask, updates) => {
         try {
             if (updates.delete) {
-                if (!window.confirm(`Delete "${subTask.title}"? All nested subtasks will also be removed.`)) return;
-                await api.delete(`/tasks/${taskId}/subtasks/${subTask._id}`);
-
-                // Build set of IDs to remove (deleted subtask + all its descendants)
-                const removeDescendants = (id, list) => {
-                    const children = list.filter(s => s.parentSubTaskId === id || s.parentSubTaskId?._id === id);
-                    return [id, ...children.flatMap(c => removeDescendants(c._id, list))];
-                };
-
-                setSubTasksMap(prev => {
-                    const current = prev[taskId] || [];
-                    const toRemove = new Set(removeDescendants(subTask._id, current));
-                    return { ...prev, [taskId]: current.filter(st => !toRemove.has(st._id)) };
-                });
-
-                if (selectedTask?._id === taskId) {
-                    setSubTasks(prev => {
-                        const toRemove = new Set(removeDescendants(subTask._id, prev));
-                        return prev.filter(st => !toRemove.has(st._id));
-                    });
-                }
-                toast.success('Sub-task deleted');
-            } else {
-                const res = await api.patch(`/tasks/${taskId}/subtasks/${subTask._id}`, updates);
-
-                setSubTasksMap(prev => ({
-                    ...prev,
-                    [taskId]: (prev[taskId] || []).map(st => st._id === subTask._id ? res.data : st)
-                }));
-
-                if (selectedTask?._id === taskId) {
-                    setSubTasks(prev => prev.map(st => st._id === subTask._id ? res.data : st));
-                }
-                toast.success('Sub-task updated');
+                setSubTaskToDeleteInfo({ subTask, taskId });
+                setIsSubTaskDeleteModalOpen(true);
+                return;
             }
+
+            // Perform sub-task update (not a deletion)
+            const res = await api.patch(`/tasks/${taskId}/subtasks/${subTask._id}`, updates);
+
+            setSubTasksMap(prev => ({
+                ...prev,
+                [taskId]: (prev[taskId] || []).map(st => st._id === subTask._id ? res.data : st)
+            }));
+
+            if (selectedTask?._id === taskId) {
+                setSubTasks(prev => prev.map(st => st._id === subTask._id ? res.data : st));
+            }
+            toast.success('Sub-task updated');
             fetchData();
         } catch (error) {
             console.error('Error updating sub-task:', error);
@@ -1951,6 +2113,16 @@ const Tasks = () => {
                     </div>
                     {canManage && (
                         <div className="flex gap-2 shrink-0">
+                            {selectedTasks.size > 0 && (
+                                <button 
+                                    onClick={handleBulkSaveAsTemplate}
+                                    disabled={isSubmitting}
+                                    className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-emerald-700 transition shadow-lg shadow-emerald-200 font-black text-[10px] uppercase tracking-tight"
+                                >
+                                    {isSubmitting ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+                                    Save as Template ({selectedTasks.size})
+                                </button>
+                            )}
                             <button onClick={() => setIsTemplateModalOpen(true)} className="bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-slate-50 transition shadow-sm font-black text-[10px] uppercase tracking-tight">
                                 <Briefcase size={14} /> <span className="hidden sm:inline">Templates</span>
                             </button>
@@ -2085,6 +2257,14 @@ const Tasks = () => {
                                     <table className="text-left border-separate border-spacing-0 w-full" style={{ width: 'max-content', minWidth: '100%' }}>
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                                             <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                <th className="w-10 px-4 py-3">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={isAllSelected}
+                                                        onChange={handleSelectAll}
+                                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                </th>
                                                 <th className="w-10 px-4 py-3"></th>
                                                 {[
                                                     { key: 'task', label: 'Task' },
@@ -2142,11 +2322,13 @@ const Tasks = () => {
                                                             task={task}
                                                             urgency={urgency}
                                                             isExpanded={isExpanded}
+                                                            isSelected={selectedTasks.has(task._id)}
                                                             isCompactView={isCompactView}
                                                             columnWidths={columnWidths}
                                                             canManage={canManage}
                                                             isHighlighted={highlightTaskId === task._id}
                                                             onTaskClick={openDetails}
+                                                            onSelect={handleSelectTask}
                                                             onToggleExpansion={toggleTaskExpansion}
                                                             onSaveAsTemplate={handleSaveAsTemplate}
                                                             onEdit={openEdit}
@@ -2163,10 +2345,12 @@ const Tasks = () => {
                                                                             key={st._id}
                                                                             subTask={st}
                                                                             depth={depth}
+                                                                            isSelected={selectedTasks.has(st._id)}
                                                                             allSubTasks={taskSubTasks}
                                                                             taskId={task._id}
                                                                             team={filteredTeamByRole}
                                                                             canManage={canManage}
+                                                                            onSelect={handleSelectTask}
                                                                             onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
                                                                             onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
                                                                             onAddChild={handleQuickSubTaskSave}
@@ -2754,20 +2938,45 @@ const Tasks = () => {
             <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Templates Library">
                 <div className="space-y-4">
                     <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-200/60">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Briefcase size={16} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{templates.length} Saved Templates</span>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox"
+                                    checked={templates.length > 0 && selectedTemplates.size === templates.length}
+                                    onChange={(e) => handleSelectAllTemplates(e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select All</span>
+                            </div>
+                            <div className="h-4 w-[1px] bg-slate-200" />
+                            <div className="flex items-center gap-2 text-slate-500">
+                                <Briefcase size={16} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{templates.length} Total</span>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => {
-                                setEditingTemplate(null);
-                                setTemplateFormData({ templateName: '', role: '', title: '', description: '', priority: 'Medium', steps: [] });
-                                setIsSaveTemplateModalOpen(true);
-                            }}
-                            className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition"
-                        >
-                            + Create New
-                        </button>
+
+                        <div className="flex items-center gap-2">
+                            {selectedTemplates.size > 0 && (
+                                <button
+                                    onClick={handleBulkDeleteTemplates}
+                                    disabled={isSubmitting}
+                                    title={`Delete ${selectedTemplates.size} selected template${selectedTemplates.size > 1 ? 's' : ''}`}
+                                    className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all flex items-center justify-center shadow-sm"
+                                >
+                                    {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setEditingTemplate(null);
+                                    setTemplateFormData({ templateName: '', assignedRole: '', taskTitle: '', description: '', priority: 'Medium', estimatedHours: 0, steps: [] });
+                                    setIsSaveTemplateModalOpen(true);
+                                }}
+                                className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition"
+                            >
+                                + Create New
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
@@ -2785,9 +2994,18 @@ const Tasks = () => {
                                 return 0;
                             })
                             .map(tmpl => (
-                                <div key={tmpl._id} className="bg-white border border-slate-200 hover:border-blue-200 hover:shadow-md hover:shadow-blue-500/5 rounded-2xl p-4 flex justify-between items-center group transition-all">
-                                    <div>
-                                        <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
+                                <div key={tmpl._id} className={`bg-white border hover:shadow-md transition-all rounded-2xl p-4 flex justify-between items-center group ${selectedTemplates.has(tmpl._id) ? 'border-blue-500 bg-blue-50/5' : 'border-slate-200 hover:border-blue-200'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                                            <input 
+                                                type="checkbox"
+                                                checked={selectedTemplates.has(tmpl._id)}
+                                                onChange={(e) => handleSelectTemplate(tmpl._id, e.target.checked)}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             {tmpl.assignedRole && (
                                                 <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
@@ -2806,6 +3024,7 @@ const Tasks = () => {
                                                 {tmpl.priority}
                                             </span>
                                         </div>
+                                    </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="flex items-center gap-1.5">
@@ -2917,6 +3136,94 @@ const Tasks = () => {
                                 Confirm Save
                             </button>
                         </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Bulk Save Template Confirmation Modal ── */}
+            <Modal isOpen={isBulkSaveConfirmModalOpen} onClose={() => setIsBulkSaveConfirmModalOpen(false)} title="Bulk Save Templates">
+                <div className="p-4 text-center">
+                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 border border-emerald-100 mx-auto mb-6 shadow-sm">
+                        <Save size={36} />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">Save {selectedTasks.size} Templates?</h3>
+                    <p className="text-slate-500 font-bold mb-8 text-sm px-4">
+                        You are about to convert <span className="text-emerald-600 font-black">{selectedTasks.size} tasks</span> and all their nested subtasks into reusable templates.
+                    </p>
+                    <div className="flex gap-3 px-2">
+                        <button 
+                            onClick={() => setIsBulkSaveConfirmModalOpen(false)} 
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmBulkSaveAsTemplate} 
+                            disabled={isSubmitting} 
+                            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-200 transition active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                            Confirm Save
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Bulk Delete Template Confirmation Modal ── */}
+            <Modal isOpen={isBulkDeleteTemplateModalOpen} onClose={() => setIsBulkDeleteTemplateModalOpen(false)} title="Delete Templates">
+                <div className="p-4 text-center">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 border border-red-100 mx-auto mb-6 shadow-sm">
+                        <Trash2 size={36} />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">Delete {selectedTemplates.size} Templates?</h3>
+                    <p className="text-slate-500 font-bold mb-8 text-sm px-4">
+                        This action <span className="text-red-600 font-black underline">cannot be undone</span>. All selected templates will be permanently removed from your library.
+                    </p>
+                    <div className="flex gap-3 px-2">
+                        <button 
+                            onClick={() => setIsBulkDeleteTemplateModalOpen(false)} 
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmBulkDeleteTemplates} 
+                            disabled={isSubmitting} 
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-200 transition active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            Delete Templates
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Subtask Delete Confirmation Modal ── */}
+            <Modal isOpen={isSubTaskDeleteModalOpen} onClose={() => setIsSubTaskDeleteModalOpen(false)} title="Delete Sub-task">
+                <div className="p-4 text-center">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 border border-red-100 mx-auto mb-6 shadow-sm">
+                        <Trash2 size={36} />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">Delete Sub-task?</h3>
+                    <p className="text-slate-500 font-bold mb-8 text-sm px-4 leading-relaxed">
+                        Are you sure you want to delete <span className="text-red-600 font-black underline italic">"{subTaskToDeleteInfo?.subTask?.title}"</span>? <br />
+                        <span className="text-[11px] uppercase tracking-widest text-slate-400 mt-2 block">All nested sub-tasks will be permanently removed.</span>
+                    </p>
+                    <div className="flex gap-3 px-2">
+                        <button 
+                            onClick={() => setIsSubTaskDeleteModalOpen(false)} 
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmSubTaskDelete} 
+                            disabled={isSubmitting} 
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-200 transition active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            Delete Sub-task
+                        </button>
                     </div>
                 </div>
             </Modal>
