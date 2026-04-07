@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import {
     Clock, MapPin, CheckCircle, XCircle, Search, Filter,
     Download, FileText, User, Calendar, Loader, MoreHorizontal,
@@ -30,6 +31,8 @@ const Timesheets = () => {
     const [activeTab, setActiveTab] = useState('logs');
     const [corrections, setCorrections] = useState([]);
     const [isCorrectionLoading, setIsCorrectionLoading] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -69,10 +72,10 @@ const Timesheets = () => {
             await api.patch(`/corrections/${id}`, { status: 'approved' });
             fetchCorrections();
             fetchData(); // Refresh logs to show updated times
-            alert('Correction request approved and timelog updated.');
+            toast.success('Correction request approved');
         } catch (error) {
             console.error('Error approving correction:', error);
-            alert('Failed to approve correction.');
+            toast.error('Failed to approve correction');
         }
     };
 
@@ -82,10 +85,35 @@ const Timesheets = () => {
         try {
             await api.patch(`/corrections/${id}`, { status: 'rejected', reviewNotes: reason });
             fetchCorrections();
-            alert('Correction request rejected.');
+            toast.success('Correction request rejected');
         } catch (error) {
             console.error('Error rejecting correction:', error);
-            alert('Failed to reject correction.');
+            toast.error('Failed to reject correction');
+        }
+    };
+
+    const handleDeleteCorrection = async () => {
+        if (!itemToDelete) return;
+        try {
+            if (itemToDelete === 'all') {
+                const pendingIds = corrections.filter(c => c.status === 'pending').map(c => c._id);
+                if (pendingIds.length === 0) {
+                    toast.error('No pending corrections to delete');
+                    setIsDeleteModalOpen(false);
+                    return;
+                }
+                await api.post('/corrections/bulk-delete', { ids: pendingIds });
+                toast.success('All pending corrections deleted');
+            } else {
+                await api.delete(`/corrections/${itemToDelete}`);
+                toast.success('Correction request deleted');
+            }
+            fetchCorrections();
+            setIsDeleteModalOpen(false);
+            setItemToDelete(null);
+        } catch (error) {
+            console.error('Error deleting correction:', error);
+            toast.error('Failed to delete correction');
         }
     };
 
@@ -284,12 +312,12 @@ const Timesheets = () => {
                     reason: correctionData.reason
                 }
             });
-            alert('Correction request submitted successfuly.');
+            toast.success('Correction request submitted');
             setIsCorrectionModalOpen(false);
             setCorrectionData({ timeLogId: '', reason: '', clockIn: '', clockOut: '' });
         } catch (error) {
             console.error('Error submitting correction:', error);
-            alert('Failed to submit correction request.');
+            toast.error('Failed to submit correction request');
         } finally {
             setIsSubmittingCorrection(false);
         }
@@ -674,7 +702,7 @@ const Timesheets = () => {
                                                 </span>
                                             </td>
                                             <td className="px-8 py-5 text-right">
-                                                {req.status === 'pending' && (
+                                                {req.status === 'pending' ? (
                                                     <div className="flex gap-2 justify-end">
                                                         <button
                                                             onClick={() => handleRejectCorrection(req._id)}
@@ -689,6 +717,23 @@ const Timesheets = () => {
                                                             title="Approve & Update Log"
                                                         >
                                                             <CheckCircle size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setItemToDelete(req._id); setIsDeleteModalOpen(true); }}
+                                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Correction"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-end">
+                                                        <button
+                                                            onClick={() => { setItemToDelete(req._id); setIsDeleteModalOpen(true); }}
+                                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Correction"
+                                                        >
+                                                            <Trash2 size={18} />
                                                         </button>
                                                     </div>
                                                 )}
@@ -952,6 +997,39 @@ const Timesheets = () => {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Confirm Deletion"
+            >
+                <div className="p-6 text-center space-y-6">
+                    <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto border border-red-100 shadow-sm">
+                        <Trash2 size={32} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight">Delete Correction Request?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2">
+                            This action cannot be undone. This will permanently remove the correction request from the system.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all border border-slate-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDeleteCorrection}
+                            className="flex-1 bg-red-600 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-200"
+                        >
+                            Confirm Delete
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
