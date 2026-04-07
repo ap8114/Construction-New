@@ -137,22 +137,62 @@ const ProjectIntelligence = () => {
         doc.text((job.status || 'Active').toUpperCase(), 15, 71);
         doc.text(`${job.startDate ? new Date(job.startDate).toLocaleDateString() : 'TBD'} - ${job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}`, 80, 71);
         doc.setFont('helvetica', 'bold');
-        doc.text(`INR ${parseFloat(job.financials?.total || 0).toLocaleString()}`, 145, 71);
+        doc.text(`$ ${parseFloat(job.financials?.total || 0).toLocaleString()}`, 145, 71);
+
+        let currentY = 82;
+        if (job.description) {
+            doc.setFontSize(11);
+            doc.setTextColor(30, 58, 138);
+            doc.setFont('helvetica', 'bold');
+            doc.text('JOB SCOPE & DESCRIPTION', 15, currentY);
+            
+            doc.setFontSize(9);
+            doc.setTextColor(70, 70, 70);
+            doc.setFont('helvetica', 'normal');
+            const splitNotes = doc.splitTextToSize(job.description, 180);
+            doc.text(splitNotes, 15, currentY + 6);
+            currentY += (splitNotes.length * 5) + 12;
+        }
+
+        if (job.notes && job.notes.length > 0) {
+            doc.setFontSize(11);
+            doc.setTextColor(30, 58, 138);
+            doc.setFont('helvetica', 'bold');
+            doc.text('SITE REMARKS & COMMUNICATION', 15, currentY);
+            currentY += 6;
+
+            job.notes.forEach(note => {
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(`${note.author} - ${new Date(note.date).toLocaleDateString()}`, 17, currentY);
+                currentY += 4;
+                
+                doc.setFontSize(9);
+                doc.setTextColor(80);
+                doc.setFont('helvetica', 'normal');
+                const splitNote = doc.splitTextToSize(`"${note.content}"`, 175);
+                doc.text(splitNote, 17, currentY);
+                currentY += (splitNote.length * 5) + 6;
+                
+                if (currentY > 270) { doc.addPage(); currentY = 20; }
+            });
+            currentY += 8;
+        }
 
         // Section: FINANCIAL BREAKDOWN
         doc.setFontSize(12);
         doc.setTextColor(30, 58, 138);
-        doc.text('FINANCIAL COST BREAKDOWN', 15, 85);
+        doc.text('FINANCIAL COST BREAKDOWN', 15, currentY);
 
         autoTable(doc, {
-            startY: 88,
-            head: [['Financial Dimension', 'Amount (INR)', 'Weightage (%)']],
+            startY: currentY + 3,
+            head: [['Financial Dimension', 'Amount (USD)', 'Weightage (%)']],
             body: [
-                ['Worker Labor Cost', `INR ${parseFloat(job.financials?.workerCost || 0).toLocaleString()}`, `${(job.financials?.workerCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Material Consumption', `INR ${parseFloat(job.financials?.materialCost || 0).toLocaleString()}`, `${(job.financials?.materialCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Equipment Usage', `INR ${parseFloat(job.financials?.equipmentCost || 0).toLocaleString()}`, `${(job.financials?.equipmentCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Subcontractor Cost', `INR ${parseFloat(job.financials?.subcontractorCost || 0).toLocaleString()}`, `${(job.financials?.subcontractorCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                [{ content: 'TOTAL PROJECT EXPENDITURE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: `INR ${parseFloat(job.financials?.total || 0).toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, '100%']
+                ['Worker Labor Cost', `$ ${parseFloat(job.financials?.workerCost || 0).toLocaleString()}`, `${(job.financials?.workerCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
+                ['Material Consumption', `$ ${parseFloat(job.financials?.materialCost || 0).toLocaleString()}`, `${(job.financials?.materialCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
+                ['Equipment Usage', `$ ${parseFloat(job.financials?.equipmentCost || 0).toLocaleString()}`, `${(job.financials?.equipmentCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
+                ['Subcontractor Cost', `$ ${parseFloat(job.financials?.subcontractorCost || 0).toLocaleString()}`, `${(job.financials?.subcontractorCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
+                [{ content: 'TOTAL PROJECT EXPENDITURE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: `$ ${parseFloat(job.financials?.total || 0).toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, '100%']
             ],
             theme: 'grid',
             headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 10, fontStyle: 'bold' },
@@ -168,8 +208,8 @@ const ProjectIntelligence = () => {
 
             autoTable(doc, {
                 startY: doc.lastAutoTable.finalY + 18,
-                head: [['Personnel Name', 'Role', 'Total Hours', 'Incurred Cost (INR)']],
-                body: job.workers.map(w => [w.name, w.role, `${w.totalHours}h`, `INR ${parseFloat(w.cost || 0).toLocaleString()}`]),
+                head: [['Personnel Name', 'Role', 'Total Hours', 'Incurred Cost (USD)']],
+                body: job.workers.map(w => [w.name, w.role, `${w.totalHours}h`, `$ ${parseFloat(w.cost || 0).toLocaleString()}`]),
                 headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 9 }, // slate-600
                 bodyStyles: { fontSize: 8 }
             });
@@ -183,8 +223,8 @@ const ProjectIntelligence = () => {
 
             autoTable(doc, {
                 startY: doc.lastAutoTable.finalY + 15,
-                head: [['Material / Item Description', 'PO Number', 'Quantity', 'Incurred Cost (INR)']],
-                body: job.materials.map(m => [m.itemName, m.poNumber || 'N/A', m.quantity, `INR ${parseFloat(m.cost || 0).toLocaleString()}`]),
+                head: [['Material / Item Description', 'PO Number', 'Quantity', 'Incurred Cost (USD)']],
+                body: job.materials.map(m => [m.itemName, m.poNumber || 'N/A', m.quantity, `$ ${parseFloat(m.cost || 0).toLocaleString()}`]),
                 headStyles: { fillColor: [180, 83, 9], textColor: 255, fontSize: 9 }, // amber-700
                 bodyStyles: { fontSize: 8 }
             });
@@ -198,8 +238,8 @@ const ProjectIntelligence = () => {
 
             autoTable(doc, {
                 startY: doc.lastAutoTable.finalY + 15,
-                head: [['Equipment Name', 'Operating Hours', 'Incurred Cost (INR)']],
-                body: job.equipment.map(e => [e.name, `${e.hoursUsed}h`, `INR ${parseFloat(e.cost || 0).toLocaleString()}`]),
+                head: [['Equipment Name', 'Operating Hours', 'Incurred Cost (USD)']],
+                body: job.equipment.map(e => [e.name, `${e.hoursUsed}h`, `$ ${parseFloat(e.cost || 0).toLocaleString()}`]),
                 headStyles: { fillColor: [124, 58, 237], textColor: 255, fontSize: 9 }, // violet-600
                 bodyStyles: { fontSize: 8 }
             });
@@ -300,7 +340,7 @@ const ProjectIntelligence = () => {
                         />
                         <MetricCard 
                             label="Total Spend" 
-                            value={`₹${parseFloat(project.totalCost || 0).toLocaleString()}`} 
+                            value={`$${parseFloat(project.totalCost || 0).toLocaleString()}`} 
                             subtext={`${project.budgetUsedPercent || 0}% of Budget Spent`}
                             icon={DollarSign}
                             color="text-blue-600"
@@ -316,8 +356,8 @@ const ProjectIntelligence = () => {
                         />
                         <MetricCard 
                             label="Remaining Budget" 
-                            value={`₹${parseFloat(project.remainingBudget || 0).toLocaleString()}`} 
-                            subtext={`Budget: ₹${parseFloat(project.budget || 0).toLocaleString()}`}
+                            value={`$${parseFloat(project.remainingBudget || 0).toLocaleString()}`} 
+                            subtext={`Budget: $${parseFloat(project.budget || 0).toLocaleString()}`}
                             icon={LayoutDashboard}
                             color={project.remainingBudget < 0 ? "text-red-600" : "text-amber-600"}
                             bgColor={project.remainingBudget < 0 ? "bg-red-50" : "bg-amber-50"}
@@ -338,7 +378,7 @@ const ProjectIntelligence = () => {
                                         <YAxis fontSize={10} axisLine={false} tickLine={false} />
                                         <Tooltip 
                                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value) => [`₹${value}`, 'Job Cost']}
+                                            formatter={(value) => [`$${value}`, 'Job Cost']}
                                         />
                                         <Bar dataKey="totalCost" fill="#2563EB" radius={[8, 8, 0, 0]} barSize={40} />
                                     </BarChart>
@@ -458,7 +498,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                 <div className="text-right">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cost / Budget</p>
                     <p className="text-sm font-black text-slate-800">
-                        ₹{parseFloat(job.totalCost || 0).toLocaleString()} <span className="text-slate-300 font-bold mx-1">/</span> <span className="text-slate-400">₹{parseFloat(job.budget || 0).toLocaleString()}</span>
+                        ${parseFloat(job.totalCost || 0).toLocaleString()} <span className="text-slate-300 font-bold mx-1">/</span> <span className="text-slate-400">${parseFloat(job.budget || 0).toLocaleString()}</span>
                     </p>
                 </div>
 
@@ -507,6 +547,39 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                             <JobSmallMetric label="Equipment" value={job.equipment?.length || 0} unit="Tools" icon={Truck} color="violet" />
                         </div>
 
+                        {/* Job Notes / Timeline Updates Section */}
+                        {(job.description || (job.notes && job.notes.length > 0)) && (
+                            <div className="bg-slate-50 border border-slate-200 p-6 rounded-3xl space-y-6">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+                                    <FileText size={14} /> Job Intelligence Notes & Communication
+                                </h4>
+                                
+                                {job.description && (
+                                    <div className="space-y-2 pb-6 border-b border-slate-200/50">
+                                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Job Scope / Base Description</p>
+                                        <p className="text-sm text-slate-600 leading-relaxed font-semibold">{job.description}</p>
+                                    </div>
+                                )}
+
+                                {job.notes && job.notes.length > 0 && (
+                                    <div className="space-y-4">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recent Updates & Site Remarks</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {job.notes.map((note, i) => (
+                                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm group hover:shadow-md transition-all">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <p className="text-[10px] font-black text-slate-900">{note.author}</p>
+                                                        <p className="text-[9px] font-bold text-slate-300">{new Date(note.date).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 font-medium leading-relaxed italic border-l-2 border-slate-200 pl-3">"{note.content}"</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                             {/* Financial Breakdown Table */}
                             <SectionContainer title="Financial Breakdown" icon={DollarSign}>
@@ -517,7 +590,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                     <FinancialRow label="Subcontractor Cost" value={job.financials?.subcontractorCost || 0} percentage={job.financials?.total > 0 ? (job.financials.subcontractorCost / job.financials.total * 100).toFixed(0) : 0} color="bg-emerald-500" />
                                     <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
                                         <p className="text-sm font-black uppercase text-slate-800">Total Job Cost</p>
-                                        <p className="text-xl font-black text-blue-600">₹{parseFloat(job.financials?.total || 0).toLocaleString()}</p>
+                                        <p className="text-xl font-black text-blue-600">${parseFloat(job.financials?.total || 0).toLocaleString()}</p>
                                     </div>
                                 </div>
                             </SectionContainer>
@@ -541,7 +614,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{worker.role}</span>
                                                     </td>
                                                     <td className="py-4 text-right font-bold text-slate-600 text-xs">{worker.totalHours}h</td>
-                                                    <td className="py-4 text-right font-black text-blue-600 text-xs">₹{parseFloat(worker.cost || 0).toLocaleString()}</td>
+                                                    <td className="py-4 text-right font-black text-blue-600 text-xs">${parseFloat(worker.cost || 0).toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                             {job.workers.length === 0 && <EmptyTableRow colSpan={3} text="No workers logged hours" />}
@@ -571,7 +644,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                                         <span className="text-[9px] font-bold text-slate-400 uppercase">PO: {mat.poNumber}</span>
                                                     </td>
                                                     <td className="py-4 text-right font-bold text-slate-600 text-xs">{mat.quantity}</td>
-                                                    <td className="py-4 text-right font-black text-amber-600 text-xs">₹{parseFloat(mat.cost || 0).toLocaleString()}</td>
+                                                    <td className="py-4 text-right font-black text-amber-600 text-xs">${parseFloat(mat.cost || 0).toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                             {job.materials.length === 0 && <EmptyTableRow colSpan={3} text="No material logs available" />}
@@ -596,7 +669,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                                 <tr key={i} className="text-sm">
                                                     <td className="py-4 font-black text-slate-800 text-xs">{eq.name}</td>
                                                     <td className="py-4 text-right font-bold text-slate-600 text-xs">{eq.hoursUsed}h</td>
-                                                    <td className="py-4 text-right font-black text-violet-600 text-xs">₹{parseFloat(eq.cost || 0).toLocaleString()}</td>
+                                                    <td className="py-4 text-right font-black text-violet-600 text-xs">${parseFloat(eq.cost || 0).toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                             {job.equipment.length === 0 && <EmptyTableRow colSpan={3} text="No equipment usage logged" />}
@@ -623,7 +696,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                                 <tr key={i} className="text-sm">
                                                     <td className="py-4 font-black text-slate-800 text-xs">{sub.name}</td>
                                                     <td className="py-4 text-slate-500 font-bold text-[11px]">{sub.work}</td>
-                                                    <td className="py-4 text-right font-black text-emerald-600 text-xs">₹{parseFloat(sub.cost || 0).toLocaleString()}</td>
+                                                    <td className="py-4 text-right font-black text-emerald-600 text-xs">${parseFloat(sub.cost || 0).toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -774,7 +847,7 @@ const FinancialRow = ({ label, value, percentage, color }) => (
     <div className="flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-xs">
             <span className="font-bold text-slate-600">{label}</span>
-            <span className="font-black text-slate-900">₹{parseFloat(value || 0).toLocaleString()}</span>
+            <span className="font-black text-slate-900">${parseFloat(value || 0).toLocaleString()}</span>
         </div>
         <div className="flex items-center gap-3">
             <div className="h-2 flex-1 bg-slate-100 rounded-full overflow-hidden">
