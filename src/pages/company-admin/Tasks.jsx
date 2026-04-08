@@ -200,6 +200,125 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
     );
 };
 
+// ─── Sortable Template Item ───────────────────────────────────────────────────
+const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, setEditingTemplate, setTemplateFormData, setIsSaveTemplateModalOpen, api, fetchTemplates, priorityStyles, user, setFormData, setSubTasksList, setIsTemplateModalOpen, setIsModalOpen }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tmpl._id });
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        position: isDragging ? 'relative' : 'static',
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style}
+            className={`bg-white border hover:shadow-md transition-all rounded-xl p-3 flex justify-between items-center group ${selectedTemplates.has(tmpl._id) ? 'border-blue-500 bg-blue-50/5' : 'border-slate-200 hover:border-blue-200'} ${isDragging ? 'shadow-2xl ring-2 ring-blue-500/20' : ''}`}
+        >
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        className="p-1.5 hover:bg-slate-100 rounded text-slate-300 hover:text-slate-500 transition-colors cursor-grab active:cursor-grabbing"
+                    >
+                        <GripVertical size={14} />
+                    </div>
+                    <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                        <input 
+                            type="checkbox"
+                            checked={selectedTemplates.has(tmpl._id)}
+                            onChange={(e) => handleSelectTemplate(tmpl._id, e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                    </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1 truncate">{tmpl.templateName}</h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {tmpl.assignedRole && (
+                            <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-widest leading-none">
+                                {tmpl.assignedRole}
+                            </span>
+                        )}
+                        <span className="inline-flex items-center text-[9px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded uppercase tracking-tighter border border-slate-200 leading-none">
+                            {tmpl.steps?.length || 0} sub-tasks
+                        </span>
+                        {tmpl.estimatedHours > 0 && (
+                            <span className="inline-flex items-center text-[9px] font-bold text-blue-500 bg-blue-50/50 px-2 py-0.5 rounded uppercase tracking-tighter border border-blue-100 leading-none">
+                                <Clock size={10} className="mr-1" /> {tmpl.estimatedHours}h
+                            </span>
+                        )}
+                        <span className={`inline-flex items-center text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority] || 'bg-slate-100 text-slate-500'}`}>
+                            {tmpl.priority}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-4 shrink-0 ml-4">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={() => {
+                            setEditingTemplate(tmpl);
+                            setTemplateFormData({
+                                templateName: tmpl.templateName || '',
+                                assignedRole: tmpl.assignedRole || '',
+                                taskTitle: tmpl.taskTitle || '',
+                                description: tmpl.description || '',
+                                estimatedHours: tmpl.estimatedHours || 0,
+                                priority: tmpl.priority || 'Medium',
+                                steps: tmpl.steps || []
+                            });
+                            setIsSaveTemplateModalOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-all"
+                        title="Edit Template"
+                    >
+                        <Edit size={16} />
+                    </button>
+                    <button
+                        onClick={async () => {
+                            if (window.confirm('Delete this template?')) {
+                                try {
+                                    await api.delete(`/task-templates/${tmpl._id}`);
+                                    toast.success('Template deleted');
+                                    fetchTemplates();
+                                } catch (err) { toast.error('Failed to delete template'); }
+                            }
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all"
+                        title="Delete Template"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+
+                <button
+                    onClick={() => {
+                        setFormData({
+                            title: tmpl.taskTitle,
+                            description: tmpl.description || '',
+                            priority: tmpl.priority || 'Medium',
+                            assignedRoleType: tmpl.assignedRole,
+                            projectId: '', assignedTo: [], status: 'todo', dueDate: '', startDate: '', category: 'TASK'
+                        });
+                        setSubTasksList(tmpl.steps || []);
+                        setIsTemplateModalOpen(false);
+                        setIsModalOpen(true);
+                    }}
+                    className="h-10 px-6 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95 whitespace-nowrap"
+                >
+                    Use Template
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // ─── Kanban Column ─────────────────────────────────────────────────────────────
 const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick, highlightTaskId }) => {
     const { setNodeRef } = useDroppable({ id: status });
@@ -1457,6 +1576,35 @@ const Tasks = () => {
         }
     };
 
+    const handleDragEndTemplates = async (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = templates.findIndex(t => t._id === active.id);
+        const newIndex = templates.findIndex(t => t._id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrderedTemplates = arrayMove(templates, oldIndex, newIndex);
+            
+            // Optimistic UI update
+            setTemplates(newOrderedTemplates);
+
+            try {
+                const reorderPayload = newOrderedTemplates.map((t, idx) => ({
+                    id: t._id,
+                    position: idx
+                }));
+                
+                await api.post('/task-templates/reorder', { templates: reorderPayload });
+                toast.success('Templates reordered');
+            } catch (error) {
+                console.error('Failed to reorder templates:', error);
+                fetchTemplates();
+                toast.error('Failed to save template order');
+            }
+        }
+    };
+
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -2392,7 +2540,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
             </div>
 
             {/* ── Create / Edit Modal ── */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTask ? 'Edit Task' : 'Create New Task'}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTask ? 'Edit Task' : 'Create New Task'} maxWidth="max-w-2xl">
                 <form onSubmit={handleSave} className="space-y-5">
                     {subTasksList.length > 0 && !editingTask && (
                         <div className="bg-emerald-50 text-emerald-700 border border-emerald-100 p-4 rounded-2xl text-xs font-bold flex items-center justify-between shadow-sm">
@@ -2603,7 +2751,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
             </Modal>
 
             {/* ── Task Details & Sub-Tasks Modal (ClickUp Inspired) ── */}
-            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Task Execution">
+            <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Task Execution" maxWidth="max-w-4xl">
                 {selectedTask && (
                     <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
                         {/* Header Stats */}
@@ -2739,7 +2887,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                 )}
             </Modal>
             {/* ── Save Template Modal ── */}
-            <Modal isOpen={isSaveTemplateModalOpen} onClose={() => setIsSaveTemplateModalOpen(false)} title="Save Task as Template">
+            <Modal isOpen={isSaveTemplateModalOpen} onClose={() => setIsSaveTemplateModalOpen(false)} title="Save Task as Template" maxWidth="max-w-3xl">
                 <form
                     onSubmit={async (e) => {
                         e.preventDefault();
@@ -2935,7 +3083,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
             </Modal>
 
             {/* ── Templates Library Modal ── */}
-            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Templates Library">
+            <Modal isOpen={isTemplateModalOpen} onClose={() => setIsTemplateModalOpen(false)} title="Templates Library" maxWidth="max-w-4xl">
                 <div className="space-y-4">
                     <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-200/60">
                         <div className="flex items-center gap-4">
@@ -2986,104 +3134,33 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">No templates found.</p>
                                 <p className="text-slate-300 text-[9px] mt-1">Save a task as a template or create one from scratch.</p>
                             </div>
-                        ) : templates
-                            .sort((a, b) => {
-                                // Prioritize user role matching templates first
-                                if (user?.role && a.role === user.role && b.role !== user.role) return -1;
-                                if (user?.role && b.role === user.role && a.role !== user.role) return 1;
-                                return 0;
-                            })
-                            .map(tmpl => (
-                                <div key={tmpl._id} className={`bg-white border hover:shadow-md transition-all rounded-2xl p-4 flex justify-between items-center group ${selectedTemplates.has(tmpl._id) ? 'border-blue-500 bg-blue-50/5' : 'border-slate-200 hover:border-blue-200'}`}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="shrink-0" onClick={e => e.stopPropagation()}>
-                                            <input 
-                                                type="checkbox"
-                                                checked={selectedTemplates.has(tmpl._id)}
-                                                onChange={(e) => handleSelectTemplate(tmpl._id, e.target.checked)}
-                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        ) : (
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndTemplates}>
+                                <SortableContext items={templates.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                                    <div className="space-y-2.5">
+                                        {templates.map(tmpl => (
+                                            <SortableTemplateItem 
+                                                key={tmpl._id} 
+                                                tmpl={tmpl} 
+                                                selectedTemplates={selectedTemplates}
+                                                handleSelectTemplate={handleSelectTemplate}
+                                                setEditingTemplate={setEditingTemplate}
+                                                setTemplateFormData={setTemplateFormData}
+                                                setIsSaveTemplateModalOpen={setIsSaveTemplateModalOpen}
+                                                api={api}
+                                                fetchTemplates={fetchTemplates}
+                                                priorityStyles={priorityStyles}
+                                                user={user}
+                                                setFormData={setFormData}
+                                                setSubTasksList={setSubTasksList}
+                                                setIsTemplateModalOpen={setIsTemplateModalOpen}
+                                                setIsModalOpen={setIsModalOpen}
                                             />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-slate-800 text-sm tracking-tight mb-1.5">{tmpl.templateName}</h4>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            {tmpl.assignedRole && (
-                                                <span className="inline-flex items-center text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md border border-blue-100 uppercase tracking-widest leading-none">
-                                                    {tmpl.assignedRole}
-                                                </span>
-                                            )}
-                                            <span className="inline-flex items-center text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-tighter border border-slate-200 leading-none">
-                                                {tmpl.steps?.length || 0} sub-tasks
-                                            </span>
-                                            {tmpl.estimatedHours > 0 && (
-                                                <span className="inline-flex items-center text-[9px] font-black text-blue-400 bg-blue-50/50 px-2 py-1 rounded-md uppercase tracking-tighter border border-blue-100 leading-none">
-                                                    <Clock size={10} className="mr-1" /> {tmpl.estimatedHours}h
-                                                </span>
-                                            )}
-                                            <span className={`inline-flex items-center text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-tighter border leading-none ${priorityStyles[tmpl.priority]}`}>
-                                                {tmpl.priority}
-                                            </span>
-                                        </div>
+                                        ))}
                                     </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                onClick={() => {
-                                                    setEditingTemplate(tmpl);
-                                                    setTemplateFormData({
-                                                        templateName: tmpl.templateName || '',
-                                                        assignedRole: tmpl.assignedRole || '',
-                                                        taskTitle: tmpl.taskTitle || '',
-                                                        description: tmpl.description || '',
-                                                        estimatedHours: tmpl.estimatedHours || 0,
-                                                        priority: tmpl.priority || 'Medium',
-                                                        steps: tmpl.steps || []
-                                                    });
-                                                    setIsSaveTemplateModalOpen(true);
-                                                }}
-                                                className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-all border border-transparent hover:border-blue-100"
-                                                title="Edit Template"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    if (window.confirm('Delete this template?')) {
-                                                        try {
-                                                            await api.delete(`/task-templates/${tmpl._id}`);
-                                                            toast.success('Template deleted');
-                                                            fetchTemplates();
-                                                        } catch (err) { toast.error('Failed to delete template'); }
-                                                    }
-                                                }}
-                                                className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all border border-transparent hover:border-red-100"
-                                                title="Delete Template"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-
-                                        <button
-                                            onClick={() => {
-                                                setFormData({
-                                                    title: tmpl.taskTitle,
-                                                    description: tmpl.description || '',
-                                                    priority: tmpl.priority || 'Medium',
-                                                    assignedRoleType: tmpl.assignedRole,
-                                                    projectId: '', assignedTo: [], status: 'todo', dueDate: '', startDate: '', category: 'TASK'
-                                                });
-                                                setSubTasksList(tmpl.steps || []);
-                                                setIsTemplateModalOpen(false);
-                                                setIsModalOpen(true);
-                                            }}
-                                            className="h-10 px-6 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 transition shadow-lg shadow-slate-200 active:scale-95 whitespace-nowrap"
-                                        >
-                                            Use Template
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                </SortableContext>
+                            </DndContext>
+                        )}
                     </div>
                 </div>
             </Modal>
