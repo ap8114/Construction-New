@@ -54,10 +54,16 @@ const ClientPortalLayout = () => {
         auth: { token }
       });
 
+      socketRef.current.on('connect', () => {
+        if (user) {
+          socketRef.current.emit('register_user', user);
+        }
+      });
+
       socketRef.current.on('new_notification', (payload) => {
         if (payload.type === 'chat') {
           setChatUnreadCount(prev => prev + 1);
-          if (location.pathname !== '/client-portal/messages') {
+          if (!location.pathname.includes('/messages')) {
             playSound('MESSAGE_RECEIVED');
           }
         } else {
@@ -67,9 +73,15 @@ const ClientPortalLayout = () => {
       });
 
       socketRef.current.on('new_message', (payload) => {
-        if (location.pathname !== '/client-portal/messages') {
-          playSound('MESSAGE_RECEIVED');
-          setChatUnreadCount(prev => prev + 1);
+        const senderId = payload.sender?._id || payload.sender;
+        const currentUserId = user?._id || user?.id;
+        const isNotMe = senderId !== currentUserId;
+        
+        if (isNotMe) {
+          if (!location.pathname.includes('/messages')) {
+            playSound('MESSAGE_RECEIVED');
+            setChatUnreadCount(prev => prev + 1);
+          }
         }
       });
 
@@ -143,6 +155,12 @@ const ClientPortalLayout = () => {
   };
 
   const filteredGroups = getFilteredGroups();
+
+  const getHeaderTitle = () => {
+    const allItems = menuGroups.flatMap(g => g.items);
+    const currentItem = allItems.find(item => item.path === location.pathname);
+    return currentItem ? currentItem.label : 'Client Portal';
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">

@@ -1,14 +1,13 @@
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useState, useEffect, useRef } from 'react';
-import api from '../utils/api';
-import Logo from '../assets/images/Logo.png';
-import sidebarlogo from '../assets/images/sidebarlogo.png';
+import { io } from 'socket.io-client';
 import {
   Shield, LayoutDashboard, Building, Users,
   CreditCard, Settings, Ticket, LogOut, Menu, X,
-  Bell, Search, TrendingUp, Bookmark, FileText, ChevronDown
+  Bell, Search, TrendingUp, Bookmark, FileText, ChevronDown, MessageSquare
 } from 'lucide-react';
+import api from '../utils/api';
+import Logo from '../assets/images/Logo.png';
+import sidebarlogo from '../assets/images/sidebarlogo.png';
+import { playSound } from '../utils/notificationSound';
 
 const SuperAdminLayout = () => {
   const { logout, user } = useAuth();
@@ -16,19 +15,101 @@ const SuperAdminLayout = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const profileMenuRef = useRef(null);
+  const notificationRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const socketRef = useRef();
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await api.get('/chat/unread-count');
+      setChatUnreadCount(res.data.count);
+    } catch (error) {
+      console.error('Error fetching unread chat count:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      fetchUnreadCount();
+
+      const token = localStorage.getItem('token');
+      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+
+      socketRef.current = io(socketUrl, {
+        auth: { token }
+      });
+
+      socketRef.current.on('connect', () => {
+        if (user) {
+          socketRef.current.emit('register_user', user);
+        }
+      });
+
+      socketRef.current.on('new_notification', (payload) => {
+        if (payload.type === 'chat') {
+          setChatUnreadCount(prev => prev + 1);
+          if (!location.pathname.includes('/chat')) {
+            playSound('MESSAGE_RECEIVED');
+          }
+        } else {
+          playSound('NOTIFICATION');
+          fetchNotifications();
+        }
+      });
+
+      socketRef.current.on('new_message', (payload) => {
+        const senderId = payload.sender?._id || payload.sender;
+        const currentUserId = user?._id || user?.id;
+        const isNotMe = senderId !== currentUserId;
+
+        if (isNotMe) {
+          if (!location.pathname.includes('/chat')) {
+            playSound('MESSAGE_RECEIVED');
+            setChatUnreadCount(prev => prev + 1);
+          }
+        }
+      });
+
+      const interval = setInterval(() => {
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 60000);
+
+      return () => {
+        clearInterval(interval);
+        if (socketRef.current) socketRef.current.disconnect();
+      };
+    }
+  }, [user]);
 
   // Close sidebar on route change
   useEffect(() => {
     setIsSidebarOpen(false);
     setIsProfileMenuOpen(false);
+    setIsNotificationOpen(false);
   }, [location.pathname]);
 
-  // Click outside to close profile menu
+  // Click outside to close menus
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -48,6 +129,7 @@ const SuperAdminLayout = () => {
         { icon: Building, label: 'Companies', path: '/super-admin/companies' },
         { icon: CreditCard, label: 'Subscriptions', path: '/super-admin/subscriptions', badge: 3 },
         { icon: Bookmark, label: 'Plans & Pricing', path: '/super-admin/plans' },
+        { icon: MessageSquare, label: 'System Chat', path: '/super-admin/chat', badge: chatUnreadCount },
       ]
     },
     {
@@ -196,10 +278,80 @@ const SuperAdminLayout = () => {
               <Search size={20} />
             </button>
 
-            <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg relative transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg relative transition-colors"
+              >
+                 <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <MessageSquare size={20} className={chatUnreadCount > 0 ? 'text-blue-600' : 'text-slate-400'} />
+                    {chatUnreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {chatUnreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-orange-600' : 'text-slate-400'} />
+                    {notifications.some(n => !n.isRead) && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {notifications.filter(n => !n.isRead).length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {isNotificationOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-[400px] flex flex-col">
+                  <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center text-left">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alert Center</span>
+                  </div>
+                  <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    {chatUnreadCount > 0 && (
+                      <button
+                        onClick={() => { navigate('/super-admin/chat'); setIsNotificationOpen(false); }}
+                        className="w-full text-left px-4 py-3 bg-blue-50/50 hover:bg-blue-50 transition-colors border-b border-slate-50 flex gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white shrink-0 flex items-center justify-center">
+                          <MessageSquare size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800">New Messages</p>
+                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 leading-relaxed">You have {chatUnreadCount} unread transmissions.</p>
+                        </div>
+                      </button>
+                    )}
+                    {notifications.length > 0 ? (
+                      notifications.map((notif) => (
+                        <button
+                          key={notif._id}
+                          onClick={async () => {
+                            if (!notif.isRead) await api.patch(`/notifications/${notif._id}/read`);
+                            if (notif.link) navigate(notif.link);
+                            setIsNotificationOpen(false);
+                            fetchNotifications();
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 flex gap-3 ${!notif.isRead ? 'bg-orange-50/10' : ''}`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center shrink-0">
+                            <Bell size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-800 truncate">{notif.title}</p>
+                            <p className="text-xs text-slate-500 line-clamp-1 truncate">{notif.message}</p>
+                          </div>
+                          {!notif.isRead && <div className="w-2 h-2 rounded-full bg-orange-600 mt-2 shrink-0"></div>}
+                        </button>
+                      ))
+                    ) : chatUnreadCount === 0 && (
+                      <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No alerts</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="h-8 w-[1px] bg-slate-200 hidden sm:block"></div>
 

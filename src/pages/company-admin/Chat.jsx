@@ -71,6 +71,8 @@ const Chat = () => {
                 return [room, ...otherRooms];
             });
 
+            const isIncoming = payload.sender?._id !== user?._id && payload.sender !== user?._id;
+            
             if (activeRoom && payload.roomId === activeRoom.id) {
                 setMessages(prev => {
                     const currentMessages = Array.isArray(prev) ? prev : [];
@@ -83,12 +85,13 @@ const Chat = () => {
                         text: payload.message,
                         attachments: payload.attachments || [],
                         time: new Date(payload.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        isMe: payload.sender?._id === user?._id || payload.sender === user?._id
+                        isMe: !isIncoming
                     }];
                 });
                 api.put(`/chat/mark-read/${activeRoom.id}`).catch(() => {});
+                if (isIncoming) playSound('MESSAGE_RECEIVED');
             } else {
-                playSound('MESSAGE_RECEIVED');
+                if (isIncoming) playSound('MESSAGE_RECEIVED');
             }
         });
 

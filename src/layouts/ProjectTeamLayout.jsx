@@ -1,13 +1,12 @@
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useState, useEffect, useRef } from 'react';
-import api from '../utils/api';
-import Logo from '../assets/images/Logo.png';
+import { io } from 'socket.io-client';
 import {
   Building2, Home, ClipboardList, Camera,
   MessageSquare, User, Settings, LogOut, Menu, X,
   LayoutDashboard, Bell
 } from 'lucide-react';
+import api from '../utils/api';
+import Logo from '../assets/images/Logo.png';
+import { playSound } from '../utils/notificationSound';
 
 const ProjectTeamLayout = () => {
   const { logout, user } = useAuth();
@@ -15,12 +14,91 @@ const ProjectTeamLayout = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const profileMenuRef = useRef(null);
+  const notificationRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const socketRef = useRef();
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await api.get('/chat/unread-count');
+      setChatUnreadCount(res.data.count);
+    } catch (error) {
+      console.error('Error fetching unread chat count:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      fetchUnreadCount();
+
+      const token = localStorage.getItem('token');
+      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+
+      socketRef.current = io(socketUrl, {
+        auth: { token }
+      });
+
+      socketRef.current.on('connect', () => {
+        if (user) {
+          socketRef.current.emit('register_user', user);
+        }
+      });
+
+      socketRef.current.on('new_notification', (payload) => {
+        if (payload.type === 'chat') {
+          setChatUnreadCount(prev => prev + 1);
+          if (!location.pathname.includes('/chat')) {
+            playSound('MESSAGE_RECEIVED');
+          }
+        } else {
+          playSound('NOTIFICATION');
+          fetchNotifications();
+        }
+      });
+
+      socketRef.current.on('new_message', (payload) => {
+        const senderId = payload.sender?._id || payload.sender;
+        const currentUserId = user?._id || user?.id;
+        const isNotMe = senderId !== currentUserId;
+
+        if (isNotMe) {
+          if (!location.pathname.includes('/chat')) {
+            playSound('MESSAGE_RECEIVED');
+            setChatUnreadCount(prev => prev + 1);
+          }
+        }
+      });
+
+      const interval = setInterval(() => {
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 60000);
+
+      return () => {
+        clearInterval(interval);
+        if (socketRef.current) socketRef.current.disconnect();
+      };
+    }
+  }, [user]);
 
   // Close sidebar on route change for mobile
   useEffect(() => {
     setIsSidebarOpen(false);
     setIsProfileMenuOpen(false);
+    setIsNotificationOpen(false);
   }, [location.pathname]);
 
   // keydown esc to close
@@ -29,17 +107,21 @@ const ProjectTeamLayout = () => {
       if (e.key === 'Escape') {
         setIsProfileMenuOpen(false);
         setIsSidebarOpen(false);
+        setIsNotificationOpen(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // Click outside to close profile menu
+  // Click outside to close menus
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -59,7 +141,7 @@ const ProjectTeamLayout = () => {
       items: [
         { icon: LayoutDashboard, label: 'Home Feed', path: '/project-team', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_DASHBOARD' },
         { icon: ClipboardList, label: 'My Tasks', path: '/project-team/tasks', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_TASKS', badge: 'Active' },
-        { icon: MessageSquare, label: 'Team Chat', path: '/project-team/chat', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_CHAT' },
+        { icon: MessageSquare, label: 'Team Chat', path: '/project-team/chat', roles: ['project_manager', 'foreman', 'worker'], permission: 'VIEW_CHAT', badge: chatUnreadCount },
       ]
     },
     {
@@ -91,7 +173,8 @@ const ProjectTeamLayout = () => {
   const filteredGroups = getFilteredGroups();
 
   const getHeaderTitle = () => {
-    const currentItem = filteredNavItems.find(item => item.path === location.pathname);
+    const allItems = menuGroups.flatMap(g => g.items);
+    const currentItem = allItems.find(item => item.path === location.pathname);
     return currentItem ? currentItem.label : 'Project View';
   };
 
@@ -218,26 +301,72 @@ const ProjectTeamLayout = () => {
             <h2 className="text-base font-semibold text-slate-800">{getHeaderTitle()}</h2>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4 relative" ref={profileMenuRef}>
+          <div className="flex items-center gap-2 md:gap-4 relative">
             {/* Notifications */}
-            <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative hidden sm:block">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative hidden sm:block"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <MessageSquare size={20} className={chatUnreadCount > 0 ? 'text-blue-600' : 'text-slate-400'} />
+                    {chatUnreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {chatUnreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-orange-600' : 'text-slate-400'} />
+                    {notifications.some(n => !n.isRead) && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
+                        {notifications.filter(n => !n.isRead).length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {isNotificationOpen && (
+                <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-[400px] flex flex-col">
+                   <div className="px-4 py-3 border-b border-slate-50 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alert Center</span>
+                  </div>
+                  <div className="overflow-y-auto flex-1 custom-scrollbar">
+                    {chatUnreadCount > 0 && (
+                      <button
+                        onClick={() => { navigate('/project-team/chat'); setIsNotificationOpen(false); }}
+                        className="w-full text-left px-4 py-3 bg-blue-50/50 hover:bg-blue-50 transition-colors border-b border-slate-50 flex gap-3"
+                      >
+                         <div className="w-8 h-8 rounded-lg bg-blue-600 text-white shrink-0 flex items-center justify-center">
+                          <MessageSquare size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-slate-800">New Messages</p>
+                          <p className="text-xs text-slate-400 mt-1">You have {chatUnreadCount} unread transmissions.</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* User Profile */}
-            <button
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition"
-            >
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-medium text-slate-900">{user?.name || 'Team Member'}</div>
-                <div className="text-xs text-slate-500 capitalize">{user?.role?.replace('_', ' ') || 'Worker'}</div>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">
-                {(user?.name || 'T M').split(' ').map(n => n[0]).join('')}
-              </div>
-            </button>
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition"
+              >
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm font-medium text-slate-900">{user?.name || 'Team Member'}</div>
+                  <div className="text-xs text-slate-500 capitalize">{user?.role?.replace('_', ' ') || 'Worker'}</div>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">
+                  {(user?.name || 'T M').split(' ').map(n => n[0]).join('')}
+                </div>
+              </button>
 
             {/* Profile Dropdown */}
             {isProfileMenuOpen && (
@@ -267,7 +396,8 @@ const ProjectTeamLayout = () => {
               </div>
             )}
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* Dynamic Content */}
         <main className="flex-1 overflow-auto p-4 bg-slate-50 scroll-smooth">

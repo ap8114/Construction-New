@@ -112,24 +112,40 @@ const CompanyAdminLayout = () => {
         auth: { token }
       });
 
+      socketRef.current.on('connect', () => {
+        if (user) {
+          socketRef.current.emit('register_user', user);
+        }
+      });
+
       socketRef.current.on('new_notification', (payload) => {
-        // playSound('NOTIFICATION'); // Only play if not handled by new_message
+        // Handle chat notifications specifically for badge and sound
         if (payload.type === 'chat') {
           setChatUnreadCount(prev => prev + 1);
-          if (location.pathname !== '/company-admin/chat') {
-            playSound('MESSAGE_RECEIVED');
+          // Always play sound for incoming chat notification if not already handled by new_message
+          // and if we're not explicitly viewing the chat page
+          if (!location.pathname.includes('/chat')) {
+             playSound('MESSAGE_RECEIVED');
           }
         } else {
+          // System notifications
           playSound('NOTIFICATION');
           fetchNotifications();
         }
       });
 
       socketRef.current.on('new_message', (payload) => {
-        // Only play if we are NOT on the chat page (prevent double sound)
-        if (location.pathname !== '/company-admin/chat') {
-           playSound('MESSAGE_RECEIVED');
-           setChatUnreadCount(prev => prev + 1);
+        // Robust check for sender to avoid playing sound for own messages
+        const senderId = payload.sender?._id || payload.sender;
+        const currentUserId = user?._id || user?.id;
+        const isNotMe = senderId !== currentUserId;
+
+        if (isNotMe) {
+          // Increment badge if we're not on the chat page
+          if (!location.pathname.includes('/chat')) {
+            setChatUnreadCount(prev => prev + 1);
+            playSound('MESSAGE_RECEIVED');
+          }
         }
       });
 

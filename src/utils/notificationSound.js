@@ -1,13 +1,14 @@
 /**
  * Utility to handle notification sounds across the application.
+ * All sounds are now using reliable Mixkit CDN to ensure playback works across all browsers.
  */
 
 const SOUNDS = {
-    // Clear Chime for general notifications
+    // Elegant chime for incoming messages and alerts
     NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
-    // Classic Message Received sound
-    MESSAGE_RECEIVED: 'https://raw.githubusercontent.com/shixuewen/ios-message-sound/master/message.mp3',
-    // Subtle send sound
+    // Stronger tone for direct chat messages
+    MESSAGE_RECEIVED: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
+    // Subtle bubble pop for sent messages
     MESSAGE_SENT: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
 };
 
@@ -19,13 +20,19 @@ let audioUnlocked = false;
 export const unlockAudio = () => {
     if (audioUnlocked) return;
     
-    // Create a dummy audio to unlock the context
+    // Create a temporary audio element and try to play it
     const silentAudio = new Audio();
-    silentAudio.play().then(() => {
-        audioUnlocked = true;
-    }).catch(() => {
-        // Silently wait for another interaction
-    });
+    silentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'; // Tiny silent wav
+    
+    const playPromise = silentAudio.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            audioUnlocked = true;
+            console.log('✅ Audio system unlocked and ready');
+        }).catch(err => {
+            console.warn('⚠️ Audio unlock pending user interaction:', err);
+        });
+    }
 };
 
 /**
@@ -34,18 +41,31 @@ export const unlockAudio = () => {
  */
 export const playSound = (type = 'NOTIFICATION') => {
     try {
+        console.log(`[Audio] Attempting to play sound: ${type}`);
         const soundUrl = SOUNDS[type] || SOUNDS.NOTIFICATION;
         const audio = new Audio(soundUrl);
-        audio.volume = 1.0; // Max volume for clarity
+        
+        // Ensure volume is up
+        audio.volume = 1.0; 
         
         const playPromise = audio.play();
+        
         if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.warn('Playback blocked by browser policy:', error);
+            playPromise.then(() => {
+                console.log(`[Audio] Successfully played: ${type}`);
+            }).catch(error => {
+                console.error(`[Audio] Blocked or Failed: ${type}`, error);
+                
+                // If blocked, we try one more time if audio might have been unlocked meanwhile
+                if (audioUnlocked) {
+                    setTimeout(() => {
+                        audio.play().catch(() => {});
+                    }, 100);
+                }
             });
         }
     } catch (err) {
-        console.error('Error playing sound:', err);
+        console.error('[Audio] Utility fatal error:', err);
     }
 };
 
@@ -58,3 +78,4 @@ export default {
         MESSAGE_SENT: 'MESSAGE_SENT'
     }
 };
+
