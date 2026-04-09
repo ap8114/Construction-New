@@ -25,10 +25,11 @@ const Chat = () => {
         '✅', '❌', '⚠️', '🏢', '📅', '⏰', '💰', '✉️'
     ];
     const fileInputRef = useRef(null);
-
     const socketRef = useRef();
     const messagesEndRef = useRef(null);
-    const notificationSound = useRef(new Audio('/assets/sounds/notification.mp3'));
+    const sendSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
+    const receiveSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'));
+    const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'));
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,7 +100,8 @@ const Chat = () => {
                 api.put(`/chat/mark-read/${activeRoom.id}`).catch(console.error);
             } else {
                 // Play sound if not in focus
-                notificationSound.current.play().catch(() => { });
+                receiveSound.current.currentTime = 0;
+                receiveSound.current.play().catch(() => { });
             }
         });
 
@@ -115,7 +117,10 @@ const Chat = () => {
                             const otherRooms = prev.filter(r => r.id !== notif.roomId);
                             return [updatedRoom, ...otherRooms];
                         } else {
-                            // Fetch fresh room list if we get a notification for a room we don't know about yet
+                            // Play sound if not in focus
+                            receiveSound.current.currentTime = 0;
+                            receiveSound.current.play().catch(() => { });
+                            // Fetch fresh room list
                             fetchRooms();
                             return prev;
                         }
@@ -341,6 +346,8 @@ const Chat = () => {
 
                 return [updatedRoom, ...otherRooms];
             });
+            sendSound.current.currentTime = 0;
+            sendSound.current.play().catch(() => { });
             console.log('Message sent successfully');
         } catch (error) {
             console.error('Error sending message:', error);
