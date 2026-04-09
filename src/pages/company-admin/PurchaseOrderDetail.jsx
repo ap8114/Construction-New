@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import emailjs from '@emailjs/browser';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logo from '../../assets/images/Logo.png';
+import poLogo from '../../assets/images/POLogo.png';
 import '../../styles/PurchaseOrders.css';
 import Modal from '../../components/Modal';
 
@@ -96,146 +96,194 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             const companyAddress = data.companyId?.address || data.projectId?.companyId?.address || user?.companyAddress || "123 Construction Road";
 
             // 1. Header Section
-            // Company Logo - WAIT FOR LOAD
+            // Logo (Left)
             const logoReady = new Promise((resolve) => {
                 const img = new Image();
-                img.src = logo;
+                img.src = poLogo;
                 img.onload = () => resolve(img);
-                img.onerror = () => resolve(null); // Continue even if logo fails
+                img.onerror = () => resolve(null);
             });
             const img = await logoReady;
             if (img) {
-                doc.addImage(img, 'PNG', 20, 15, 25, 25);
+                doc.addImage(img, 'PNG', 15, 12, 45, 28); // Increased height
             }
 
-            // Company Info (Left)
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(companyName, 20, 48);
+            // Vertical Separator
+            doc.setDrawColor(200);
+            doc.setLineWidth(0.4);
+            doc.line(65, 12, 65, 45); // Extended line
 
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100);
-            doc.text(companyEmail, 20, 54);
-            doc.text(companyPhone, 20, 59);
-            doc.text(companyAddress, 20, 64);
-
-            // PO Title & Info (Right)
-            doc.setFontSize(28);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text('PURCHASE ORDER', pageWidth - 20, 25, { align: 'right' });
-
-            doc.setFontSize(10);
-            doc.setFontSize(10);
-            const statusColor = data.status === 'Approved' || data.status === 'Sent' || data.status === 'Delivered' ? [16, 185, 129] : [239, 68, 68];
-            doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-            doc.text(data.status?.toUpperCase() || 'DRAFT', pageWidth - 20, 32, { align: 'right' });
-
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(100);
-            doc.text(`PO Number: ${data.poNumber}`, pageWidth - 20, 40, { align: 'right' });
-            doc.text(`Issue Date: ${new Date(data.createdAt).toLocaleDateString()}`, pageWidth - 20, 45, { align: 'right' });
-            doc.text(`Delivery Date: ${data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate).toLocaleDateString() : 'N/A'}`, pageWidth - 20, 50, { align: 'right' });
-
-            doc.setDrawColor(241, 245, 249);
-            doc.line(20, 75, pageWidth - 20, 75);
-
-            // 2. Vendor & Shipping Section
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(148, 163, 184);
-            doc.text('VENDOR / BILL TO:', 20, 85);
-            doc.text('SHIP TO / PROJECT:', pageWidth - 20, 85, { align: 'right' });
-
+            // Company Info with Vector Icons (Center-Left)
+            const iconX = 70;
+            const textX = 76;
+            
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text(data.vendorName || data.vendorId?.name || 'Vendor', 20, 93);
-            doc.text(data.projectId?.name || 'Project Site', pageWidth - 20, 93, { align: 'right' });
-
+            doc.setTextColor(21, 45, 78);
+            doc.text(companyName.toUpperCase(), 70, 16);
+            
             doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(71, 85, 105);
+            
+            // Location Icon (Direct Drawing)
+            doc.setFillColor(21, 45, 78);
+            doc.circle(iconX + 1.5, 24, 1.2, 'F'); // Pin head
+            doc.triangle(iconX + 0.5, 25, iconX + 2.5, 25, iconX + 1.5, 27, 'F'); // Pin bottom
+            doc.setTextColor(30, 41, 59);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100);
-            doc.text(data.vendorEmail || 'N/A', 20, 99);
-            doc.text(data.projectId?.location || 'Project Location', pageWidth - 20, 99, { align: 'right' });
+            doc.text(companyAddress, textX, 26);
+            
+            // Phone Icon (Direct Drawing)
+            doc.roundedRect(iconX + 0.5, 31, 2, 3, 0.5, 0.5, 'F');
+            doc.setFillColor(255);
+            doc.circle(iconX + 1.5, 32, 0.4, 'F'); // "Screen" dot
+            doc.text(companyPhone, textX, 33.5);
+            
+            // Email Icon (Direct Drawing)
+            doc.setFillColor(21, 45, 78);
+            doc.rect(iconX, 39, 3.5, 2.5, 'F');
+            doc.setDrawColor(255);
+            doc.setLineWidth(0.2);
+            doc.line(iconX, 39, iconX + 1.75, 40.5); // Flap left
+            doc.line(iconX + 3.5, 39, iconX + 1.75, 40.5); // Flap right
+            doc.text(companyEmail, textX, 41);
+
+            // PO Title & Info (Right Area)
+            doc.setFontSize(32);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(21, 45, 78);
+            doc.text('PURCHASE ORDER', pageWidth - 15, 22, { align: 'right' });
+
+            // Date & PO Number Boxes
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.1);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            
+            // Date Box
+            doc.text('DATE', pageWidth - 70, 36);
+            doc.rect(pageWidth - 55, 30, 40, 8);
+            doc.setFont('helvetica', 'normal');
+            doc.text(new Date().toLocaleDateString(), pageWidth - 35, 35.5, { align: 'center' });
+            
+            // PO # Box
+            doc.setFont('helvetica', 'bold');
+            doc.text('PO #', pageWidth - 70, 46);
+            doc.rect(pageWidth - 55, 40, 40, 8);
+            doc.setFont('helvetica', 'normal');
+            doc.text(data.poNumber || '', pageWidth - 35, 45.5, { align: 'center' });
+
+            // Horizontal Separator
+            doc.setDrawColor(21, 45, 78);
+            doc.setLineWidth(1);
+            doc.line(15, 50, pageWidth - 15, 50);
+
+            // 2. Vendor & Shipping Section
+            const boxY = 60;
+            const boxWidth = (pageWidth - 45) / 2;
+            
+            // Vendor Box
+            doc.setFillColor(21, 45, 78);
+            doc.rect(15, boxY, boxWidth, 7, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('VENDOR', 20, boxY + 5);
+            
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(10);
+            const vendorLines = [
+                data.vendorName || data.vendorId?.name || '',
+                data.vendorEmail || '',
+                data.vendorPhone || '',
+                data.vendorAddress || ''
+            ].filter(line => line);
+            doc.setFont('helvetica', 'bold');
+            doc.text(vendorLines[0] || '', 15, boxY + 15);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(vendorLines.slice(1), 15, boxY + 20);
+
+            // Ship To Box
+            doc.setFillColor(21, 45, 78);
+            doc.rect(pageWidth / 2 + 7.5, boxY, boxWidth, 7, 'F');
+            doc.setTextColor(255);
+            doc.setFont('helvetica', 'bold');
+            doc.text('SHIP TO', pageWidth / 2 + 12.5, boxY + 5);
+
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(data.projectId?.name || 'Project Site', pageWidth / 2 + 7.5, boxY + 15);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text([
+                data.projectId?.location || '',
+                `Delivery: ${data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate).toLocaleDateString() : 'N/A'}`
+            ], pageWidth / 2 + 7.5, boxY + 20);
 
             // 3. Items Table Section
-            const tableColumn = ["ITEM DESCRIPTION", "QUANTITY"];
-            const tableRows = (data.items || []).map(item => [
-                { content: `${item.itemName || 'Material'}\n${item.description || ''}`, styles: { fontStyle: 'bold' } },
-                item.quantity || 1
+            const tableColumn = ["ITEM #", "DESCRIPTION", "QTY"];
+            const tableRows = (data.items || []).map((item, index) => [
+                index + 1,
+                { content: `${item.itemName || ''}${item.description ? '\n' + item.description : ''}`, styles: { halign: 'left' } },
+                item.quantity || 0
             ]);
 
+            // Fill remaining space with empty rows to match look
+            while (tableRows.length < 8) {
+                tableRows.push(['', '', '']);
+            }
+
             autoTable(doc, {
-                startY: 110,
+                startY: 105,
+                margin: { left: 15, right: 15 },
                 head: [tableColumn],
                 body: tableRows,
                 theme: 'grid',
                 headStyles: {
-                    fillColor: [30, 41, 59], // Slate-800
+                    fillColor: [21, 45, 78],
                     textColor: [255, 255, 255],
                     fontSize: 8,
                     fontStyle: 'bold',
                     halign: 'center'
                 },
                 columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 }
+                    0: { cellWidth: 25, halign: 'center' },
+                    1: { cellWidth: 'auto' },
+                    2: { cellWidth: 40, halign: 'center' }
                 },
                 styles: {
-                    fontSize: 9,
-                    cellPadding: 6,
-                    lineColor: [226, 232, 240], // Slate-200
+                    fontSize: 8,
+                    cellPadding: 4,
+                    lineColor: [200, 200, 200],
                     lineWidth: 0.1
                 },
             });
 
-            // 4. Summary Section (Commented out as per client request)
-            /*
-            let finalY = doc.lastAutoTable.finalY + 15;
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(148, 163, 184); // Slate-400
+            // 4. Comments Section
+            let finalY = doc.lastAutoTable.finalY + 10;
             
-            doc.text('Subtotal:', pageWidth - 100, finalY);
-            doc.setTextColor(15, 23, 42); // Slate-900
-            doc.text(`$${(data.subtotal || data.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
-
-            finalY += 8;
-            doc.setTextColor(148, 163, 184);
-            doc.text('Tax (Estimated):', pageWidth - 100, finalY);
-            doc.setTextColor(15, 23, 42);
-            doc.text(`$${(data.tax || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
-
-            doc.setDrawColor(241, 245, 249);
-            doc.line(pageWidth - 100, finalY + 5, pageWidth - 20, finalY + 5);
-
-            finalY += 15;
-            doc.setFontSize(12);
+            // Comments Box (Full Width)
+            doc.setFillColor(230, 230, 230);
+            doc.rect(15, finalY, pageWidth - 30, 6, 'F');
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text('GRAND TOTAL', pageWidth - 100, finalY);
-            doc.setFontSize(16);
-            doc.setTextColor(37, 99, 235); // Blue-600
-            doc.text(`$${(data.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
-            */
+            doc.setTextColor(30, 41, 59);
+            doc.text('Comments or Special Instructions', 18, finalY + 4.5);
+            doc.rect(15, finalY, pageWidth - 30, 35);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            const notes = data.notesToVendor || "No special instructions.";
+            doc.text(doc.splitTextToSize(notes, pageWidth - 40), 18, finalY + 12);
 
-            // 5. Footer Notes
-            const footerY = 240;
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text('Notes to Vendor', 20, footerY);
-
+            // 5. Footer Text
+            doc.setTextColor(30, 41, 59);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100);
-            const notes = data.notesToVendor || "Please acknowledge receipt of this PO and confirm delivery dates. All deliveries must match the specifications listed above.";
-            const splitNotes = doc.splitTextToSize(notes, pageWidth - 40);
-            doc.text(splitNotes, 20, footerY + 8);
+            const footerText = `If you have any questions about this purchase order, please contact ${companyName}, ${companyPhone}, ${companyEmail}`;
+            doc.text(footerText, pageWidth / 2, 280, { align: 'center' });
 
             doc.setFontSize(7);
             doc.setTextColor(150);
