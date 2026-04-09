@@ -3,6 +3,7 @@ import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circ
 import { io } from 'socket.io-client';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { playSound } from '../../utils/notificationSound';
 
 const Chat = () => {
     const { user } = useAuth();
@@ -28,28 +29,7 @@ const Chat = () => {
     const socketRef = useRef();
     const messagesEndRef = useRef(null);
 
-    // Robust Sound Trigger for all browsers
-    const triggerNotificationSound = () => {
-        try {
-            const audio = new Audio('https://raw.githubusercontent.com/shixuewen/ios-message-sound/master/message.mp3');
-            audio.volume = 1.0;
-            audio.play().catch(() => {
-                // Silently fail if browser blocks it, will work after first click
-            });
-        } catch (err) {
-            console.error('Audio trigger failed:', err);
-        }
-    };
-
-    useEffect(() => {
-        // Unlock audio context on any user interaction
-        const unlock = () => {
-            triggerNotificationSound(); 
-            window.removeEventListener('click', unlock);
-        };
-        window.addEventListener('click', unlock);
-        return () => window.removeEventListener('click', unlock);
-    }, []);
+    // Handled globally in App.jsx
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -108,7 +88,7 @@ const Chat = () => {
                 });
                 api.put(`/chat/mark-read/${activeRoom.id}`).catch(() => {});
             } else {
-                triggerNotificationSound();
+                playSound('MESSAGE_RECEIVED');
             }
         });
 
@@ -127,7 +107,7 @@ const Chat = () => {
                             return currentRooms;
                         }
                     });
-                    triggerNotificationSound();
+                    playSound('NOTIFICATION');
                 }
             }
         });
@@ -291,7 +271,7 @@ const Chat = () => {
                 return [updatedRoom, ...otherRooms];
             });
 
-            triggerNotificationSound();
+            playSound('MESSAGE_SENT');
         } catch (error) {
             setMessages(prev => prev.filter(msg => msg.id !== tempId));
         }

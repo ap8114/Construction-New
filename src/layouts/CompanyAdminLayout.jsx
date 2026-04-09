@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import Logo from '../assets/images/Logo.png';
+import { playSound } from '../utils/notificationSound';
 
 const CompanyAdminLayout = () => {
   const { user, logout, updateUserData } = useAuth();
@@ -112,10 +113,23 @@ const CompanyAdminLayout = () => {
       });
 
       socketRef.current.on('new_notification', (payload) => {
+        // playSound('NOTIFICATION'); // Only play if not handled by new_message
         if (payload.type === 'chat') {
           setChatUnreadCount(prev => prev + 1);
-          // Optional: Fetch fresh count to be sure
-          // fetchUnreadCount();
+          if (location.pathname !== '/company-admin/chat') {
+            playSound('MESSAGE_RECEIVED');
+          }
+        } else {
+          playSound('NOTIFICATION');
+          fetchNotifications();
+        }
+      });
+
+      socketRef.current.on('new_message', (payload) => {
+        // Only play if we are NOT on the chat page (prevent double sound)
+        if (location.pathname !== '/company-admin/chat') {
+           playSound('MESSAGE_RECEIVED');
+           setChatUnreadCount(prev => prev + 1);
         }
       });
 

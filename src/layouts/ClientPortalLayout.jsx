@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../utils/api';
 import Logo from '../assets/images/Logo.png';
+import { playSound } from '../utils/notificationSound';
 
 const ClientPortalLayout = () => {
   const { logout, user } = useAuth();
@@ -56,8 +57,19 @@ const ClientPortalLayout = () => {
       socketRef.current.on('new_notification', (payload) => {
         if (payload.type === 'chat') {
           setChatUnreadCount(prev => prev + 1);
+          if (location.pathname !== '/client-portal/messages') {
+            playSound('MESSAGE_RECEIVED');
+          }
         } else {
+          playSound('NOTIFICATION');
           fetchNotifications();
+        }
+      });
+
+      socketRef.current.on('new_message', (payload) => {
+        if (location.pathname !== '/client-portal/messages') {
+          playSound('MESSAGE_RECEIVED');
+          setChatUnreadCount(prev => prev + 1);
         }
       });
 

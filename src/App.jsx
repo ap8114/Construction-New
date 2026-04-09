@@ -8,6 +8,8 @@ import ProjectTeamLayout from './layouts/ProjectTeamLayout';
 import ClientPortalLayout from './layouts/ClientPortalLayout';
 import { useAuth } from './context/AuthContext';
 import ComingSoon from './components/ComingSoon';
+import { unlockAudio } from './utils/notificationSound';
+import { useEffect } from 'react';
 
 import LandingPage from './pages/LandingPage';
 
@@ -93,6 +95,21 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const handleFirstClick = () => {
+      unlockAudio();
+      window.removeEventListener('mousedown', handleFirstClick);
+      window.removeEventListener('keydown', handleFirstClick);
+    };
+    window.addEventListener('mousedown', handleFirstClick);
+    window.addEventListener('keydown', handleFirstClick);
+    
+    return () => {
+      window.removeEventListener('mousedown', handleFirstClick);
+      window.removeEventListener('keydown', handleFirstClick);
+    };
+  }, []);
+
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />

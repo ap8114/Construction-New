@@ -2,6 +2,7 @@ import { Send, User, MessageCircle, Search, Paperclip, Phone, MoreVertical, Menu
 import { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { playSound } from '../../utils/notificationSound';
 
 const Messages = () => {
   const { user } = useAuth();
@@ -88,6 +89,7 @@ const Messages = () => {
       };
       setMessages([...messages, myMsg]);
       setNewMessage('');
+      playSound('MESSAGE_SENT');
     } catch (err) {
       console.error('Error sending message:', err);
     }
