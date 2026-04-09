@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X } from 'lucide-react';
+import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Download, Loader } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -16,7 +16,15 @@ const Chat = () => {
     const [activeTab, setActiveTab] = useState('INTERNAL'); // INTERNAL, CLIENT, SUB
     const [showDirectory, setShowDirectory] = useState(false);
     const [directoryUsers, setDirectoryUsers] = useState([]);
-    const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+    const commonEmojis = [
+        '😊', '😂', '👍', '🙏', '🔥', '❤️', '👏', '🙌', 
+        '🏠', '🏗️', '📐', '🔧', '🔨', '⛏️', '🚧', '🚜',
+        '✅', '❌', '⚠️', '🏢', '📅', '⏰', '💰', '✉️'
+    ];
+    const fileInputRef = useRef(null);
 
     const socketRef = useRef();
     const messagesEndRef = useRef(null);
@@ -50,21 +58,25 @@ const Chat = () => {
 
         socketRef.current.on('new_message', (payload) => {
             // Update sidebar preview for EVERY room that receives a message
-            setRooms(prev => prev.map(r => {
-                if (r.id === payload.roomId) {
-                    return {
-                        ...r,
-                        lastMessage: {
-                            text: payload.message,
-                            sender: payload.sender.fullName,
-                            time: payload.createdAt
-                        },
-                        // Only increment unread if not actively viewing this room
-                        unreadCount: (activeRoom?.id === payload.roomId) ? 0 : (r.unreadCount || 0) + 1
-                    };
-                }
-                return r;
-            }));
+            setRooms(prev => {
+                const roomIndex = prev.findIndex(r => r.id === payload.roomId);
+                if (roomIndex === -1) return prev;
+
+                const room = prev[roomIndex];
+                const updatedRoom = {
+                    ...room,
+                    lastMessage: {
+                        text: payload.message,
+                        sender: payload.sender.fullName,
+                        time: payload.createdAt
+                    },
+                    // Only increment unread if not actively viewing this room
+                    unreadCount: (activeRoom?.id === payload.roomId) ? 0 : (room.unreadCount || 0) + 1
+                };
+
+                const otherRooms = prev.filter(r => r.id !== payload.roomId);
+                return [updatedRoom, ...otherRooms];
+            });
 
             // If the message is for the active room, add it to the list
             if (activeRoom && payload.roomId === activeRoom.id) {
@@ -75,8 +87,9 @@ const Chat = () => {
                     return [...prev, {
                         id: payload._id,
                         sender: payload.sender.fullName,
-                        role: payload.sender.role,
+                        role: payload.sender?.role || 'User',
                         text: payload.message,
+                        attachments: payload.attachments || [],
                         time: new Date(payload.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         isMe: payload.sender._id === user?._id || payload.sender === user?._id
                     }];
@@ -95,14 +108,12 @@ const Chat = () => {
                 // If it's a new message in a room we are NOT in, or not actively viewing
                 if (!activeRoom || notif.roomId !== activeRoom.id) {
                     setRooms(prev => {
-                        const roomExists = prev.some(r => r.id === notif.roomId);
-                        if (roomExists) {
-                            return prev.map(r => {
-                                if (r.id === notif.roomId) {
-                                    return { ...r, unreadCount: (r.unreadCount || 0) + 1 };
-                                }
-                                return r;
-                            });
+                        const roomIndex = prev.findIndex(r => r.id === notif.roomId);
+                        if (roomIndex !== -1) {
+                            const room = prev[roomIndex];
+                            const updatedRoom = { ...room, unreadCount: (room.unreadCount || 0) + 1 };
+                            const otherRooms = prev.filter(r => r.id !== notif.roomId);
+                            return [updatedRoom, ...otherRooms];
                         } else {
                             // Fetch fresh room list if we get a notification for a room we don't know about yet
                             fetchRooms();
@@ -192,6 +203,7 @@ const Chat = () => {
                     sender: msg.sender?.fullName || 'Unknown',
                     role: msg.sender?.role || 'User',
                     text: msg.message,
+                    attachments: msg.attachments || [],
                     time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     isMe: msg.sender?._id === user?._id || msg.sender === user?._id
                 }));
@@ -209,11 +221,61 @@ const Chat = () => {
         fetchMessages();
     }, [activeRoom?.id]);
 
-    const handleSend = async () => {
-        if (!newMessage.trim() || !activeRoom) return;
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !activeRoom) return;
 
-        const messageContent = newMessage;
-        const tempId = Date.now().toString();
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Optimistic UI for uploading
+            const tempId = 'uploading-' + Date.now();
+            setMessages(prev => [...prev, {
+                id: tempId,
+                sender: user?.fullName || 'Me',
+                role: user?.role || 'User',
+                text: `Uploading file: ${file.name}...`,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isMe: true,
+                uploading: true
+            }]);
+
+            const res = await api.post('/chat/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const attachment = res.data;
+            
+            // Remove uploading message and send real one
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+            const combinedMessage = newMessage.trim() ? `${newMessage}\n(Attached: ${attachment.name})` : `Attached: ${attachment.name}`;
+            await handleSend(combinedMessage, [attachment]);
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Failed to upload file. Please try again.');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleSend = async (messageText = null, attachments = []) => {
+        console.log('handleSend triggered:', { messageText, newMessage, activeRoom: activeRoom?.id });
+        
+        let messageContent = messageText !== null ? messageText : newMessage;
+        
+        // Safeguard for backend schema: if message is empty but attachments exist, add a label
+        if (!messageContent.trim() && attachments.length > 0) {
+            messageContent = `Sent ${attachments.length} attachment(s)`;
+        }
+
+        if (!messageContent.trim() || !activeRoom) {
+            console.warn('handleSend aborted: empty message or no active room');
+            return;
+        }
+
+        const tempId = 'optimistic-' + Date.now().toString();
 
         // Optimistic UI Update
         const optimisticMsg = {
@@ -221,18 +283,22 @@ const Chat = () => {
             sender: user?.fullName || 'Me',
             role: user?.role || 'User',
             text: messageContent,
+            attachments: attachments,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             isMe: true,
             pending: true
         };
 
         setMessages(prev => [...prev, optimisticMsg]);
-        setNewMessage('');
+        if (messageText === null) setNewMessage('');
+        if (showEmojiPicker) setShowEmojiPicker(false);
 
         try {
+            console.log('Sending to backend...', { roomId: activeRoom.id, message: messageContent });
             const res = await api.post('/chat', {
                 roomId: activeRoom.id,
-                message: messageContent
+                message: messageContent,
+                attachments: attachments
             });
 
             // Reconcile optimistic message with server response
@@ -244,22 +310,79 @@ const Chat = () => {
                 pending: false
             } : msg));
 
-            // Also update the short-list preview in sidebar
-            setRooms(prev => prev.map(r => r.id === activeRoom.id ? {
-                ...r,
-                lastMessage: {
+            // Move to top logic
+            setRooms(prev => {
+                const roomIndex = prev.findIndex(r => r.id === activeRoom.id);
+                const otherRooms = prev.filter(r => r.id !== activeRoom.id);
+                
+                const updatedRoom = roomIndex !== -1 ? { ...prev[roomIndex] } : { ...activeRoom };
+                updatedRoom.lastMessage = {
                     text: serverMsg.message,
                     sender: serverMsg.sender?.fullName || user?.fullName,
                     time: serverMsg.createdAt
-                }
-            } : r));
+                };
+
+                return [updatedRoom, ...otherRooms];
+            });
+            console.log('Message sent successfully');
         } catch (error) {
             console.error('Error sending message:', error);
-            // Remove optimistic message on failure
             setMessages(prev => prev.filter(msg => msg.id !== tempId));
-            setNewMessage(messageContent); // Restore text
+            if (messageText === null) setNewMessage(messageContent);
             alert('Failed to send message. Please check your connection.');
         }
+    };
+
+
+    const downloadFile = async (originalUrl, filename) => {
+        try {
+            const sanitizedUrl = sanitizeAttachmentUrl(originalUrl);
+            
+            // Call our new backend proxy endpoint
+            const response = await api.get(`/chat/download`, {
+                params: { 
+                    url: sanitizedUrl, 
+                    name: filename 
+                },
+                responseType: 'blob'
+            });
+            
+            const blobUrl = window.URL.createObjectURL(response.data);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'download';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Download error:', error);
+            alert('Download failed. The file might be temporarily unavailable or restricted.');
+        }
+    };
+
+    const sanitizeAttachmentUrl = (url, fileType) => {
+        if (!url) return '';
+        // Fix for Cloudinary issue: Ensure we use /upload/ and not /authenticated/ or /private/ if it was misdetected
+        let cleanUrl = url.replace('/authenticated/upload/', '/upload/').replace('/private/upload/', '/upload/');
+        
+        // Fix for existing Cloudinary issues where PDFs might be served via /image/ (causing 401 in some configs)
+        if (cleanUrl.includes('cloudinary.com') && cleanUrl.includes('/image/upload/') && (fileType?.includes('pdf') || cleanUrl.toLowerCase().endsWith('.pdf'))) {
+            return cleanUrl.replace('/image/upload/', '/raw/upload/');
+        }
+        return cleanUrl;
+    };
+
+    const getDownloadUrl = (url) => {
+        if (!url) return '';
+        const sanitized = sanitizeAttachmentUrl(url);
+        if (sanitized.includes('cloudinary.com') && sanitized.includes('/upload/')) {
+            // Add fl_attachment to force download header from Cloudinary
+            if (sanitized.includes('/image/upload/')) return sanitized.replace('/image/upload/', '/image/upload/fl_attachment/');
+            if (sanitized.includes('/raw/upload/')) return sanitized.replace('/raw/upload/', '/raw/upload/fl_attachment/');
+        }
+        return sanitized;
     };
 
     const filterRoomsByTab = (allRooms, tab) => {
@@ -403,14 +526,21 @@ const Chat = () => {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-1.5 overflow-hidden">
-                                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 shrink-0">
-                                        {room.projectId ? room.projectName : (room.roomType === 'DIRECT' ? 'Private' : room.roomType)}
-                                    </span>
+                                <div className="mt-1 space-y-1">
+                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 shrink-0">
+                                            {room.projectId ? room.projectName : (room.roomType === 'DIRECT' ? 'Private' : room.roomType)}
+                                        </span>
+                                    </div>
                                     {room.lastMessage && (
-                                        <p className="text-[10px] text-slate-400 truncate font-medium border-l border-slate-200 pl-1.5 italic">
-                                            {room.lastMessage.sender}: {room.lastMessage.text}
-                                        </p>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black uppercase tracking-tighter shrink-0 border border-blue-100/50 shadow-sm">
+                                                {room.lastMessage.sender.split(' ')[0]}
+                                            </span>
+                                            <p className="text-[10px] text-slate-400 truncate font-medium flex-1 italic">
+                                                {room.lastMessage.text}
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -478,18 +608,66 @@ const Chat = () => {
                             {messages.map((msg, idx) => (
                                 <div key={msg.id || idx} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                                     <div className={`max-w-[70%] group relative`}>
-                                        {!msg.isMe && (
-                                            <div className="flex items-center gap-2 mb-1.5 ml-1">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">{msg.sender}</span>
-                                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-black uppercase tracking-tighter">{msg.role}</span>
-                                            </div>
-                                        )}
+                                        <div className={`flex items-center gap-2 mb-1.5 px-1 ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
+                                            {!msg.isMe ? (
+                                                <>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">{msg.sender}</span>
+                                                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-black uppercase tracking-tighter italic">{msg.role?.replace(/_/g, ' ')}</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">You</span>
+                                            )}
+                                        </div>
                                         <div className={`rounded-2xl p-4 shadow-sm transition-all duration-200 border
                                             ${msg.isMe
                                                 ? 'bg-blue-600 text-white border-blue-500 rounded-br-none shadow-blue-100'
                                                 : 'bg-white text-slate-700 border-slate-100 rounded-bl-none shadow-slate-100 overflow-hidden'}
+                                            ${msg.uploading ? 'opacity-70 italic relative overflow-hidden' : ''}
                                         `}>
-                                            <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
+                                            {msg.uploading && (
+                                                <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 overflow-hidden">
+                                                    <div className="h-full bg-white animate-progress"></div>
+                                                </div>
+                                            )}
+                                            {msg.attachments && msg.attachments.length > 0 && (
+                                                <div className="mb-3 space-y-2">
+                                                    {msg.attachments.map((att, i) => (
+                                                        <div key={i} className="group/att relative">
+                                                            <a
+                                                                href={sanitizeAttachmentUrl(att.url, att.fileType)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${msg.isMe ? 'bg-blue-500/50 border-blue-400 hover:bg-blue-400 text-white' : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-700'}`}
+                                                            >
+                                                                <div className={`p-2 rounded-lg ${msg.isMe ? 'bg-blue-400' : 'bg-white shadow-sm'}`}>
+                                                                    <Paperclip size={16} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-bold truncate">{att.name}</p>
+                                                                    <p className={`text-[10px] uppercase font-black tracking-tighter opacity-60`}>
+                                                                        {att.fileType.split('/')[1] || 'FILE'}
+                                                                    </p>
+                                                                </div>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        downloadFile(att.url, att.name);
+                                                                    }}
+                                                                    title="Download File"
+                                                                    className={`p-2 rounded-lg transition-all ${msg.isMe ? 'hover:bg-blue-300 text-white' : 'hover:bg-white hover:text-blue-600 text-slate-400'}`}
+                                                                >
+                                                                    <Download size={16} />
+                                                                </button>
+                                                            </a>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p className="text-sm font-medium leading-relaxed flex items-center gap-2">
+                                                {msg.uploading && <Loader size={14} className="animate-spin" />}
+                                                {msg.text}
+                                            </p>
                                             <div className="flex items-center justify-end gap-1 mt-2 opacity-60">
                                                 <span className={`text-[9px] font-bold uppercase ${msg.isMe ? 'text-blue-200' : 'text-slate-400'}`}>
                                                     {msg.time}
@@ -502,11 +680,20 @@ const Chat = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
                         <div className="p-6 bg-white border-t border-slate-100 sticky bottom-0">
                             <div className="flex gap-3 items-center">
-                                <button className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition shadow-sm border border-slate-100">
-                                    <Paperclip size={20} />
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className={`p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition shadow-sm border border-slate-100 relative ${uploading ? 'cursor-not-allowed' : ''}`}
+                                >
+                                    {uploading ? <Loader size={20} className="animate-spin text-blue-600" /> : <Paperclip size={20} />}
                                 </button>
                                 <div className="flex-1 relative group">
                                     <input
@@ -518,14 +705,38 @@ const Chat = () => {
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-5 pr-14 py-3.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner"
                                     />
                                     <div className="absolute right-4 top-3.5 flex items-center gap-2">
-                                        <button className="text-slate-300 hover:text-slate-600 transition-colors"><Smile size={20} /></button>
+                                        <div className="relative">
+                                            <button 
+                                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                                className={`transition-colors ${showEmojiPicker ? 'text-blue-600' : 'text-slate-300 hover:text-slate-600'}`}
+                                            >
+                                                <Smile size={20} />
+                                            </button>
+                                            
+                                            {showEmojiPicker && (
+                                                <div className="absolute bottom-full right-0 mb-4 p-3 bg-white rounded-2xl shadow-2xl border border-slate-100 grid grid-cols-6 gap-2 min-w-[200px] z-[100] animate-scale-up">
+                                                    {commonEmojis.map(emoji => (
+                                                        <button
+                                                            key={emoji}
+                                                            onClick={() => {
+                                                                setNewMessage(prev => prev + emoji);
+                                                                setShowEmojiPicker(false);
+                                                            }}
+                                                            className="text-xl hover:bg-slate-50 p-1.5 rounded-lg transition-all active:scale-125"
+                                                        >
+                                                            {emoji}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <button
-                                    onClick={handleSend}
-                                    disabled={!newMessage.trim()}
+                                    onClick={() => handleSend()}
+                                    disabled={!newMessage.trim() && !uploading}
                                     className={`p-3.5 rounded-2xl transition-all shadow-xl font-bold flex items-center justify-center
-                                        ${newMessage.trim()
+                                        ${newMessage.trim() || uploading
                                             ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 scale-105 active:scale-95'
                                             : 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed'}
                                     `}
