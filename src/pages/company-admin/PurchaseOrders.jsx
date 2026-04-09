@@ -5,7 +5,7 @@ import {
     ShoppingCart, Plus, Search, Filter, CheckCircle, XCircle,
     FileText, Truck, AlertCircle, DollarSign, Trash2, Loader,
     MoreHorizontal, ChevronRight, Hash, Check, MapPin, Calendar, Clock,
-    Eye, FilterX
+    Eye, FilterX, Pencil
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -237,7 +237,7 @@ const PurchaseOrders = () => {
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">PO Number</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Project</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Vendor</th>
-                                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Total Amount</th>
+                                {/* <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Total Amount</th> */}
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Date</th>
                                 <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
@@ -272,9 +272,9 @@ const PurchaseOrders = () => {
                                             <span className="font-bold text-slate-700">{order.vendorName || order.vendorId?.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-5 text-right font-black text-slate-900">
+                                    {/* <td className="px-8 py-5 text-right font-black text-slate-900">
                                         ${order.totalAmount?.toLocaleString()}
-                                    </td>
+                                    </td> */}
                                     <td className="px-8 py-5">
                                         <span className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border shadow-sm ${getStatusStyles(order.status)}`}>
                                             {order.status}
@@ -296,6 +296,17 @@ const PurchaseOrders = () => {
                                             </button>
                                             {(isOwner || isPM) && (
                                                 <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/company-admin/purchase-orders/edit/${order._id}`);
+                                                    }}
+                                                    className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                            )}
+                                            {(isOwner || isPM) && (
+                                                <button
                                                     onClick={(e) => handleDelete(e, order._id)}
                                                     className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                                 >
@@ -307,7 +318,7 @@ const PurchaseOrders = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="7" className="px-8 py-20 text-center">
+                                    <td colSpan="6" className="px-8 py-20 text-center">
                                         <div className="flex flex-col items-center gap-4">
                                             <ShoppingCart size={48} className="text-slate-100" />
                                             <p className="font-black text-slate-300 uppercase tracking-widest text-xs">No matching purchase orders found</p>

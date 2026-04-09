@@ -163,12 +163,10 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             doc.text(data.projectId?.location || 'Project Location', pageWidth - 20, 99, { align: 'right' });
 
             // 3. Items Table Section
-            const tableColumn = ["ITEM DESCRIPTION", "QUANTITY", "UNIT PRICE", "TOTAL"];
+            const tableColumn = ["ITEM DESCRIPTION", "QUANTITY"];
             const tableRows = (data.items || []).map(item => [
                 { content: `${item.itemName || 'Material'}\n${item.description || ''}`, styles: { fontStyle: 'bold' } },
-                item.quantity || 1,
-                `$${(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-                `$${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                item.quantity || 1
             ]);
 
             autoTable(doc, {
@@ -185,9 +183,7 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                 },
                 columnStyles: {
                     0: { cellWidth: 'auto' },
-                    1: { halign: 'center', fontStyle: 'bold' },
-                    2: { halign: 'right', fontStyle: 'bold' },
-                    3: { halign: 'right', fontStyle: 'bold', textColor: [15, 23, 42] }
+                    1: { halign: 'center', fontStyle: 'bold', cellWidth: 30 }
                 },
                 styles: {
                     fontSize: 9,
@@ -197,7 +193,8 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                 },
             });
 
-            // 4. Summary Section
+            // 4. Summary Section (Commented out as per client request)
+            /*
             let finalY = doc.lastAutoTable.finalY + 15;
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
@@ -224,6 +221,7 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
             doc.setFontSize(16);
             doc.setTextColor(37, 99, 235); // Blue-600
             doc.text(`$${(data.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, pageWidth - 20, finalY, { align: 'right' });
+            */
 
             // 5. Footer Notes
             const footerY = 240;
@@ -280,7 +278,7 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                 vendorName: po.vendorName || po.vendorId?.name || "Vendor",
                 poNumber: po.poNumber,
                 projectName: po.projectId?.name || "N/A",
-                totalAmount: (po.totalAmount || 0).toLocaleString(),
+                // totalAmount: (po.totalAmount || 0).toLocaleString(), // Commented out
                 deliveryDate: po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString() : 'N/A',
                 date: new Date(po.createdAt).toLocaleDateString(),
                 companyName: finalCompanyName,
@@ -485,8 +483,8 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                                 <tr className="bg-slate-50 border-b border-slate-100">
                                     <th className="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Description</th>
                                     <th className="px-8 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty</th>
-                                    <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Price</th>
-                                    <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</th>
+                                    {/* <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Price</th>
+                                    <th className="px-8 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Total</th> */}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -497,8 +495,8 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                                             <p className="text-xs font-bold text-slate-400">{item.description}</p>
                                         </td>
                                         <td className="px-8 py-6 text-center font-black text-slate-700">{item.quantity}</td>
-                                        <td className="px-8 py-6 text-right font-black text-slate-700">${(item.unitPrice || 0).toLocaleString()}</td>
-                                        <td className="px-8 py-6 text-right font-black text-slate-900">${(item.total || 0).toLocaleString()}</td>
+                                        {/* <td className="px-8 py-6 text-right font-black text-slate-700">${(item.unitPrice || 0).toLocaleString()}</td>
+                                        <td className="px-8 py-6 text-right font-black text-slate-900">${(item.total || 0).toLocaleString()}</td> */}
                                     </tr>
                                 )) : (
                                     <tr>
@@ -509,7 +507,8 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                         </table>
 
                         {/* Totals Summary */}
-                        <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end">
+                        {/* Totals Summary commented out as per client request */}
+                        {/* <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end">
                             <div className="w-64 space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="font-bold text-slate-400">Subtotal</span>
@@ -525,23 +524,15 @@ const PurchaseOrderDetail = ({ isPublic = false }) => {
                                     <span className="text-xl font-black text-blue-600">${(po.totalAmount || 0).toLocaleString()}</span>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* Notes Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200/60 space-y-4">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes to Vendor</h3>
-                            <p className="text-sm font-bold text-slate-600 italic">
-                                "{po.notesToVendor || 'No specific notes provided.'}"
-                            </p>
-                        </div>
-                        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200/60 space-y-4">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Internal Remarks</h3>
-                            <p className="text-sm font-bold text-slate-600">
-                                {po.internalNotes || 'Internal documentation only.'}
-                            </p>
-                        </div>
+                    <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200/60 space-y-4">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes to Vendor</h3>
+                        <p className="text-sm font-bold text-slate-600 italic">
+                            "{po.notesToVendor || 'No specific notes provided.'}"
+                        </p>
                     </div>
                 </div>
 

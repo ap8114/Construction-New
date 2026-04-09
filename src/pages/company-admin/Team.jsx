@@ -154,7 +154,7 @@ const StatusBadge = ({ status }) => (
 );
 
 // Reusable user table
-const UserTable = ({ users, onView, onEdit, onDelete, emptyMessage }) => (
+const UserTable = ({ users, onView, onEdit, onDelete, onManagePermissions, onChangePassword, emptyMessage }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-left text-sm text-slate-600">
       <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
@@ -202,17 +202,20 @@ const UserTable = ({ users, onView, onEdit, onDelete, emptyMessage }) => (
                 </div>
               </td>
               <td className="px-6 py-4 text-right">
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => onManagePermissions(member)} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Permissions">
+                <div className="flex justify-end gap-2 text-right">
+                  {/* <button onClick={() => onManagePermissions(member)} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition" title="Manage Permissions">
+                    <Shield size={18} />
+                  </button> */}
+                  <button onClick={() => onChangePassword(member)} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Change Password">
                     <Lock size={18} />
                   </button>
                   <button onClick={() => onView(member)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="View Details">
                     <Eye size={18} />
                   </button>
-                  <button onClick={() => onEdit(member)} className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="Edit">
+                  <button onClick={() => onEdit(member)} className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="Edit Info">
                     <Edit size={18} />
                   </button>
-                  <button onClick={() => onDelete(member)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                  <button onClick={() => onDelete(member)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete User">
                     <Trash2 size={18} />
                   </button>
                 </div>
@@ -264,6 +267,7 @@ const Team = () => {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [formData, setFormData] = useState(emptyForm('WORKER'));
@@ -365,6 +369,33 @@ const Team = () => {
       setIsPermissionsOpen(false);
     } catch (error) {
       alert('Failed to save permissions');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChangePassword = (member) => {
+    setSelectedMember(member);
+    setFormData({ password: '', confirmPassword: '' });
+    setIsPasswordOpen(true);
+  };
+
+  const handleSavePassword = async () => {
+    if (!formData.password) {
+      alert('Please enter a new password');
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await api.patch(`/auth/users/${selectedMember._id}`, { password: formData.password });
+      setIsPasswordOpen(false);
+      setToast({ message: 'Password updated successfully', type: 'success' });
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to update password');
     } finally {
       setIsSubmitting(false);
     }
@@ -554,6 +585,7 @@ const Team = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onManagePermissions={handleManagePermissions}
+            onChangePassword={handleChangePassword}
             emptyMessage={isTeamTab ? 'No team members found.' : 'No clients found.'}
           />
         )}
@@ -728,6 +760,65 @@ const Team = () => {
             <button onClick={confirmDelete} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-medium shadow-lg shadow-red-200 disabled:opacity-50 flex items-center gap-2">
               {isSubmitting && <Loader size={14} className="animate-spin" />}
               Remove Access
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Password Reset Modal */}
+      <Modal isOpen={isPasswordOpen} onClose={() => setIsPasswordOpen(false)} title="Change User Password">
+        <div className="space-y-4">
+          <div className="bg-emerald-50 p-4 rounded-xl flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+              {selectedMember?.fullName?.charAt(0)}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">{selectedMember?.fullName}</p>
+              <p className="text-xs text-slate-500">Resetting access credentials</p>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">New Password</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="password"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-emerald-500 transition font-mono"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Confirm New Password</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-emerald-500 transition font-mono"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button
+              onClick={() => setIsPasswordOpen(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSavePassword}
+              disabled={isSubmitting}
+              className="px-6 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-100 flex items-center gap-2"
+            >
+              <Save size={18} />
+              {isSubmitting ? 'Updating...' : 'Update Password'}
             </button>
           </div>
         </div>

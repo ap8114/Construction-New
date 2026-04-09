@@ -27,7 +27,6 @@ const PurchaseOrderForm = () => {
         poDate: new Date().toISOString().split('T')[0],
         expectedDeliveryDate: '',
         notesToVendor: '',
-        internalNotes: '',
         items: [
             { itemName: '', description: '', quantity: 1, unitPrice: 0, total: 0 }
         ],
@@ -124,11 +123,13 @@ const PurchaseOrderForm = () => {
 
         try {
             setLoading(true);
-            const status = statusOverride || (user.role === 'FOREMAN' ? 'Draft' : 'Pending Approval');
+            const status = statusOverride || formData.status || (user.role === 'FOREMAN' ? 'Draft' : 'Pending Approval');
             const payload = { 
                 ...formData, 
                 items: validItems,
-                status 
+                status,
+                vendorId: formData.vendorId || null,
+                jobId: formData.jobId || null
             };
 
             if (isEdit) {
@@ -306,7 +307,8 @@ const PurchaseOrderForm = () => {
                                                     onChange={e => handleItemChange(index, 'quantity', e.target.value)}
                                                 />
                                             </div>
-                                            <div className="w-32">
+                                            {/* Price fields commented out as per client request */}
+                                            {/* <div className="w-32">
                                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Unit Price</label>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
@@ -324,7 +326,7 @@ const PurchaseOrderForm = () => {
                                                 <div className="py-2.5 px-3 bg-blue-50/50 border border-blue-100/50 rounded-xl text-right font-black text-blue-600 text-sm">
                                                     ${item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </div>
-                                            </div>
+                                            </div> */}
                                             <div className="pt-8">
                                                 <button
                                                     onClick={() => handleRemoveItem(index)}
@@ -345,7 +347,8 @@ const PurchaseOrderForm = () => {
                 {/* Right Side: Summary & Actions */}
                 <div className="space-y-6">
                     <div className="bg-slate-900 p-8 rounded-[40px] shadow-2xl text-white space-y-8 sticky top-6">
-                        <div className="space-y-4">
+                        {/* Summary section commented out as per client request */}
+                        {/* <div className="space-y-4">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">PO Summary</h3>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-bold text-slate-400">Subtotal</span>
@@ -360,7 +363,7 @@ const PurchaseOrderForm = () => {
                                 <span className="font-black text-slate-400 uppercase tracking-widest text-[10px]">Total Amount</span>
                                 <span className="text-2xl font-black text-blue-400 tracking-tighter">${formData.totalAmount.toLocaleString()}</span>
                             </div>
-                        </div>
+                        </div> */}
 
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Quick Notes</h3>

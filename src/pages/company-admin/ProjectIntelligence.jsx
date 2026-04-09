@@ -297,8 +297,8 @@ const ProjectIntelligence = () => {
                         </div>
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Project Intelligence Dashboard</h1>
                     </div>
-                    <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
-                        Comprehensive end-to-end analytics for <span className="text-blue-600 font-bold">{project.name || 'Select Project'}</span>
+                    <p className="text-slate-600 font-bold text-sm flex items-center gap-2">
+                        Comprehensive end-to-end analytics for <span className="text-blue-600 font-black">{project.name || 'Select Project'}</span>
                     </p>
                 </div>
 
@@ -329,7 +329,7 @@ const ProjectIntelligence = () => {
             ) : reportData ? (
                 <div className="space-y-8 animate-in fade-in duration-500">
                     {/* ── LEVEL 1: PROJECT SUMMARY ── */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                         <MetricCard 
                             label="Overall Progress" 
                             value={`${((project.completedTasks / project.totalTasks) * 100).toFixed(0)}%`} 
@@ -341,7 +341,7 @@ const ProjectIntelligence = () => {
                         <MetricCard 
                             label="Total Spend" 
                             value={`$${parseFloat(project.totalCost || 0).toLocaleString()}`} 
-                            subtext={`${project.budgetUsedPercent || 0}% of Budget Spent`}
+                            subtext="Accumulated Project Costs"
                             icon={DollarSign}
                             color="text-blue-600"
                             bgColor="bg-blue-50"
@@ -354,67 +354,9 @@ const ProjectIntelligence = () => {
                             color="text-violet-600"
                             bgColor="bg-violet-50"
                         />
-                        <MetricCard 
-                            label="Remaining Budget" 
-                            value={`$${parseFloat(project.remainingBudget || 0).toLocaleString()}`} 
-                            subtext={`Budget: $${parseFloat(project.budget || 0).toLocaleString()}`}
-                            icon={LayoutDashboard}
-                            color={project.remainingBudget < 0 ? "text-red-600" : "text-amber-600"}
-                            bgColor={project.remainingBudget < 0 ? "bg-red-50" : "bg-amber-50"}
-                        />
                     </div>
 
-                    {/* ── CHART SECTION ── */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
-                                <BarChart3 size={16} /> Job Cost Distribution
-                            </h3>
-                            <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={jobs}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                        <XAxis dataKey="jobName" hide />
-                                        <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                                        <Tooltip 
-                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value) => [`$${value}`, 'Job Cost']}
-                                        />
-                                        <Bar dataKey="totalCost" fill="#2563EB" radius={[8, 8, 0, 0]} barSize={40} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 self-start flex items-center gap-2">
-                                <PieChartIcon size={16} /> Budget Usage (%)
-                            </h3>
-                            <div className="h-[250px] w-full relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Used', value: parseFloat(project.totalCost) },
-                                                { name: 'Remaining', value: Math.max(0, parseFloat(project.remainingBudget)) }
-                                            ]}
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={8}
-                                            dataKey="value"
-                                        >
-                                            <Cell fill="#2563EB" />
-                                            <Cell fill="#F1F5F9" />
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-2xl font-black text-slate-900">{project.budgetUsedPercent}%</span>
-                                    <span className="text-[10px] font-bold uppercase text-slate-400">Used</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Chart section removed as per client request */}
 
                     {/* ── LEVEL 2: JOB-WISE REPORTS ── */}
                     <div className="space-y-6">
@@ -478,9 +420,9 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                     <HardHat size={24} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-black text-slate-800 tracking-tight leading-none mb-2">{job.jobName}</h3>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-2">{job.jobName}</h3>
                     <div className="flex items-center gap-3">
-                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border shadow-sm ${
                             job.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                             job.status === 'active' ? 'bg-blue-50 border-blue-100 text-blue-600' :
                             'bg-amber-50 border-amber-100 text-amber-600'
@@ -496,9 +438,9 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
 
             <div className="flex flex-wrap items-center gap-6 md:gap-10">
                 <div className="text-right">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cost / Budget</p>
-                    <p className="text-sm font-black text-slate-800">
-                        ${parseFloat(job.totalCost || 0).toLocaleString()} <span className="text-slate-300 font-bold mx-1">/</span> <span className="text-slate-400">${parseFloat(job.budget || 0).toLocaleString()}</span>
+                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Total Job Cost</p>
+                    <p className="text-base font-black text-slate-900">
+                        ${parseFloat(job.totalCost || 0).toLocaleString()}
                     </p>
                 </div>
 
@@ -539,19 +481,13 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                     className="border-t border-slate-100"
                 >
                     <div className="p-8 space-y-12">
-                        {/* Summary Metrics */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <JobSmallMetric label="Completed Tasks" value={job.summary?.completedTasks || 0} total={job.summary?.totalTasks || 0} icon={CheckCircle} color="emerald" />
-                            <JobSmallMetric label="Total Hours" value={job.workers?.reduce((a,w) => a + parseFloat(w.totalHours || 0), 0).toFixed(1) || '0.0'} unit="h" icon={Clock} color="blue" />
-                            <JobSmallMetric label="Materials" value={job.materials?.length || 0} unit="Units" icon={Package} color="amber" />
-                            <JobSmallMetric label="Equipment" value={job.equipment?.length || 0} unit="Tools" icon={Truck} color="violet" />
-                        </div>
+                        {/* Summary metrics cards removed as per client request */}
 
                         {/* Job Notes / Timeline Updates Section */}
                         {(job.description || (job.notes && job.notes.length > 0)) && (
                             <div className="bg-slate-50 border border-slate-200 p-6 rounded-3xl space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-                                    <FileText size={14} /> Job Intelligence Notes & Communication
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2 flex items-center gap-2">
+                                    <FileText size={14} className="text-blue-600" /> Job Intelligence Notes & Communication
                                 </h4>
                                 
                                 {job.description && (
@@ -580,27 +516,13 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                            {/* Financial Breakdown Table */}
-                            <SectionContainer title="Financial Breakdown" icon={DollarSign}>
-                                <div className="space-y-3">
-                                    <FinancialRow label="Worker Labor Cost" value={job.financials?.workerCost || 0} percentage={job.financials?.total > 0 ? (job.financials.workerCost / job.financials.total * 100).toFixed(0) : 0} color="bg-blue-500" />
-                                    <FinancialRow label="Material Consumption" value={job.financials?.materialCost || 0} percentage={job.financials?.total > 0 ? (job.financials.materialCost / job.financials.total * 100).toFixed(0) : 0} color="bg-amber-500" />
-                                    <FinancialRow label="Equipment Usage" value={job.financials?.equipmentCost || 0} percentage={job.financials?.total > 0 ? (job.financials.equipmentCost / job.financials.total * 100).toFixed(0) : 0} color="bg-violet-500" />
-                                    <FinancialRow label="Subcontractor Cost" value={job.financials?.subcontractorCost || 0} percentage={job.financials?.total > 0 ? (job.financials.subcontractorCost / job.financials.total * 100).toFixed(0) : 0} color="bg-emerald-500" />
-                                    <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
-                                        <p className="text-sm font-black uppercase text-slate-800">Total Job Cost</p>
-                                        <p className="text-xl font-black text-blue-600">${parseFloat(job.financials?.total || 0).toLocaleString()}</p>
-                                    </div>
-                                </div>
-                            </SectionContainer>
-
+                        <div className="grid grid-cols-1 gap-8">
                             {/* Worker Time Tracking */}
                             <SectionContainer title="Worker Time Tracking" icon={Users}>
                                 <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-slate-50">
+                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
                                                 <th className="pb-3">Worker / Role</th>
                                                 <th className="pb-3 text-right">Hours</th>
                                                 <th className="pb-3 text-right">Cost</th>
@@ -630,18 +552,18 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                 <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-slate-50">
+                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
                                                 <th className="pb-3">Material / PO</th>
                                                 <th className="pb-3 text-right">Qty</th>
                                                 <th className="pb-3 text-right">Total Cost</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-50">
+                                        <tbody className="divide-y divide-slate-100">
                                             {job.materials.map((mat, i) => (
                                                 <tr key={i} className="text-sm">
                                                     <td className="py-4">
                                                         <p className="font-black text-slate-800 text-xs">{mat.itemName}</p>
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">PO: {mat.poNumber}</span>
+                                                        <span className="text-[9px] font-bold text-slate-600 uppercase">PO: {mat.poNumber}</span>
                                                     </td>
                                                     <td className="py-4 text-right font-bold text-slate-600 text-xs">{mat.quantity}</td>
                                                     <td className="py-4 text-right font-black text-amber-600 text-xs">${parseFloat(mat.cost || 0).toLocaleString()}</td>
@@ -658,7 +580,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                 <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-slate-50">
+                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
                                                 <th className="pb-3">Equipment</th>
                                                 <th className="pb-3 text-right">Hours</th>
                                                 <th className="pb-3 text-right">Incurred Cost</th>
@@ -685,7 +607,7 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                                 <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-slate-50">
+                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
                                                 <th className="pb-3">Subcontractor Name</th>
                                                 <th className="pb-3">Description</th>
                                                 <th className="pb-3 text-right">Cost</th>
@@ -709,12 +631,12 @@ const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, o
                         <SectionContainer title="Job Task & Subtask Intelligence Tree" icon={Layers}>
                             <div className="border border-slate-100 rounded-3xl overflow-hidden bg-slate-50/20">
                                 <table className="w-full text-left">
-                                    <thead className="bg-slate-100/50">
-                                        <tr className="text-[10px] font-black uppercase text-slate-500">
-                                            <th className="px-6 py-4">Task Name & Structure</th>
-                                            <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4">Assigned To</th>
-                                            <th className="px-6 py-4 text-right">Date Line</th>
+                                    <thead className="bg-slate-100/80">
+                                        <tr className="text-[10px] font-black uppercase text-slate-700">
+                                            <th className="px-6 py-4 border-b border-slate-200">Task Name & Structure</th>
+                                            <th className="px-6 py-4 border-b border-slate-200">Status</th>
+                                            <th className="px-6 py-4 border-b border-slate-200">Assigned To</th>
+                                            <th className="px-6 py-4 text-right border-b border-slate-200">Date Line</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -770,8 +692,8 @@ const TaskRow = ({ task, isExpanded, onToggle }) => {
                     </div>
                 </td>
                 <td className="px-6 py-4 text-right">
-                    <p className="text-[10px] font-black text-slate-400">DUE</p>
-                    <p className="text-[11px] font-bold text-slate-700">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}</p>
+                    <p className="text-[10px] font-black text-slate-600">DUE</p>
+                    <p className="text-[11px] font-bold text-slate-900">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}</p>
                 </td>
             </tr>
             {isExpanded && hasSubtasks && task.subtasks.map(st => (
@@ -822,8 +744,8 @@ const StatusBadge = ({ status, isSubtask = false }) => {
 
 const SectionContainer = ({ title, icon: Icon, children }) => (
     <div className="flex flex-col">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-            <Icon size={14} /> {title}
+        <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-700 mb-4 flex items-center gap-2">
+            <Icon size={16} className="text-blue-600" /> {title}
         </h4>
         <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex-1">
             {children}
@@ -860,7 +782,7 @@ const FinancialRow = ({ label, value, percentage, color }) => (
 
 const EmptyTableRow = ({ colSpan, text }) => (
     <tr>
-        <td colSpan={colSpan} className="py-8 text-center text-slate-300 font-bold italic text-xs">
+        <td colSpan={colSpan} className="py-12 text-center text-slate-400 font-bold italic text-xs">
             {text}
         </td>
     </tr>
