@@ -1,4 +1,7 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
 import {
   Shield, LayoutDashboard, Building, Users,
   CreditCard, Settings, Ticket, LogOut, Menu, X,
@@ -19,7 +22,6 @@ const SuperAdminLayout = () => {
   const profileMenuRef = useRef(null);
   const notificationRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const socketRef = useRef();
 
   const fetchNotifications = async () => {
@@ -31,19 +33,10 @@ const SuperAdminLayout = () => {
     }
   };
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await api.get('/chat/unread-count');
-      setChatUnreadCount(res.data.count);
-    } catch (error) {
-      console.error('Error fetching unread chat count:', error);
-    }
-  };
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      fetchUnreadCount();
 
       const token = localStorage.getItem('token');
       const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
@@ -59,33 +52,15 @@ const SuperAdminLayout = () => {
       });
 
       socketRef.current.on('new_notification', (payload) => {
-        if (payload.type === 'chat') {
-          setChatUnreadCount(prev => prev + 1);
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-          }
-        } else {
+        if (payload.type !== 'chat') {
           playSound('NOTIFICATION');
           fetchNotifications();
         }
       });
 
-      socketRef.current.on('new_message', (payload) => {
-        const senderId = payload.sender?._id || payload.sender;
-        const currentUserId = user?._id || user?.id;
-        const isNotMe = senderId !== currentUserId;
-
-        if (isNotMe) {
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-            setChatUnreadCount(prev => prev + 1);
-          }
-        }
-      });
 
       const interval = setInterval(() => {
         fetchNotifications();
-        fetchUnreadCount();
       }, 60000);
 
       return () => {
@@ -129,7 +104,6 @@ const SuperAdminLayout = () => {
         { icon: Building, label: 'Companies', path: '/super-admin/companies' },
         { icon: CreditCard, label: 'Subscriptions', path: '/super-admin/subscriptions', badge: 3 },
         { icon: Bookmark, label: 'Plans & Pricing', path: '/super-admin/plans' },
-        { icon: MessageSquare, label: 'System Chat', path: '/super-admin/chat', badge: chatUnreadCount },
       ]
     },
     {
@@ -285,14 +259,6 @@ const SuperAdminLayout = () => {
               >
                  <div className="flex items-center gap-2">
                   <div className="relative">
-                    <MessageSquare size={20} className={chatUnreadCount > 0 ? 'text-blue-600' : 'text-slate-400'} />
-                    {chatUnreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
-                        {chatUnreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative">
                     <Bell size={20} className={notifications.some(n => !n.isRead) ? 'text-orange-600' : 'text-slate-400'} />
                     {notifications.some(n => !n.isRead) && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">
@@ -309,20 +275,6 @@ const SuperAdminLayout = () => {
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alert Center</span>
                   </div>
                   <div className="overflow-y-auto flex-1 custom-scrollbar">
-                    {chatUnreadCount > 0 && (
-                      <button
-                        onClick={() => { navigate('/super-admin/chat'); setIsNotificationOpen(false); }}
-                        className="w-full text-left px-4 py-3 bg-blue-50/50 hover:bg-blue-50 transition-colors border-b border-slate-50 flex gap-3"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white shrink-0 flex items-center justify-center">
-                          <MessageSquare size={16} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-800">New Messages</p>
-                          <p className="text-xs text-slate-500 line-clamp-1 mt-0.5 leading-relaxed">You have {chatUnreadCount} unread transmissions.</p>
-                        </div>
-                      </button>
-                    )}
                     {notifications.length > 0 ? (
                       notifications.map((notif) => (
                         <button
@@ -345,7 +297,7 @@ const SuperAdminLayout = () => {
                           {!notif.isRead && <div className="w-2 h-2 rounded-full bg-orange-600 mt-2 shrink-0"></div>}
                         </button>
                       ))
-                    ) : chatUnreadCount === 0 && (
+                    ) : (
                       <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No alerts</div>
                     )}
                   </div>

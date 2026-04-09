@@ -1,4 +1,7 @@
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
 import {
   Building2, Home, ClipboardList, Camera,
   MessageSquare, User, Settings, LogOut, Menu, X,
