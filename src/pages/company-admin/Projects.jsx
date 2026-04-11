@@ -21,8 +21,8 @@ const canSeeBudget = (role) =>
   ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
 
 // ─── Project Form (Create/Edit) ───────────────────────────────────────────────
-const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers }) => {
-  const [selectedRole, setSelectedRole] = useState('');
+const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, saving }) => {
+  const [selectedRole, setSelectedRole] = useState('PM');
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const userDropdownRef = useRef(null);
@@ -169,11 +169,7 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers }
                 }}
                 className={inputCls + ' appearance-none pl-4 pr-10 hover:border-blue-500/50 cursor-pointer'}
               >
-                <option value="">All Roles</option>
                 <option value="PM">Project Manager</option>
-                <option value="SUBCONTRACTOR">Sub-Contractor</option>
-                <option value="WORKER">Field Worker</option>
-                <option value="FOREMAN">Foreman</option>
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                 <ChevronDown size={14} />
@@ -267,10 +263,19 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers }
 
 
 
-      <button onClick={onSubmit} disabled={!data.name}
+      <button onClick={onSubmit} disabled={!data.name || saving}
         className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2 shadow-xl
-          ${data.name ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
-        <CheckCircle size={18} /> {submitLabel}
+          ${(data.name && !saving) ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}>
+        {saving ? (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            Processing...
+          </div>
+        ) : (
+          <>
+            <CheckCircle size={18} /> {submitLabel}
+          </>
+        )}
       </button>
     </div>
   );
@@ -294,12 +299,11 @@ const InsightCard = ({ title, value, subtext, icon: Icon, color }) => {
     </div>
   );
 };
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 const Projects = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [workerTab, setWorkerTab] = useState('active'); // 'planning' | 'active' | 'completed'
+  const [workerTab, setWorkerTab] = useState('planning'); // 'planning' | 'active' | 'on-hold' | 'completed'
   const [jobs, setJobs] = useState([]);
   const [view, setView] = useState('grid');
   const [projects, setProjects] = useState([]);
@@ -312,6 +316,7 @@ const Projects = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [toast, setToast] = useState(null); // { message, type }
+  const [saving, setSaving] = useState(false);
 
   const showBudget = canSeeBudget(user?.role);
 
@@ -326,7 +331,7 @@ const Projects = () => {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const isJobView = ['WORKER', 'FOREMAN'].includes(user?.role);
+      const isJobView = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
 
       const [projRes, clientRes, usersRes, jobsRes] = await Promise.all([
         api.get('/projects'),
@@ -351,6 +356,7 @@ const Projects = () => {
   // ── CRUD ───────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
     try {
+      setSaving(true);
       await api.post('/projects', { ...formData, companyId: user?.companyId });
       setIsCreateOpen(false);
       setFormData(EMPTY);
@@ -369,16 +375,23 @@ const Projects = () => {
           type: 'error' 
         });
       }
+    } finally {
+      setSaving(false);
     }
   };
 
   
   const handleUpdate = async () => {
     try {
+      setSaving(true);
       await api.patch(`/projects/${editingProject._id}`, editingProject);
       setIsEditOpen(false);
       fetchAll();
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error(err); 
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleQuickProgressUpdate = async (projectId, newProgress, e) => {
@@ -435,13 +448,18 @@ const Projects = () => {
     return matchSearch && matchStatus;
   });
 
-  const isWorker = user?.role === 'WORKER';
+  const isWorker = ['WORKER', 'SUBCONTRACTOR'].includes(user?.role);
   const isForeman = user?.role === 'FOREMAN';
   const isJobView = isWorker || isForeman;
   const filteredJobs = jobs.filter(j => {
     const matchSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchTab = isForeman ? true : j.status === workerTab; // Foreman sees all jobs
+    
+    let matchTab = true;
+    if (!isForeman) {
+      const status = (j.status || '').toLowerCase().replace(' ', '-');
+      matchTab = status === workerTab;
+    }
     return matchSearch && matchTab;
   });
 
@@ -480,13 +498,19 @@ const Projects = () => {
                 onClick={() => setWorkerTab('planning')}
                 className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'planning' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
-                Pending
+                Planning
               </button>
               <button
                 onClick={() => setWorkerTab('active')}
                 className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
               >
-                In Progress
+                Active
+              </button>
+              <button
+                onClick={() => setWorkerTab('on-hold')}
+                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'on-hold' ? 'bg-yellow-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+              >
+                On Hold
               </button>
               <button
                 onClick={() => setWorkerTab('completed')}
@@ -570,14 +594,21 @@ const Projects = () => {
           ) : filteredJobs.map(job => (
             <div key={job._id} className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm p-6 hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 flex flex-col">
               <div className="flex justify-between items-start mb-4">
-                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100">
+                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 flex items-center justify-center">
                   <Briefcase size={20} className="text-blue-600" />
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Project</span>
-                  <span className="text-xs font-bold text-slate-900 bg-slate-50 px-3 py-1 rounded-full border border-slate-100 truncate max-w-[140px]">
-                    {job.projectId?.name || 'Site Project'}
-                  </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Manage Status</span>
+                  <select 
+                    value={job.status}
+                    onChange={(e) => handleUpdateJobStatus(job._id, e.target.value)}
+                    className="text-[10px] font-black uppercase tracking-tight bg-slate-900 text-white px-3 py-1.5 rounded-xl border-none outline-none cursor-pointer hover:bg-blue-600 transition-all shadow-md appearance-none text-center min-w-[100px]"
+                  >
+                    <option value="planning">Planning</option>
+                    <option value="active">Active</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
               </div>
 
@@ -876,17 +907,16 @@ const Projects = () => {
         </div>
       )}
 
-      {/* ── Create Modal ── */}
       <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create New Project" maxWidth="max-w-2xl">
         <ProjectForm data={formData} setData={setFormData} onSubmit={handleCreate}
-          submitLabel="Create Project" clients={clients} allUsers={allUsers} />
+          submitLabel="Create Project" clients={clients} allUsers={allUsers} saving={saving} />
       </Modal>
 
       {/* ── Edit Modal ── */}
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Project" maxWidth="max-w-2xl">
         {editingProject && (
           <ProjectForm data={editingProject} setData={setEditingProject} onSubmit={handleUpdate}
-            submitLabel="Save Changes" clients={clients} allUsers={allUsers} />
+            submitLabel="Save Changes" clients={clients} allUsers={allUsers} saving={saving} />
         )}
       </Modal>
       {/* Toast Notification */}

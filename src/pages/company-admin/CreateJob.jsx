@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     ArrowLeft, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, CheckCircle, Loader, AlertTriangle, ChevronRight,
-    Search, X
+    Search, X, Users, ChevronDown
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -27,7 +27,30 @@ const CreateJob = () => {
     const [equipSearch, setEquipSearch] = useState('');
     const [isEquipOpen, setIsEquipOpen] = useState(false);
 
+    const [selectedRole, setSelectedRole] = useState('');
+    const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+    const [userSearch, setUserSearch] = useState('');
+    const userDropdownRef = useRef(null);
+
     const showBudget = canSeeBudget(user?.role);
+
+    // Filter team based on selected role and search term
+    const filteredUsers = assignableUsers.filter(u => {
+        const matchRole = !selectedRole || u.role === selectedRole;
+        const matchSearch = u.fullName?.toLowerCase().includes(userSearch.toLowerCase());
+        return matchRole && matchSearch;
+    });
+
+    // Click outside to close user dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+                setIsUserDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const [form, setForm] = useState({
         name: '',
@@ -52,21 +75,13 @@ const CreateJob = () => {
                 ]);
                 setProject(projRes.data);
                 const team = teamRes.data || [];
-                // Filter: show if not assigned to a job OR explicitly idle
+                setAssignableUsers(team);
+
                 const availableEquip = (equipRes.data || []).filter(e => {
                     const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
                     return !isAssigned || e.status === 'idle';
                 });
                 setEquipment(availableEquip);
-
-                // Assignment filter: Admins assign PMs, PMs assign Foremen/Subcontractors, Foremen assign Workers
-                if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) {
-                    setAssignableUsers(team.filter(m => m.role === 'PM'));
-                } else if (user?.role === 'PM') {
-                    setAssignableUsers(team.filter(m => ['FOREMAN', 'SUBCONTRACTOR'].includes(m.role)));
-                } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
-                    setAssignableUsers(team.filter(m => m.role === 'WORKER'));
-                }
             } catch (err) {
                 console.error(err);
                 setError('Failed to load project data.');
@@ -134,7 +149,7 @@ const CreateJob = () => {
         <div className="min-h-screen bg-slate-50">
             {/* ── Top Bar ── */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-                <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-4">
+                <div className="w-full mx-auto px-4 md:px-10 py-4 flex items-center gap-4">
                     <button
                         onClick={() => navigate(`/company-admin/projects/${projectId}`)}
                         className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all">
@@ -155,7 +170,7 @@ const CreateJob = () => {
             </div>
 
             {/* ── Page Content ── */}
-            <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+            <div className="w-full mx-auto px-4 md:px-10 py-10 space-y-8">
 
                 {/* Hero Header */}
                 <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[40px] p-10 text-white relative overflow-hidden">
@@ -259,35 +274,98 @@ const CreateJob = () => {
                         </div>
 
                         {/* Assignment Dropdown */}
-                        <div>
-                            <label className={labelCls}>
-                                <HardHat size={12} className="text-orange-500" />
-                                {(['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) ? 'Assign Worker' :
-                                    user?.role === 'PM' ? 'Assign Foreman / Subcontractor' :
-                                        'Assigned Project Manager'}
+                        {/* Assignment Section */}
+                        <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100/50 space-y-5">
+                            <label className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Users size={14} className="text-blue-600" /> Job Lead / Assigned To
                             </label>
-                            <select
-                                value={form.pmId}
-                                onChange={e => setForm({ ...form, pmId: e.target.value })}
-                                className={inputCls + ' appearance-none cursor-pointer'}
-                            >
-                                <option value="">— Select {(['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) ? 'a Worker' :
-                                    user?.role === 'PM' ? 'a Foreman / Sub' :
-                                        'a Project Manager'} —</option>
-                                {assignableUsers.length === 0 ? (
-                                    <option disabled>No users found to assign</option>
-                                ) : assignableUsers.map(u => (
-                                    <option key={u._id} value={u._id}>
-                                        {u.fullName} ({u.role})
-                                    </option>
-                                ))}
-                            </select>
-                            {assignableUsers.length === 0 && (
-                                <p className="mt-2 text-[11px] text-amber-600 font-bold flex items-center gap-1.5">
-                                    <AlertTriangle size={12} />
-                                    No suitable team members found to assign.
-                                </p>
-                            )}
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Step 1: Filter by Role */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Select Role</label>
+                                    <div className="relative">
+                                        <select 
+                                            value={selectedRole} 
+                                            onChange={e => {
+                                                setSelectedRole(e.target.value);
+                                                setForm({ ...form, pmId: '' }); // Reset user selection when role changes
+                                            }}
+                                            className={inputCls + ' appearance-none pl-4 pr-10 hover:border-blue-500/50 cursor-pointer'}
+                                        >
+                                            <option value="">All Roles</option>
+                                            {user?.role !== 'PM' && <option value="PM">Project Manager</option>}
+                                            <option value="SUBCONTRACTOR">Sub-Contractor</option>
+                                            <option value="WORKER">Field Worker</option>
+                                            <option value="FOREMAN">Foreman</option>
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <ChevronDown size={14} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Step 2: Searchable User Selection */}
+                                <div className="space-y-2 relative" ref={userDropdownRef}>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Select Identity</label>
+                                    <div 
+                                        onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                                        className={inputCls + ' cursor-pointer flex items-center justify-between group-hover:border-blue-500/30'}
+                                    >
+                                        <span className="truncate">
+                                            {assignableUsers.find(u => u._id === form.pmId)?.fullName || (selectedRole ? `Select ${selectedRole}` : 'Select User')}
+                                        </span>
+                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+
+                                    {isUserDropdownOpen && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Type name to filter..."
+                                                        value={userSearch}
+                                                        onChange={(e) => setUserSearch(e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-blue-500 transition-all font-sans"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="max-h-[200px] overflow-y-auto">
+                                                {filteredUsers.length > 0 ? (
+                                                    filteredUsers.map(u => (
+                                                        <div
+                                                            key={u._id}
+                                                            onClick={() => {
+                                                                setForm({ ...form, pmId: u._id });
+                                                                setIsUserDropdownOpen(false);
+                                                                setUserSearch('');
+                                                            }}
+                                                            className={`px-4 py-3 text-[10px] font-bold uppercase cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-between border-l-4 ${form.pmId === u._id ? 'bg-blue-50 text-blue-600 border-blue-600' : 'text-slate-600 border-transparent'}`}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span>{u.fullName}</span>
+                                                                <span className="text-[8px] opacity-60 font-medium">{u.role}</span>
+                                                            </div>
+                                                            {form.pmId === u._id && (
+                                                                <CheckCircle size={14} className="text-blue-600" />
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase italic">
+                                                        No matching personnel
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <p className="text-[9px] font-bold text-blue-400 uppercase italic px-1">Selected lead will have operational sight over this job unit.</p>
                         </div>
 
                         {/* Status */}

@@ -16,9 +16,12 @@ const WorkerPunch = () => {
     const [currentTimeLog, setCurrentTimeLog] = useState(null);
     const socketRef = useRef();
     const [assignedProjects, setAssignedProjects] = useState([]);
-    const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [assignedTasks, setAssignedTasks] = useState([]);
+    const [selectedAssignment, setSelectedAssignment] = useState('');
     const [history, setHistory] = useState([]);
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+    const [showReasonModal, setShowReasonModal] = useState(false);
+    const [clockInReason, setClockInReason] = useState('');
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type, visible: true });
@@ -35,10 +38,28 @@ const WorkerPunch = () => {
                     setAssignedProjects(statsRes.data.workerMetrics.assignedProjects || []);
                     setIsClockedIn(statsRes.data.workerMetrics.isClockedIn);
                     setTimer(statsRes.data.workerMetrics.timer || 0);
-
-                    if (statsRes.data.workerMetrics.assignedProjects?.length === 1) {
-                        setSelectedProjectId(statsRes.data.workerMetrics.assignedProjects[0]._id);
+                    
+                    if (statsRes.data.workerMetrics.currentJob) {
+                        // Will be formatted once tasks are fetched
+                        setActiveJob(statsRes.data.workerMetrics.currentJob);
                     }
+                }
+
+                // Fetch tasks for the dropdown (same as dashboard)
+                try {
+                    const [jobTasksRes, globalTasksRes] = await Promise.all([
+                        api.get('/job-tasks/worker'),
+                        api.get('/tasks/my-tasks')
+                    ]);
+                    const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
+                        ...t,
+                        isGlobal: true,
+                        jobName: t.projectId?.name || 'Global'
+                    }));
+                    const combined = [...(jobTasksRes.data || []), ...normalizedGlobal];
+                    setAssignedTasks(combined);
+                } catch (taskErr) {
+                    console.error('Error fetching tasks for punch page:', taskErr);
                 }
 
                 const res = await api.get('/timelogs');
@@ -78,9 +99,18 @@ const WorkerPunch = () => {
         socketRef.current.emit('register_user', user);
 
         return () => {
-            if (socketRef.current) socketRef.current.disconnect();
+            socketRef.current?.disconnect();
         };
-    }, [user?._id]);
+    }, [user, isClockedIn]);
+
+    useEffect(() => {
+        if (activeJob && (assignedProjects.length > 0 || assignedTasks.length > 0)) {
+            // Check if already formatted to avoid loop
+            if (!activeJob.startsWith('Project: ') && !activeJob.startsWith('Task: ') && activeJob !== 'Random Site / Emergency Attendance') {
+                setActiveJob(prev => formatJobName(prev, assignedProjects, assignedTasks));
+            }
+        }
+    }, [activeJob, assignedProjects, assignedTasks]);
 
     useEffect(() => {
         let interval;
@@ -101,39 +131,112 @@ const WorkerPunch = () => {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
+    const formatJobName = (rawName, projects, tasks) => {
+        if (!rawName) return null;
+        if (rawName === 'random') return 'Random Site / Emergency Attendance';
+        
+        const pMatch = projects?.find(p => p.name === rawName);
+        if (pMatch) return `Project: ${pMatch.name} (${pMatch.jobName || pMatch.jobId?.name || 'Assigned Job'})`;
+        
+        const tMatch = tasks?.find(t => t.title === rawName);
+        if (tMatch) return `Task: ${tMatch.title} (${tMatch.jobName || tMatch.jobId?.name || 'Assigned Job'})`;
+        
+        return rawName;
+    };
+
+    const [lastKnownCoords, setLastKnownCoords] = useState(null);
+
+    // Live Location Warm-up
+    useEffect(() => {
+        if (!navigator.geolocation) return;
+
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                setLastKnownCoords(pos.coords);
+            },
+            (err) => console.log('Warm-up location error:', err),
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+        );
+
+        return () => navigator.geolocation.clearWatch(watchId);
+    }, []);
+
     const handleToggle = async () => {
         try {
-            if (!isClockedIn && !selectedProjectId && assignedProjects.length > 0) {
-                showToast('Please select a project to clock into.', 'error');
+            if (!isClockedIn && !selectedAssignment) {
+                showToast('Please select a site, task, or "Other" to clock into.', 'error');
+                return;
+            }
+
+            // Trigger reason modal for random selection
+            if (!isClockedIn && selectedAssignment === 'random' && !showReasonModal) {
+                setShowReasonModal(true);
                 return;
             }
 
             setLoading(true);
-            const getPosition = () => new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve(null);
+
+            // Use the warm-up location if available, otherwise fetch fresh one
+            const getPosition = () => new Promise((resolve, reject) => {
+                if (lastKnownCoords) return resolve(lastKnownCoords);
+                if (!navigator.geolocation) return reject(new Error('Geolocation is not supported.'));
+                
                 navigator.geolocation.getCurrentPosition(
                     (pos) => resolve(pos.coords),
-                    () => resolve(null),
-                    { timeout: 5000 }
+                    (err) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos.coords),
+                            (err2) => reject(err2 || err),
+                            { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+                        );
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
                 );
             });
 
             if (!isClockedIn) {
-                // Clock In
+                // Determine Project/Task/Job ID similar to dashboard
+                let pId = null;
+                let tId = null;
+                let jId = null;
+
+                if (selectedAssignment.startsWith('task_')) {
+                    tId = selectedAssignment.replace('task_', '');
+                    const tMatch = assignedTasks.find(t => t._id === tId);
+                    if (tMatch) {
+                        pId = tMatch.projectId?._id || tMatch.projectId;
+                        jId = tMatch.jobId?._id || tMatch.jobId;
+                    }
+                } else if (selectedAssignment.startsWith('project_')) {
+                    pId = selectedAssignment.replace('project_', '');
+                    const pMatch = assignedProjects.find(p => p._id === pId);
+                    if (pMatch) {
+                        jId = pMatch.jobId?._id || pMatch.jobId;
+                    }
+                }
+
                 const coords = await getPosition();
                 const res = await api.post('/timelogs/clock-in', {
-                    projectId: selectedProjectId || assignedProjects[0]?._id,
+                    projectId: pId,
+                    taskId: tId,
+                    jobId: jId,
+                    reason: selectedAssignment === 'random' ? clockInReason : undefined,
                     latitude: coords?.latitude,
                     longitude: coords?.longitude,
                     deviceInfo: navigator.userAgent
                 });
+
                 setCurrentTimeLog(res.data);
-                const proj = assignedProjects.find(p => p._id === (selectedProjectId || assignedProjects[0]?._id));
-                setActiveJob(proj?.name || 'Active Site');
-                setSiteLocation(proj?.location?.address || 'Assigned Site');
                 setIsClockedIn(true);
-                // Prepend to history
+                // Re-fetch data to sync all status strings
+                const statsRes = await api.get('/reports/stats');
+                if (statsRes.data.workerMetrics?.currentJob) {
+                    setActiveJob(formatJobName(statsRes.data.workerMetrics.currentJob, assignedProjects, assignedTasks));
+                }
                 setHistory(prev => [res.data, ...prev].slice(0, 5));
+                setShowReasonModal(false);
+                setClockInReason('');
+                showToast('Clocked in successfully.');
             } else {
                 // Clock Out
                 const coords = await getPosition();
@@ -146,15 +249,26 @@ const WorkerPunch = () => {
                 setTimer(0);
                 setActiveJob(null);
                 setSiteLocation('Not Clocked In');
-                // Re-fetch to update the out time in history
                 const res = await api.get('/timelogs');
                 const userLogs = res.data.filter(log => log.userId?._id === user?._id);
                 setHistory(userLogs.slice(0, 5));
-                showToast(isClockedIn ? 'Clocked out successfully.' : 'Clocked in successfully.');
+                showToast('Clocked out successfully.');
             }
         } catch (error) {
             console.error('Error toggling clock:', error);
-            showToast(error.response?.data?.message || 'Failed to update attendance status', 'error');
+            let message = 'Failed to update attendance status';
+            
+            if (error.code === 1) { // PERMISSION_DENIED
+                message = 'Location permission denied. Please allow location access in your browser settings.';
+            } else if (error.code === 2) { // POSITION_UNAVAILABLE
+                message = 'Location unavailable. Please make sure GPS is active.';
+            } else if (error.code === 3) { // TIMEOUT
+                message = 'Location request timed out. Please try again.';
+            } else {
+                message = error.response?.data?.message || error.message || message;
+            }
+            
+            showToast(message, 'error');
         } finally {
             setLoading(false);
         }
@@ -162,6 +276,50 @@ const WorkerPunch = () => {
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in">
+            {/* Reason Modal for Random Clock-In */}
+            {showReasonModal && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-8 space-y-6 text-center">
+                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle size={32} />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Random Clock-In</h3>
+                            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <textarea
+                                placeholder="e.g. Working at unlisted site / Special assignment..."
+                                value={clockInReason}
+                                onChange={(e) => setClockInReason(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors text-left"
+                                autoFocus
+                            />
+                            
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowReasonModal(false);
+                                        setClockInReason('');
+                                    }}
+                                    className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleToggle}
+                                    disabled={!clockInReason.trim() || loading}
+                                    className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
+                                >
+                                    {loading ? 'Processing...' : 'Start Clock In'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="text-center space-y-2 relative">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Time Clock</h1>
@@ -195,18 +353,36 @@ const WorkerPunch = () => {
                         <h2 className="text-7xl font-black text-slate-900 tracking-tighter tabular-nums">
                             {isClockedIn ? formatTime(timer) : '00:00:00'}
                         </h2>
-                        {!isClockedIn && assignedProjects.length > 0 && (
-                            <div className="mt-6 mb-4 max-w-xs mx-auto">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Working Site</label>
+                        {!isClockedIn && (assignedProjects.length > 0 || assignedTasks.length > 0) && (
+                            <div className="mt-6 mb-4 max-w-sm mx-auto">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Working Site / Task</label>
                                 <select
-                                    value={selectedProjectId}
-                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    value={selectedAssignment}
+                                    onChange={(e) => setSelectedAssignment(e.target.value)}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
                                 >
-                                    <option value="">-- Choose Project --</option>
-                                    {assignedProjects.map(p => (
-                                        <option key={p._id} value={p._id}>{p.name}</option>
-                                    ))}
+                                    <option value="">-- Choose Task / Project --</option>
+                                    {assignedTasks.length > 0 && (
+                                        <optgroup label="My Tasks">
+                                            {assignedTasks.map(t => (
+                                                <option key={`task_${t._id}`} value={`task_${t._id}`}>
+                                                    Task: {t.title} ({t.jobName || t.jobId?.name || 'Assigned Job'})
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    {assignedProjects.length > 0 && (
+                                        <optgroup label="General Site Attendance">
+                                            {assignedProjects.map(p => (
+                                                <option key={`project_${p._id}`} value={`project_${p._id}`}>
+                                                    Project: {p.name} ({p.jobName || p.jobId?.name || 'Assigned Job'})
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    <optgroup label="Other">
+                                        <option value="random">Random Site / Emergency Attendance</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         )}

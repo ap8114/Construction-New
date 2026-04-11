@@ -532,10 +532,13 @@ const Timesheets = () => {
                                                 <td className="px-8 py-5">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-700">
-                                                            {entry.taskId ? `Task: ${entry.taskId.title}` : (entry.projectId?.name || 'Manual Log')}
+                                                            {entry.taskId ? `Task: ${entry.taskId.title}` : 
+                                                             (entry.projectId?.name || 
+                                                              (entry.reason ? 'Random Site Attendance' : 'Manual Log'))}
                                                         </span>
                                                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tight">
-                                                            <Hash size={10} /> {entry.jobId?.name || entry.projectId?._id.slice(-6).toUpperCase() || '---'}
+                                                            <Hash size={10} /> 
+                                                            {entry.taskId?.jobId?.name || entry.jobId?.name || entry.projectId?.name || (entry.reason ? 'Emergency Visit' : 'N/A')}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -764,7 +767,9 @@ const Timesheets = () => {
                                         {selectedEntry.userId?.role?.replace('COMPANY_', '')}
                                     </span>
                                     <span className="text-slate-300">•</span>
-                                    <span className="text-sm font-bold text-slate-500">{selectedEntry.projectId?.name || 'Manual Log'}</span>
+                                    <span className="text-sm font-bold text-slate-500">
+                                        {selectedEntry.projectId?.name || (selectedEntry.reason ? 'Random Site Attendance' : 'Manual Log')}
+                                    </span>
                                 </div>
                             </div>
                             {selectedEntry.geofenceStatus === 'inside' ? (
@@ -836,9 +841,11 @@ const Timesheets = () => {
                                     {selectedEntry.isManual ? 'Manual Override' : 'System Capture'}
                                 </div>
                             </div>
-                            {selectedEntry.isManual && selectedEntry.reason && (
-                                <div className="bg-white/80 p-3 rounded-xl border border-amber-100/50">
-                                    <p className="text-[8px] font-black uppercase text-amber-500/70 tracking-widest mb-1">Entry Reason</p>
+                            {selectedEntry.reason && (
+                                <div className={`${selectedEntry.isManual ? 'bg-white/80 border-amber-100/50' : 'bg-blue-50/50 border-blue-100/50'} p-3 rounded-xl border`}>
+                                    <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${selectedEntry.isManual ? 'text-amber-500' : 'text-blue-500'}`}>
+                                        {selectedEntry.isManual ? 'Entry Reason' : 'Random login justification'}
+                                    </p>
                                     <p className="text-[11px] font-bold text-slate-600 italic">"{selectedEntry.reason}"</p>
                                 </div>
                             )}
@@ -876,18 +883,38 @@ const Timesheets = () => {
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 {selectedEntry.status === 'pending' && selectedEntry.clockOut && (
                                     <>
-                                        <button
-                                            onClick={() => handleReject(selectedEntry._id)}
-                                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-50 flex items-center justify-center gap-2"
-                                        >
-                                            <XCircle size={14} /> Reject
-                                        </button>
-                                        <button
-                                            onClick={() => handleApprove(selectedEntry._id)}
-                                            className="flex-1 sm:flex-none px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle size={14} /> Approve Log
-                                        </button>
+                                        {!isWorker ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleReject(selectedEntry._id)}
+                                                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-50 flex items-center justify-center gap-2"
+                                                >
+                                                    <XCircle size={14} /> Reject
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApprove(selectedEntry._id)}
+                                                    className="flex-1 sm:flex-none px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center justify-center gap-2"
+                                                >
+                                                    <CheckCircle size={14} /> Approve Log
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setCorrectionData({
+                                                        ...correctionData,
+                                                        timeLogId: selectedEntry._id,
+                                                        clockIn: new Date(selectedEntry.clockIn).toISOString().slice(0, 16),
+                                                        clockOut: selectedEntry.clockOut ? new Date(selectedEntry.clockOut).toISOString().slice(0, 16) : ''
+                                                    });
+                                                    setIsModalOpen(false);
+                                                    setIsCorrectionModalOpen(true);
+                                                }}
+                                                className="flex-1 sm:flex-none px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-orange-500 hover:bg-orange-600 transition-all shadow-md shadow-orange-100 flex items-center justify-center gap-2"
+                                            >
+                                                <RefreshCw size={14} /> Request Correction
+                                            </button>
+                                        )}
                                     </>
                                 )}
                                 {(selectedEntry.status !== 'pending' || !selectedEntry.clockOut) && (

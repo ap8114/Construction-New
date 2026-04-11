@@ -470,6 +470,8 @@ const CompanyAdminDashboard = () => {
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [selectedAssignment, setSelectedAssignment] = useState('');
   const [teamMembers, setTeamMembers] = useState([]);
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [clockInReason, setClockInReason] = useState('');
 
   const fetchDashboardData = async () => {
     try {
@@ -484,13 +486,29 @@ const CompanyAdminDashboard = () => {
       if (data.topProject) setTopProject(data.topProject);
 
       if (data.workerMetrics) {
-        setWorkerMetrics(data.workerMetrics);
-        setIsClockedIn(data.workerMetrics.isClockedIn);
-        setTimer(data.workerMetrics.timer || 0);
+        const processedMetrics = { ...data.workerMetrics };
+        if (processedMetrics.isClockedIn && processedMetrics.currentJob) {
+          // Sync currentJob name with selection labels for consistency
+          const pMatch = processedMetrics.assignedProjects?.find(p => p.name === processedMetrics.currentJob);
+          if (pMatch) {
+            processedMetrics.currentJob = `Project: ${pMatch.name} (${pMatch.jobName})`;
+          } else {
+            const tMatch = processedMetrics.assignedTasks?.find(t => t.title === processedMetrics.currentJob);
+            if (tMatch) {
+              processedMetrics.currentJob = `Task: ${tMatch.title} (${tMatch.jobName})`;
+            }
+          }
+          if (processedMetrics.currentJob === 'random') {
+            processedMetrics.currentJob = 'Random Site / Emergency Attendance';
+          }
+        }
+        setWorkerMetrics(processedMetrics);
+        setIsClockedIn(processedMetrics.isClockedIn);
+        setTimer(processedMetrics.timer || 0);
 
         // Auto-select project if only one exists and not selected yet
-        if (data.workerMetrics.assignedProjects?.length === 1 && !selectedProjectId) {
-          setSelectedProjectId(data.workerMetrics.assignedProjects[0]._id);
+        if (processedMetrics.assignedProjects?.length === 1 && !selectedProjectId) {
+          setSelectedProjectId(processedMetrics.assignedProjects[0]._id);
         }
       }
       if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
@@ -635,20 +653,48 @@ const CompanyAdminDashboard = () => {
     return () => clearInterval(interval);
   }, [isClockedIn]);
 
+  const [lastKnownCoords, setLastKnownCoords] = useState(null);
+
+  // Live Location Warm-up
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setLastKnownCoords(pos.coords),
+      (err) => console.log('Warm-up location error:', err),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
   const handleToggle = async () => {
     try {
-      if (!isClockedIn && !selectedProjectId && workerMetrics.assignedProjects?.length > 0) {
-        showToast('Please select a project to clock into.', 'error');
+      if (!isClockedIn && !selectedAssignment) {
+        showToast('Please select a site, task, or "Other" to clock into.', 'error');
+        return;
+      }
+
+      // Trigger reason modal for random selection
+      if (!isClockedIn && selectedAssignment === 'random' && !showReasonModal) {
+        setShowReasonModal(true);
         return;
       }
 
       setLoading(true);
-      const getPosition = () => new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve(null);
+
+      const getPosition = () => new Promise((resolve, reject) => {
+        if (lastKnownCoords) return resolve(lastKnownCoords);
+        if (!navigator.geolocation) return reject(new Error('Geolocation is not supported.'));
+        
         navigator.geolocation.getCurrentPosition(
-          (pos) => resolve(pos.coords),
-          () => resolve(null),
-          { timeout: 5000 }
+            (pos) => resolve(pos.coords),
+            (err) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve(pos.coords),
+                    (err2) => reject(err2 || err),
+                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+                );
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
         );
       });
 
@@ -670,13 +716,6 @@ const CompanyAdminDashboard = () => {
           if (pMatch) {
             jId = pMatch.jobId;
           }
-        } else if (!selectedAssignment && workerMetrics.assignedTasks?.length > 0) {
-          tId = workerMetrics.assignedTasks[0]._id;
-          pId = workerMetrics.assignedTasks[0].projectId;
-          jId = workerMetrics.assignedTasks[0].jobId;
-        } else if (!selectedAssignment && workerMetrics.assignedProjects?.length > 0) {
-          pId = workerMetrics.assignedProjects[0]._id;
-          jId = workerMetrics.assignedProjects[0].jobId;
         }
 
         const coords = await getPosition();
@@ -684,14 +723,28 @@ const CompanyAdminDashboard = () => {
           projectId: pId,
           jobId: jId,
           taskId: tId,
+          reason: selectedAssignment === 'random' ? clockInReason : undefined,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
           deviceInfo: navigator.userAgent
         });
+
+        // Auto-resume job if it was on hold
+        if (jId) {
+          try {
+            await api.patch(`/jobs/${jId}`, { status: 'active' });
+          } catch (err) {
+            console.error('Error resuming job status:', err);
+          }
+        }
+
         setIsClockedIn(true);
         fetchDashboardData();
+        setShowReasonModal(false);
+        setClockInReason('');
         showToast('Clocked in successfully!');
       } else {
+        // Clock Out
         const coords = await getPosition();
         await api.post('/timelogs/clock-out', {
           latitude: coords?.latitude,
@@ -700,11 +753,23 @@ const CompanyAdminDashboard = () => {
         setIsClockedIn(false);
         setTimer(0);
         fetchDashboardData();
-        showToast('Clocked out successfully.');
+        showToast('Clocked out successfully!');
       }
     } catch (error) {
       console.error('Error toggling clock:', error);
-      showToast(error.response?.data?.message || 'Failed to update attendance status', 'error');
+      let message = 'Failed to update attendance status';
+      
+      if (error.code === 1) { // PERMISSION_DENIED
+          message = 'Location permission denied. Please allow location access in your browser settings.';
+      } else if (error.code === 2) { // POSITION_UNAVAILABLE
+          message = 'Location unavailable. Please make sure GPS is active.';
+      } else if (error.code === 3) { // TIMEOUT
+          message = 'Location request timed out. Please try again.';
+      } else {
+          message = error.response?.data?.message || error.message || message;
+      }
+      
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -780,6 +845,50 @@ const CompanyAdminDashboard = () => {
 
   return (
     <div className="space-y-6 pb-8 animate-fade-in w-full">
+      {/* Reason Modal for Random Clock-In */}
+      {showReasonModal && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-8 space-y-6">
+            <div className="space-y-2 text-center">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Random Clock-In</h3>
+              <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
+            </div>
+            
+            <div className="space-y-4">
+              <textarea
+                placeholder="e.g. Working at unlisted site / Special assignment..."
+                value={clockInReason}
+                onChange={(e) => setClockInReason(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors"
+                autoFocus
+              />
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowReasonModal(false);
+                    setClockInReason('');
+                  }}
+                  className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleToggle}
+                  disabled={!clockInReason.trim() || loading}
+                  className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
+                >
+                  {loading ? 'Processing...' : 'Start Clock In'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Content Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
         <div>
@@ -841,6 +950,9 @@ const CompanyAdminDashboard = () => {
                         </option>
                       ))}
                     </optgroup>}
+                    <optgroup label="Other">
+                      <option value="random">Random Site / Emergency Attendance</option>
+                    </optgroup>
                   </select>
                 </div>
               )}
@@ -872,7 +984,7 @@ const CompanyAdminDashboard = () => {
       )}
 
       {/* Summary Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${(isWorker || isSubcontractor) ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3 md:gap-4`}>
         {(isOwner || isPM) && (
           <>
             <SummaryCard title="Active Jobs" value={metrics.activeJobs} icon={Briefcase} color="bg-orange-400" loading={loading} />
@@ -896,7 +1008,8 @@ const CompanyAdminDashboard = () => {
           <>
             <SummaryCard title="My Hours Today" value={workerMetrics.myHoursToday} icon={Clock} color="bg-blue-600" loading={loading} />
             <SummaryCard title="Current Job" value={workerMetrics.currentJob} icon={Briefcase} color="bg-orange-400" loading={loading} />
-            <SummaryCard title="Weekly Target" value={workerMetrics.weeklyTarget} subtext={workerMetrics.weeklyDone} icon={TrendingUp} color="bg-emerald-500" loading={loading} />
+            <SummaryCard title="Assigned Jobs" value={workerMetrics.assignedProjects?.length || 0} icon={Briefcase} color="bg-indigo-500" loading={loading} />
+            <SummaryCard title="Pending Tasks" value={myTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length} icon={CheckCircle} color="bg-emerald-500" loading={loading} />
           </>
         )}
 
@@ -904,7 +1017,8 @@ const CompanyAdminDashboard = () => {
           <>
             <SummaryCard title="My Hours Today" value={workerMetrics.myHoursToday} icon={Clock} color="bg-orange-500" loading={loading} />
             <SummaryCard title="Current Job" value={workerMetrics.currentJob} icon={Briefcase} color="bg-blue-500" loading={loading} />
-            <SummaryCard title="Weekly Target" value={workerMetrics.weeklyTarget} subtext={workerMetrics.weeklyDone} icon={TrendingUp} color="bg-emerald-500" loading={loading} />
+            <SummaryCard title="Assigned Jobs" value={workerMetrics.assignedProjects?.length || 0} icon={Briefcase} color="bg-indigo-500" loading={loading} />
+            <SummaryCard title="Pending Tasks" value={myTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length} icon={CheckCircle} color="bg-emerald-500" loading={loading} />
           </>
         )}
       </div>
@@ -912,64 +1026,43 @@ const CompanyAdminDashboard = () => {
       {/* Quick Actions & Alerts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left: Quick Actions */}
-        <div className="lg:col-span-3 space-y-6">
-          <div className="bg-transparent">
-            <h3 className="text-base font-black text-slate-800 mb-4 tracking-tight">Quick Actions</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              {isOwnerOrPM && (
-                <>
-                  <QuickActionButton label="Clock In crew" icon={CheckCircle} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/timesheets')} />
-                  <QuickActionButton label="Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
-                  <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
-                  {/* <QuickActionButton label="Equipment Hours" icon={Wrench} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/equipment')} /> */}
-                  <QuickActionButton label="Create PO" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/purchase-orders')} />
-                </>
-              )}
+        <div className={(isWorker || isSubcontractor) ? "lg:col-span-4 space-y-6" : "lg:col-span-3 space-y-6"}>
+          {!(isWorker || isSubcontractor) && (
+            <div className="bg-transparent">
+              <h3 className="text-base font-black text-slate-800 mb-4 tracking-tight">Quick Actions</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {isOwnerOrPM && (
+                  <>
+                    <QuickActionButton label="Clock In crew" icon={CheckCircle} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/timesheets')} />
+                    <QuickActionButton label="Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
+                    <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
+                    {/* <QuickActionButton label="Equipment Hours" icon={Wrench} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/equipment')} /> */}
+                    <QuickActionButton label="Create PO" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/purchase-orders')} />
+                  </>
+                )}
 
-              {isForeman && (
-                <>
-                  <QuickActionButton label="Clock In Crew" icon={Users} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/crew-clock')} />
-                  <QuickActionButton label="Add Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
-                  <QuickActionButton label="Upload Site Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
-                  {/* <QuickActionButton label="Equipment Tracking" icon={Wrench} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/equipment')} /> */}
-                  <QuickActionButton label="Create PO" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/purchase-orders')} />
-                </>
-              )}
-
-              {isWorker && (
-                <>
-                  <QuickActionButton label="Clock In / Out" icon={Clock} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/clock')} />
-                  <QuickActionButton label="Submit Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
-                  <QuickActionButton label="Request Correction" icon={RefreshCw} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/timesheets')} />
-                </>
-              )}
-
-              {isSubcontractor && (
-                <>
-                  <QuickActionButton 
-                    label={loading ? "Processing..." : (isClockedIn ? "Stop Clock Out" : "Start Clock In")} 
-                    icon={loading ? RefreshCw : Clock} 
-                    bg={loading ? "bg-slate-400" : (isClockedIn ? "bg-red-500" : "bg-orange-500")} 
-                    color="text-white" 
-                    onClick={handleToggle} 
-                    disabled={loading}
-                  />
-                  <QuickActionButton label="Upload Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
-                </>
-              )}
+                {isForeman && (
+                  <>
+                    <QuickActionButton label="Clock In Crew" icon={Users} bg="bg-blue-600" color="text-white" onClick={() => navigate('/company-admin/crew-clock')} />
+                    <QuickActionButton label="Add Daily Log" icon={FileText} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/daily-logs')} />
+                    <QuickActionButton label="Upload Site Photo" icon={Camera} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/photos')} />
+                    {/* <QuickActionButton label="Equipment Tracking" icon={Wrench} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/equipment')} /> */}
+                    <QuickActionButton label="Create PO" icon={ClipboardList} bg="bg-white" color="text-slate-700" onClick={() => navigate('/company-admin/purchase-orders')} />
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick To-Do Section - Independent of Projects */}
-          <QuickTodoWidget
+          {/* <QuickTodoWidget
             users={teamMembers}
             currentUser={user}
             onTaskCreated={fetchDashboardData}
-          />
+          /> */}
 
           {/* Dynamic To-Do Lists Layout */}
-          <div className={`grid grid-cols-1 ${(['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role)) ? 'md:grid-cols-3' : ''} gap-6 mb-6`}>
-            {/* Show My Daily Todos for Operational Staff only - but include PM now as Admin can assign to them */}
+          {/* <div className={`grid grid-cols-1 ${(['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role)) ? 'md:grid-cols-3' : ''} gap-6 mb-6`}>
             {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
               <div className="md:col-span-1">
                 <TodoList
@@ -996,7 +1089,7 @@ const CompanyAdminDashboard = () => {
                 />
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Assigned Jobs - For Subcontractors & Foremen */}
           {(isForeman || isSubcontractor) && metrics.myJobs?.length > 0 && (
@@ -1144,9 +1237,10 @@ const CompanyAdminDashboard = () => {
                 <h3 className="text-lg font-black text-slate-800 tracking-tight">My Recent Activity</h3>
                 <button
                   onClick={() => navigate('/company-admin/timesheets')}
-                  className="text-sm font-black text-blue-600 hover:text-blue-700 uppercase tracking-tight"
+                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 group"
                 >
                   View Full History
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
               <div className="divide-y divide-slate-50">
@@ -1319,9 +1413,10 @@ const CompanyAdminDashboard = () => {
         </div>
 
         {/* Right Column: Alerts & Recent Logs */}
-        <div className="space-y-8">
-          {/* Attention & Alerts */}
-          {!isWorker && (
+        {!(isWorker || isSubcontractor) && (
+          <div className="space-y-8">
+            {/* Attention & Alerts */}
+            {!isWorker && (
             <div id="overdue-tasks-section" className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 transition-all duration-500">
               <h3 className="text-lg font-black text-slate-800 mb-5 tracking-tight">Attention & Alerts</h3>
               <div className="space-y-3">
@@ -1431,6 +1526,7 @@ const CompanyAdminDashboard = () => {
             </div>
           )}
         </div>
+        )}
       </div>
       {isCancellationModalOpen && (
         <CancellationModal

@@ -208,12 +208,18 @@ const CrewClock = () => {
             setIsProcessing(true);
             
             // Get Admin's current position for the logs
-            const getPosition = () => new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve(null);
+            const getPosition = () => new Promise((resolve, reject) => {
+                if (!navigator.geolocation) return reject(new Error('Geolocation is not supported by your browser.'));
                 navigator.geolocation.getCurrentPosition(
                     (pos) => resolve(pos.coords),
-                    () => resolve(null),
-                    { timeout: 5000 }
+                    (err) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos.coords),
+                            (err2) => reject(err2),
+                            { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+                        );
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
             });
             const coords = await getPosition();
@@ -251,9 +257,17 @@ const CrewClock = () => {
                 const worker = workers.find(w => w._id === wid);
                 if (worker.isClockedIn) {
                     // Try to get position but don't block if unavailable
-                    const getPosition = () => new Promise((resolve) => {
-                        if (!navigator.geolocation) return resolve(null);
-                        navigator.geolocation.getCurrentPosition((pos) => resolve(pos.coords), () => resolve(null), { timeout: 2000 });
+                    const getPosition = () => new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos.coords), 
+                            (err) => reject(err), 
+                            { 
+                                enableHighAccuracy: true,
+                                timeout: 15000, 
+                                maximumAge: 0 
+                            }
+                        );
                     });
                     const coords = await getPosition();
 

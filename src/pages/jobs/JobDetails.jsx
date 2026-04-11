@@ -475,12 +475,18 @@ const JobDetails = () => {
         try {
             setClockTogglingId(taskId);
 
-            const getPosition = () => new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve(null);
+            const getPosition = () => new Promise((resolve, reject) => {
+                if (!navigator.geolocation) return reject(new Error('Geolocation is not supported by your browser.'));
                 navigator.geolocation.getCurrentPosition(
                     (pos) => resolve(pos.coords),
-                    () => resolve(null),
-                    { timeout: 5000 }
+                    (err) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos.coords),
+                            (err2) => reject(err2),
+                            { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+                        );
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
             });
 
