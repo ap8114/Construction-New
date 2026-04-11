@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import {
     LayoutDashboard,
@@ -42,6 +42,20 @@ const ProjectIntelligence = () => {
     const [expandedTasks, setExpandedTasks] = useState({});
     const [activeTab, setActiveTab] = useState('jobs'); // 'jobs' or 'site'
     const [jobSearch, setJobSearch] = useState('');
+    const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+    const [projectSearch, setProjectSearch] = useState('');
+    const dropdownRef = useRef(null);
+
+    // Click outside to close project dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsProjectDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Fetch list of projects for the dropdown
     useEffect(() => {
@@ -244,16 +258,60 @@ const ProjectIntelligence = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
-                        <select
-                            value={selectedProjectId}
-                            onChange={(e) => setSelectedProjectId(e.target.value)}
-                             className="pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-2xl text-[12px] font-bold uppercase text-slate-700 appearance-none shadow-sm hover:border-slate-300 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all min-w-[300px]"
+                    <div className="relative group" ref={dropdownRef}>
+                        <div 
+                            onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                            className="pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-2xl text-[12px] font-bold uppercase text-slate-700 shadow-sm hover:border-slate-300 cursor-pointer transition-all min-w-[320px] flex items-center justify-between"
                         >
-                            {Array.isArray(projects) && projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                             <span className="truncate">{projects.find(p => p._id === selectedProjectId)?.name || 'Select Project Intelligence'}</span>
+                             <ChevronDown className={`text-slate-400 transition-transform ${isProjectDropdownOpen ? 'rotate-180' : ''}`} size={18} />
+                        </div>
+
+                        <AnimatePresence>
+                            {isProjectDropdownOpen && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
+                                    className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                >
+                                    <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                                        <input
+                                            type="text"
+                                            placeholder="Search project database..."
+                                            value={projectSearch}
+                                            onChange={(e) => setProjectSearch(e.target.value)}
+                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-blue-500 transition-all"
+                                            onClick={(e) => e.stopPropagation()}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                        {projects
+                                            .filter(p => p.name?.toLowerCase().includes(projectSearch.toLowerCase()))
+                                            .map(p => (
+                                                <div
+                                                    key={p._id}
+                                                    onClick={() => {
+                                                        setSelectedProjectId(p._id);
+                                                        setIsProjectDropdownOpen(false);
+                                                        setProjectSearch('');
+                                                    }}
+                                                    className={`px-5 py-3.5 text-[11px] font-bold uppercase cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all border-l-2 ${selectedProjectId === p._id ? 'bg-blue-50 text-blue-600 border-blue-600' : 'text-slate-600 border-transparent'}`}
+                                                >
+                                                    {p.name}
+                                                </div>
+                                            ))}
+                                        {projects.filter(p => p.name?.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+                                            <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase italic">
+                                                No projects matched your query
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,7 +21,29 @@ const canSeeBudget = (role) =>
   ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
 
 // ─── Project Form (Create/Edit) ───────────────────────────────────────────────
-const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, projectManagers }) => {
+const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers }) => {
+  const [selectedRole, setSelectedRole] = useState('');
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const userDropdownRef = useRef(null);
+
+  // Filter users based on selected role and search term
+  const filteredUsers = allUsers.filter(u => {
+    const matchRole = !selectedRole || u.role === selectedRole;
+    const matchSearch = u.fullName?.toLowerCase().includes(userSearch.toLowerCase());
+    return matchRole && matchSearch;
+  });
+
+  // Click outside to close user dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -128,18 +150,98 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, projectMan
           className={inputCls} placeholder="e.g. 123 Construction Way, New York, NY" />
       </div>
 
-      {/* Project Manager Assignment */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-          <Users size={12} className="text-blue-600" /> Assigned Project Manager
+      {/* Project Lead Assignment */}
+      <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100/50 space-y-5">
+        <label className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
+          <Users size={14} /> Project Lead / Assigned To
         </label>
-        <select value={data.pmId} onChange={e => setData({ ...data, pmId: e.target.value })}
-          className={inputCls + ' appearance-none'}>
-          <option value="">Select a Project Manager</option>
-          {projectManagers.map(pm => (
-            <option key={pm._id} value={pm._id}>{pm.fullName}</option>
-          ))}
-        </select>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Step 1: Filter by Role */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Select Role</label>
+            <div className="relative">
+              <select 
+                value={selectedRole} 
+                onChange={e => {
+                  setSelectedRole(e.target.value);
+                  setData({ ...data, pmId: '' }); // Reset user selection when role changes
+                }}
+                className={inputCls + ' appearance-none pl-4 pr-10 hover:border-blue-500/50 cursor-pointer'}
+              >
+                <option value="">All Roles</option>
+                <option value="PM">Project Manager</option>
+                <option value="SUBCONTRACTOR">Sub-Contractor</option>
+                <option value="WORKER">Field Worker</option>
+                <option value="FOREMAN">Foreman</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown size={14} />
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Searchable User Selection */}
+          <div className="space-y-2 relative" ref={userDropdownRef}>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Select Identity</label>
+            <div 
+              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+              className={inputCls + ' cursor-pointer flex items-center justify-between group-hover:border-blue-500/30'}
+            >
+              <span className="truncate">
+                {allUsers.find(u => u._id === data.pmId)?.fullName || (selectedRole ? `Select ${selectedRole}` : 'Select User')}
+              </span>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {isUserDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                    <input
+                      type="text"
+                      placeholder="Type name to filter..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-blue-500 transition-all font-sans"
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-[220px] overflow-y-auto">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map(u => (
+                      <div
+                        key={u._id}
+                        onClick={() => {
+                          setData({ ...data, pmId: u._id });
+                          setIsUserDropdownOpen(false);
+                          setUserSearch('');
+                        }}
+                        className={`px-4 py-3 text-[10px] font-bold uppercase cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-between border-l-4 ${data.pmId === u._id ? 'bg-blue-50 text-blue-600 border-blue-600' : 'text-slate-600 border-transparent'}`}
+                      >
+                        <div className="flex flex-col">
+                          <span>{u.fullName}</span>
+                          <span className="text-[8px] opacity-60 font-medium">Internal ID: {u._id.slice(-6)}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[8px] ${u.role === 'PM' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                          {u.role}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase italic">
+                      No matching personnel
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <p className="text-[9px] font-bold text-blue-400 uppercase italic px-1">Selected user will have administrative sight over this project unit.</p>
       </div>
 
       {/* Manual Progress Control */}
@@ -163,42 +265,7 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, projectMan
         </div>
       </div>
 
-      {/* Geofencing Configuration */}
-      <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-200/60 space-y-4">
-        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-          <Globe size={14} className="text-blue-600" /> Geofence & Location Validation
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Site Latitude</label>
-            <input type="number" step="any" value={data.siteLatitude || ''} onChange={e => setData({ ...data, siteLatitude: e.target.value })}
-              className={inputCls} placeholder="e.g. 40.7128" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Site Longitude</label>
-            <input type="number" step="any" value={data.siteLongitude || ''} onChange={e => setData({ ...data, siteLongitude: e.target.value })}
-              className={inputCls} placeholder="e.g. -74.0060" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase">Radius (Meters)</label>
-            <input type="number" value={data.allowedRadiusMeters || ''} onChange={e => setData({ ...data, allowedRadiusMeters: e.target.value })}
-              className={inputCls} placeholder="Default: 100m" />
-          </div>
-          <div className="flex items-center gap-3 pt-6">
-            <button
-              onClick={() => setData({ ...data, strictGeofence: !data.strictGeofence })}
-              className={`w-12 h-6 rounded-full transition-all relative ${data.strictGeofence ? 'bg-blue-600' : 'bg-slate-300'}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${data.strictGeofence ? 'left-7' : 'left-1'}`} />
-            </button>
-            <label className="text-[10px] font-bold text-slate-500 uppercase cursor-pointer" onClick={() => setData({ ...data, strictGeofence: !data.strictGeofence })}>
-              Strict Geofence <span className="text-slate-400 font-normal normal-case">(Block if outside)</span>
-            </label>
-          </div>
-        </div>
-      </div>
+
 
       <button onClick={onSubmit} disabled={!data.name}
         className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2 shadow-xl
@@ -237,7 +304,7 @@ const Projects = () => {
   const [view, setView] = useState('grid');
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
-  const [projectManagers, setProjectManagers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -270,7 +337,7 @@ const Projects = () => {
 
       setProjects(projRes.data || []);
       setClients(clientRes.data || []);
-      setProjectManagers((usersRes.data || []).filter(u => u.role === 'PM'));
+      setAllUsers(usersRes.data || []);
       if (isJobView) setJobs(jobsRes.data || []);
     } catch (err) {
       console.error('Projects fetch error:', err);
@@ -595,7 +662,7 @@ const Projects = () => {
                   <div className="flex items-center gap-2 text-white/60 mt-0.5">
                     <Users size={11} className="text-blue-400" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate">
-                      PM: {project.pmId?.fullName || (projectManagers?.find(u => u._id === (project.pmId?._id || project.pmId))?.fullName || 'Unassigned')}
+                      PM: {project.pmId?.fullName || (allUsers?.find(u => u._id === (project.pmId?._id || project.pmId))?.fullName || 'Unassigned')}
                     </span>
                   </div>
                 </div>
@@ -810,16 +877,16 @@ const Projects = () => {
       )}
 
       {/* ── Create Modal ── */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create New Project">
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create New Project" maxWidth="max-w-2xl">
         <ProjectForm data={formData} setData={setFormData} onSubmit={handleCreate}
-          submitLabel="Create Project" clients={clients} projectManagers={projectManagers} />
+          submitLabel="Create Project" clients={clients} allUsers={allUsers} />
       </Modal>
 
       {/* ── Edit Modal ── */}
-      <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Project">
+      <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Project" maxWidth="max-w-2xl">
         {editingProject && (
           <ProjectForm data={editingProject} setData={setEditingProject} onSubmit={handleUpdate}
-            submitLabel="Save Changes" clients={clients} projectManagers={projectManagers} />
+            submitLabel="Save Changes" clients={clients} allUsers={allUsers} />
         )}
       </Modal>
       {/* Toast Notification */}
