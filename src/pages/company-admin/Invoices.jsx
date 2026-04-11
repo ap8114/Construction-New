@@ -425,15 +425,16 @@ const Invoices = () => {
                                     const selectedProjectId = e.target.value;
                                     const project = projects.find(p => p._id === selectedProjectId);
 
-                                    // Only update client if the project has one, otherwise keep current or reset
-                                    const associatedClientId = project?.clientId?._id;
+                                    // Automatically set client from project
+                                    const associatedClientId = project?.clientId?._id || project?.clientId || '';
 
                                     setFormData(prev => ({
                                         ...prev,
                                         projectId: selectedProjectId,
-                                        clientId: associatedClientId || prev.clientId // Keep existing if project has no client
+                                        clientId: associatedClientId
                                     }));
                                 }}
+
                                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
                             >
                                 <option value="">Select Project</option>
@@ -444,18 +445,16 @@ const Invoices = () => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Client</label>
-                            <select
-                                required
-                                value={formData.clientId}
-                                onChange={e => setFormData({ ...formData, clientId: e.target.value })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-500"
-                            >
-                                <option value="">Select Client</option>
-                                {clients.map(c => (
-                                    <option key={c._id} value={c._id}>{c.fullName}</option>
-                                ))}
-                            </select>
+                            <input
+                                type="text"
+                                readOnly
+                                value={formData.clientId ? (clients.find(c => c._id === formData.clientId)?.fullName || 'Loading...') : 'Select Project first'}
+                                className="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 outline-none text-slate-600 font-bold cursor-not-allowed"
+                                placeholder="Select Project first"
+                            />
+                            {/* Hidden field to keep ID in form if needed, though we already have it in formData state */}
                         </div>
+
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>

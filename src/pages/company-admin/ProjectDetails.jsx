@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import '../../styles/Deficiencies.css';
 import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
     Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart,
-    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X, Phone, Mail
+    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X, Phone, Mail, Eye, Check
 } from 'lucide-react';
 import api from '../../utils/api';
+
+import DeficiencyModal from '../../components/deficiencies/DeficiencyModal';
 
 const canSeeBudget = (role) =>
     ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
@@ -73,6 +76,13 @@ const ProjectDetails = () => {
     const [isPostingUpdate, setIsPostingUpdate] = useState(false);
     const [newUpdate, setNewUpdate] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
+    
+    // Equipment Assignment states
+    const [isAssigningEquipment, setIsAssigningEquipment] = useState(null); // jobID
+    const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
+    const [isAssigningEquipLoading, setIsAssigningEquipLoading] = useState(false);
+    const [equipSearch, setEquipSearch] = useState('');
+
 
     const [activeTab, setActiveTab] = useState('overview');
     const [financials, setFinancials] = useState(null);
@@ -83,6 +93,16 @@ const ProjectDetails = () => {
     const [tasksLoading, setTasksLoading] = useState(false);
     const [taskSearch, setTaskSearch] = useState('');
     const [expandedTasks, setExpandedTasks] = useState(new Set());
+
+    // Deficiencies states
+    const [projectDeficiencies, setProjectDeficiencies] = useState([]);
+    const [deficienciesLoading, setDeficienciesLoading] = useState(false);
+    const [isDeficiencyModalOpen, setIsDeficiencyModalOpen] = useState(false);
+    const [selectedDeficiency, setSelectedDeficiency] = useState(null);
+    const [deficiencyModalMode, setDeficiencyModalMode] = useState('add');
+    const [isSubmittingDeficiency, setIsSubmittingDeficiency] = useState(false);
+    const [deficiencySearch, setDeficiencySearch] = useState('');
+    const [deficiencyFilterStatus, setDeficiencyFilterStatus] = useState('all');
     
     // Selection states
     const [activeDropdown, setActiveDropdown] = useState(null); // 'pm' or 'phase'
@@ -150,6 +170,28 @@ const ProjectDetails = () => {
         }
     };
 
+    const handleAssignEquipment = async () => {
+        if (!isAssigningEquipment || selectedEquipmentIds.length === 0) return;
+        try {
+            setIsAssigningEquipLoading(true);
+            await Promise.all(selectedEquipmentIds.map(id => api.post(`/equipment/${id}/assign`, { jobId: isAssigningEquipment })));
+            
+            // Re-fetch equipment to update UI
+            const equipRes = await api.get('/equipment');
+            setEquipment(equipRes.data);
+            
+            setIsAssigningEquipment(null);
+            setSelectedEquipmentIds([]);
+            setEquipSearch('');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to assign equipment');
+        } finally {
+            setIsAssigningEquipLoading(false);
+        }
+    };
+
+
     const handleAssignWorkers = async (jobId, workerIds) => {
         try {
             await api.post(`/jobs/${jobId}/assign-workers`, { assignedWorkers: workerIds });
@@ -176,6 +218,79 @@ const ProjectDetails = () => {
             console.error(err);
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    // ── Deficiency Handlers ──────────────────────────────────────────────────
+    const fetchDeficiencies = async () => {
+        try {
+            setDeficienciesLoading(true);
+            const r = await api.get(`/issues?projectId=${projectId}`);
+            setProjectDeficiencies(Array.isArray(r.data) ? r.data : []);
+        } catch (e) {
+            console.error('Error fetching deficiency data:', e);
+        } finally {
+            setDeficienciesLoading(false);
+        }
+    };
+
+    const handleSaveDeficiency = async (formData) => {
+        try {
+            setIsSubmittingDeficiency(true);
+            const data = new FormData();
+            Object.keys(formData).forEach(key => {
+                if (key === 'newImages') {
+                    formData.newImages.forEach(file => data.append('images', file));
+                } else if (key === 'images') {
+                    data.append('currentImages', JSON.stringify(formData.images));
+                } else {
+                    data.append(key, formData[key]);
+                }
+            });
+            data.append('projectId', projectId);
+            
+            // Auto-assign to first job if no job is set (DeficiencyModal doesn't have job selector currently)
+            if (jobs.length > 0) {
+                data.append('jobId', jobs[0]._id);
+            }
+
+            if (selectedDeficiency) {
+                await api.patch(`/issues/${selectedDeficiency._id}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                await api.post('/issues', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            await fetchDeficiencies();
+            setIsDeficiencyModalOpen(false);
+            setSelectedDeficiency(null);
+        } catch (err) {
+            console.error('Error saving deficiency:', err);
+            alert('Failed to save deficiency.');
+        } finally {
+            setIsSubmittingDeficiency(false);
+        }
+    };
+
+    const handleDeleteDeficiency = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this issue?')) return;
+        try {
+            await api.delete(`/issues/${id}`);
+            setProjectDeficiencies(prev => prev.filter(d => d._id !== id));
+        } catch (err) {
+            console.error('Error deleting issue:', err);
+        }
+    };
+
+    const handleStatusUpdateDeficiency = async (id, status) => {
+        try {
+            await api.patch(`/issues/${id}`, { status });
+            setProjectDeficiencies(prev => prev.map(d => d._id === id ? { ...d, status } : d));
+        } catch (err) {
+            console.error('Error updating status:', err);
         }
     };
 
@@ -508,6 +623,7 @@ const ProjectDetails = () => {
                     { id: 'overview', label: 'Overview', icon: LayoutGrid },
                     user?.role !== 'WORKER' && { id: 'pos', label: 'Purchase Orders', icon: ShoppingCart },
                     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
+                    { id: 'deficiencies', label: 'Deficiencies', icon: AlertTriangle },
                     { id: 'contacts', label: 'Contacts', icon: Users },
                     { id: 'updates', label: 'Client Updates', icon: MessageSquare },
                 ].filter(Boolean).map((tab) => (
@@ -519,9 +635,12 @@ const ProjectDetails = () => {
                                 setTasksLoading(true);
                                 try {
                                     const r = await api.get(`/tasks/project/${projectId}`);
-                                    setProjectTasks(Array.isArray(r.data) ? r.data : []);
+                                    setProjectTasks(r.data || []);
                                 } catch (e) { console.error(e); }
                                 finally { setTasksLoading(false); }
+                            }
+                            if (tab.id === 'deficiencies') {
+                                fetchDeficiencies();
                             }
                         }}
                         className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id
@@ -844,11 +963,27 @@ const ProjectDetails = () => {
                                                 {/* Job Equipment List */}
                                                 <div className="pt-2">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Equipment On Site</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Equipment On Site</span>
+                                                            {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setIsAssigningEquipment(job._id);
+                                                                        setSelectedEquipmentIds([]);
+                                                                    }}
+                                                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                                    title="Assign Equipment"
+                                                                >
+                                                                    <Plus size={12} />
+                                                                </button>
+                                                            )}
+
+                                                        </div>
                                                         <span className="text-[10px] font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
                                                             {equipment.filter(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)).length}
                                                         </span>
                                                     </div>
+
                                                     <div className="space-y-1.5">
                                                         {equipment.filter(e => (e.assignedJob?._id === job._id || e.assignedJob === job._id)).map(e => (
                                                             <div key={e._id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2 group/equip">
@@ -968,9 +1103,136 @@ const ProjectDetails = () => {
                                     </table>
                                 </div>
                             )}
-                    </div>
+
+                    {/* Assign Equipment Modal */}
+                    {isAssigningEquipment && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                                <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Equipment</h3>
+                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
+                                            Select available items for {jobs.find(j => j._id === isAssigningEquipment)?.name}
+                                        </p>
+                                    </div>
+                                    <button onClick={() => setIsAssigningEquipment(null)} className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-slate-200">
+                                        <X size={20} className="text-slate-400" />
+                                    </button>
+                                </div>
+
+                                <div className="p-4 border-b border-slate-50">
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search inventory..."
+                                            value={equipSearch}
+                                            onChange={(e) => setEquipSearch(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-9 pr-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-500/50 transition-all"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="max-h-[400px] overflow-y-auto p-4 space-y-2 custom-scrollbar min-h-[200px]">
+                                    {equipment
+                                        .filter(e => {
+                                            const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
+                                            return !isAssigned || e.status === 'idle';
+                                        })
+                                        .filter(e =>
+                                            (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                            (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                            (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
+                                        )
+                                        .map(item => (
+                                            <div
+                                                key={item._id}
+                                                onClick={() => {
+                                                    if (selectedEquipmentIds.includes(item._id)) {
+                                                        setSelectedEquipmentIds(selectedEquipmentIds.filter(id => id !== item._id));
+                                                    } else {
+                                                        setSelectedEquipmentIds([...selectedEquipmentIds, item._id]);
+                                                    }
+                                                }}
+                                                className={`flex items-center gap-4 p-4 rounded-3xl cursor-pointer transition-all border-2
+                                                    ${selectedEquipmentIds.includes(item._id)
+                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm shadow-blue-100'
+                                                        : 'hover:bg-slate-50 border-transparent text-slate-700'}`}
+                                            >
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm
+                                                    ${item.category === 'Small Tools' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                    <Briefcase size={22} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-[15px] font-black text-slate-900 leading-tight">{item.name}</p>
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-500 uppercase">
+                                                            {item.category === 'Small Tools' ? 'Tool' : 'Heavy'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                        {item.type} <span className="mx-1 text-slate-200">|</span>
+                                                        SN: <span className="text-blue-600/70">#{item.serialNumber || 'NA'}</span>
+                                                    </p>
+                                                </div>
+                                                {selectedEquipmentIds.includes(item._id) && (
+                                                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                                                        <CheckCircle size={14} className="text-white" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                    {equipment.filter(e => {
+                                        const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
+                                        return !isAssigned || e.status === 'idle';
+                                    }).length === 0 && (
+                                        <div className="py-20 text-center bg-slate-50 rounded-3xl">
+                                            <Briefcase size={40} className="mx-auto text-slate-200 mb-3" />
+                                            <p className="text-sm font-bold text-slate-400">No equipment currently available.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
+                                    <div className="flex justify-between items-center px-2">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Selection</p>
+                                            <p className="text-sm font-black text-slate-900">{selectedEquipmentIds.length} item(s) to assign</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</p>
+                                            <p className={`text-sm font-black ${selectedEquipmentIds.length > 0 ? 'text-blue-600' : 'text-slate-300'}`}>Ready to assign</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setIsAssigningEquipment(null)}
+                                            className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-500 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleAssignEquipment}
+                                            disabled={selectedEquipmentIds.length === 0 || isAssigningEquipLoading}
+                                            className={`flex-[2] py-4 text-white text-sm font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2
+                                                ${selectedEquipmentIds.length === 0 || isAssigningEquipLoading
+                                                    ? 'bg-slate-200 cursor-not-allowed shadow-none'
+                                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}
+                                        >
+                                            {isAssigningEquipLoading ? <Loader size={18} className="animate-spin" /> : <Plus size={18} />}
+                                            Assign to Job
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
+        )}
 
             {activeTab === 'pos' && (
                 <div className="space-y-8 animate-fade-in">
@@ -1500,6 +1762,201 @@ const ProjectDetails = () => {
                 </div>
             )}
 
+            {/* ── Deficiencies Tab ── */}
+            {activeTab === 'deficiencies' && (
+                <div className="space-y-5 animate-fade-in pb-12">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">Project Deficiencies</h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5 flex items-center gap-2">
+                                <AlertCircle size={14} className="text-red-500" />
+                                punch list & issue tracker
+                            </p>
+                        </div>
+                        {['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role) && (
+                            <button
+                                onClick={() => { setDeficiencyModalMode('add'); setSelectedDeficiency(null); setIsDeficiencyModalOpen(true); }}
+                                className="bg-slate-900 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-slate-800 transition shadow-xl font-black text-xs uppercase tracking-tight"
+                            >
+                                <Plus size={16} /> Add Deficiency
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Filter Bar */}
+                    <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search by title or worker..."
+                                value={deficiencySearch}
+                                onChange={(e) => setDeficiencySearch(e.target.value)}
+                                className="w-full pl-12 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all text-xs font-bold"
+                            />
+                        </div>
+                        <div className="flex gap-4 w-full md:w-auto">
+                            <select
+                                value={deficiencyFilterStatus}
+                                onChange={(e) => setDeficiencyFilterStatus(e.target.value)}
+                                className="flex-1 md:w-48 px-4 py-2 bg-white border border-slate-200 rounded-2xl font-bold text-xs text-slate-600 outline-none hover:bg-slate-50 transition-all custom-select-appearance"
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="fixed">Fixed</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="bg-white rounded-[40px] shadow-sm border border-slate-200/60 overflow-hidden">
+                        <div className="deficiency-table-container overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Issue</th>
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Priority</th>
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Assigned To</th>
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                        <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {deficienciesLoading ? (
+                                        <tr>
+                                            <td colSpan="6" className="px-6 py-20 text-center">
+                                                <div className="flex flex-col items-center gap-4">
+                                                    <div className="w-8 h-8 border-4 border-slate-900/10 border-t-slate-900 rounded-full animate-spin" />
+                                                    <p className="font-black text-slate-400 uppercase tracking-widest text-[10px]">Loading Issues...</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : projectDeficiencies.filter(d => {
+                                        const matchSearch = d.title.toLowerCase().includes(deficiencySearch.toLowerCase()) ||
+                                            d.assignedTo?.fullName?.toLowerCase().includes(deficiencySearch.toLowerCase());
+                                        const matchStatus = deficiencyFilterStatus === 'all' || d.status === deficiencyFilterStatus;
+                                        return matchSearch && matchStatus;
+                                    }).length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="px-6 py-20 text-center">
+                                                <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                    <CheckCircle2 size={40} className="text-emerald-500/30" />
+                                                    <p className="font-bold uppercase tracking-widest text-[10px]">No active deficiencies found</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        projectDeficiencies.filter(d => {
+                                            const matchSearch = d.title.toLowerCase().includes(deficiencySearch.toLowerCase()) ||
+                                                d.assignedTo?.fullName?.toLowerCase().includes(deficiencySearch.toLowerCase());
+                                            const matchStatus = deficiencyFilterStatus === 'all' || d.status === deficiencyFilterStatus;
+                                            return matchSearch && matchStatus;
+                                        }).map((d) => {
+                                            const status = {
+                                                open: { label: 'Open', cls: 'bg-red-50 text-red-600 border-red-100', dot: 'bg-red-500' },
+                                                in_progress: { label: 'In Progress', cls: 'bg-orange-50 text-orange-600 border-orange-100', dot: 'bg-orange-500' },
+                                                fixed: { label: 'Fixed', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100', dot: 'bg-emerald-500' },
+                                                closed: { label: 'Closed', cls: 'bg-slate-50 text-slate-600 border-slate-200', dot: 'bg-slate-500' },
+                                            }[d.status] || { label: 'Open', cls: 'bg-red-50', dot: 'bg-red-500' };
+
+                                            const priority = {
+                                                low: { label: 'Low', cls: 'bg-slate-100 text-slate-600' },
+                                                medium: { label: 'Medium', cls: 'bg-blue-50 text-blue-600' },
+                                                high: { label: 'High', cls: 'bg-orange-50 text-orange-600' },
+                                                critical: { label: 'Critical', cls: 'bg-red-600 text-white' },
+                                            }[d.priority] || { label: 'Medium', cls: 'bg-blue-50' };
+
+                                            return (
+                                                <tr key={d._id} className="deficiency-row transition-colors group">
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex items-center gap-4">
+                                                            {d.images && d.images.length > 0 ? (
+                                                                <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50">
+                                                                    <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center text-slate-300">
+                                                                    <ImageIcon size={16} />
+                                                                </div>
+                                                            )}
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black text-slate-900 group-hover:text-slate-700 transition-colors uppercase tracking-tight text-xs">{d.title}</span>
+                                                                <span className="text-[9px] font-bold text-slate-400 mt-0.5 line-clamp-1">{d.description || 'No description'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">{d.category}</span>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${priority.cls}`}>
+                                                            {priority.label}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 border border-slate-200">
+                                                                {d.assignedTo ? d.assignedTo.fullName?.charAt(0) : '?'}
+                                                            </div>
+                                                            <span className="text-xs font-bold text-slate-600">
+                                                                {d.assignedTo?.fullName || 'Unassigned'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${status.cls}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                                                            {status.label}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => { setDeficiencyModalMode('view'); setSelectedDeficiency(d); setIsDeficiencyModalOpen(true); }}
+                                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                            >
+                                                                <Eye size={16} />
+                                                            </button>
+                                                            {['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role) && d.status !== 'fixed' && d.status !== 'closed' && (
+                                                                <button
+                                                                    onClick={() => handleStatusUpdateDeficiency(d._id, 'fixed')}
+                                                                    className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all"
+                                                                >
+                                                                    <Check size={16} />
+                                                                </button>
+                                                            )}
+                                                            {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => { setDeficiencyModalMode('edit'); setSelectedDeficiency(d); setIsDeficiencyModalOpen(true); }}
+                                                                        className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+                                                                    >
+                                                                        <Edit size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeleteDeficiency(d._id)}
+                                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Contacts Tab ── */}
             {activeTab === 'contacts' && (
                 <div className="space-y-6 animate-fade-in">
@@ -1712,6 +2169,24 @@ const ProjectDetails = () => {
                     </div>
                 </div>
             )}
+            {/* Deficiency Modal */}
+            <DeficiencyModal
+                isOpen={isDeficiencyModalOpen}
+                onClose={() => setIsDeficiencyModalOpen(false)}
+                onSave={handleSaveDeficiency}
+                initialData={selectedDeficiency}
+                mode={deficiencyModalMode}
+                users={users.filter(u => {
+                    const pmId = project?.pmId?._id || project?.pmId;
+                    if (u._id === pmId) return true;
+                    return jobs.some(j => {
+                        const foremanId = j.foremanId?._id || j.foremanId;
+                        const workerIds = (j.assignedWorkers || []).map(w => w?._id || w);
+                        return u._id === foremanId || workerIds.includes(u._id);
+                    });
+                })}
+                isSubmitting={isSubmittingDeficiency}
+            />
         </div>
     );
 };

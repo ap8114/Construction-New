@@ -366,26 +366,23 @@ const Deficiencies = () => {
                 initialData={selectedDeficiency}
                 mode={modalMode}
                 users={(() => {
-                    // Start with company users
-                    let list = Array.isArray(users) ? [...users] : [];
+                    const matchIds = new Set();
+                    
+                    // Add Project PM
+                    const pmId = project?.pmId?._id || project?.pmId;
+                    if (pmId) matchIds.add(String(pmId));
+                    
+                    // Add Job Foreman
+                    const foremanId = job?.foremanId?._id || job?.foremanId;
+                    if (foremanId) matchIds.add(String(foremanId));
+                    
+                    // Add Job Workers
+                    (job?.assignedWorkers || []).forEach(w => {
+                        const id = w?._id || w;
+                        if (id) matchIds.add(String(id));
+                    });
 
-                    // Add current user if not present (crucial for workers reporting)
-                    if (user && !list.find(u => u._id === user._id)) {
-                        list.push(user);
-                    }
-
-                    // Add job-assigned workers if not already in list
-                    if (job?.assignedWorkers) {
-                        job.assignedWorkers.forEach(worker => {
-                            if (!list.find(u => u._id === worker._id)) {
-                                list.push(worker);
-                            }
-                        });
-                    }
-
-                    // Filter only for relevant roles (PM, Foreman, Worker)
-                    const assignableRoles = ['PM', 'FOREMAN', 'WORKER'];
-                    return list.filter(u => u && u.role && assignableRoles.includes(u.role));
+                    return users.filter(u => matchIds.has(String(u._id)));
                 })()}
                 isSubmitting={isSubmitting}
             />

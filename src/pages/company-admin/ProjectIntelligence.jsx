@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { 
-    LayoutDashboard, 
-    FileText, 
-    Package, 
-    HardHat, 
-    Truck, 
-    Users, 
-    ChevronDown, 
-    ChevronRight, 
-    DollarSign, 
-    Clock, 
-    CheckCircle, 
+import {
+    LayoutDashboard,
+    FileText,
+    Package,
+    HardHat,
+    Truck,
+    Users,
+    ChevronDown,
+    ChevronRight,
+    DollarSign,
+    Clock,
+    CheckCircle,
     AlertCircle,
     Plus,
     Minus,
@@ -20,23 +20,14 @@ import {
     Filter,
     Download,
     BarChart3,
-    PieChart as PieChartIcon,
     Layers,
     Calendar,
-    Paperclip
+    Paperclip,
+    ClipboardList,
+    Sun,
+    ChevronLeft,
+    CornerDownRight
 } from 'lucide-react';
-import { 
-    PieChart, 
-    Pie, 
-    Cell, 
-    ResponsiveContainer, 
-    Tooltip, 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid 
-} from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -45,10 +36,12 @@ import logo from '../../assets/images/Logo.png';
 const ProjectIntelligence = () => {
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [selectedJobId, setSelectedJobId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [reportData, setReportData] = useState(null);
-    const [expandedJobs, setExpandedJobs] = useState({});
     const [expandedTasks, setExpandedTasks] = useState({});
+    const [activeTab, setActiveTab] = useState('jobs'); // 'jobs' or 'site'
+    const [jobSearch, setJobSearch] = useState('');
 
     // Fetch list of projects for the dropdown
     useEffect(() => {
@@ -71,12 +64,13 @@ const ProjectIntelligence = () => {
     // Fetch the detailed intelligence report
     useEffect(() => {
         if (!selectedProjectId) return;
-        
+
         const fetchReport = async () => {
             setLoading(true);
             try {
                 const res = await api.get(`/reports/detailed/${selectedProjectId}`);
                 setReportData(res.data);
+                setSelectedJobId(null); // Reset when project changes
             } catch (err) {
                 console.error("Error fetching report", err);
             } finally {
@@ -86,712 +80,696 @@ const ProjectIntelligence = () => {
         fetchReport();
     }, [selectedProjectId]);
 
-    const toggleJob = (jobId) => {
-        setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
-    };
-
     const toggleTask = (taskId) => {
         setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
     };
 
+    // Auto-expand all tasks when data loads or job changes
+    useEffect(() => {
+        if (!selectedJob?.tasks) return;
+        
+        const allIds = {};
+        const collectIds = (tasks) => {
+            tasks.forEach(t => {
+                if (t._id) {
+                    allIds[t._id] = true;
+                    if (t.subtasks && t.subtasks.length > 0) {
+                        collectIds(t.subtasks);
+                    }
+                }
+            });
+        };
+        
+        collectIds(selectedJob.tasks);
+        setExpandedTasks(allIds);
+    }, [selectedJobId, reportData]);
+
     const handleDownloadJobPDF = (job) => {
+        if (!reportData) return;
+        const { project } = reportData;
         const doc = new jsPDF('p', 'mm', 'a4');
         const now = new Date().toLocaleDateString();
         const pageWidth = doc.internal.pageSize.width;
 
-        // Header Background Bar
-        doc.setFillColor(30, 58, 138); // Navy Blue
-        doc.rect(0, 0, pageWidth, 40, 'F');
+        // Custom Blue Header
+        doc.setFillColor(30, 58, 138);
+        doc.rect(0, 0, pageWidth, 45, 'F');
 
-        // Branded Header
-        const img = new Image();
-        img.src = logo;
-        doc.addImage(img, 'PNG', 15, 8, 22, 22);
-        
-        doc.setFontSize(24);
+        doc.setFontSize(22);
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text('JOB INTELLIGENCE REPORT', 45, 18);
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`KAAL Construction Management | System Generated: ${now}`, 45, 25);
-        doc.text(`Project: ${project.name || 'N/A'}`, 45, 30);
+        doc.text('JOB INTELLIGENCE AUDIT', 15, 20);
 
-        // Job Details Title
-        doc.setFontSize(16);
-        doc.setTextColor(30, 58, 138);
-        doc.setFont('helvetica', 'bold');
-        doc.text(job.jobName?.toUpperCase() || 'UNTITLED JOB', 15, 55);
-        doc.line(15, 58, 195, 58);
-
-        // Summary Info Cards (Manual positioning)
         doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.text('CURRENT STATUS', 15, 65);
-        doc.text('DATE TIMELINE', 80, 65);
-        doc.text('TOTAL FINANCIAL OUTLAY', 145, 65);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`KAAL Construction Management Systems | Chronological Audit Log`, 15, 28);
+        doc.text(`Generated: ${now} | Project: ${project.name || 'N/A'}`, 15, 33);
+        doc.text(`Job Unit: ${job.jobName || 'N/A'}`, 15, 38);
 
-        doc.setFontSize(11);
-        doc.setTextColor(0);
-        doc.text((job.status || 'Active').toUpperCase(), 15, 71);
-        doc.text(`${job.startDate ? new Date(job.startDate).toLocaleDateString() : 'TBD'} - ${job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}`, 80, 71);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`$ ${parseFloat(job.financials?.total || 0).toLocaleString()}`, 145, 71);
-
-        let currentY = 82;
-        if (job.description) {
-            doc.setFontSize(11);
-            doc.setTextColor(30, 58, 138);
-            doc.setFont('helvetica', 'bold');
-            doc.text('JOB SCOPE & DESCRIPTION', 15, currentY);
-            
-            doc.setFontSize(9);
-            doc.setTextColor(70, 70, 70);
-            doc.setFont('helvetica', 'normal');
-            const splitNotes = doc.splitTextToSize(job.description, 180);
-            doc.text(splitNotes, 15, currentY + 6);
-            currentY += (splitNotes.length * 5) + 12;
-        }
-
-        if (job.notes && job.notes.length > 0) {
-            doc.setFontSize(11);
-            doc.setTextColor(30, 58, 138);
-            doc.setFont('helvetica', 'bold');
-            doc.text('SITE REMARKS & COMMUNICATION', 15, currentY);
-            currentY += 6;
-
-            job.notes.forEach(note => {
-                doc.setFontSize(8);
-                doc.setTextColor(150);
-                doc.text(`${note.author} - ${new Date(note.date).toLocaleDateString()}`, 17, currentY);
-                currentY += 4;
-                
-                doc.setFontSize(9);
-                doc.setTextColor(80);
-                doc.setFont('helvetica', 'normal');
-                const splitNote = doc.splitTextToSize(`"${note.content}"`, 175);
-                doc.text(splitNote, 17, currentY);
-                currentY += (splitNote.length * 5) + 6;
-                
-                if (currentY > 270) { doc.addPage(); currentY = 20; }
-            });
-            currentY += 8;
-        }
-
-        // Section: FINANCIAL BREAKDOWN
-        doc.setFontSize(12);
+        // --- Summary Stats ---
+        doc.setFontSize(14);
         doc.setTextColor(30, 58, 138);
-        doc.text('FINANCIAL COST BREAKDOWN', 15, currentY);
+        doc.setFont('helvetica', 'bold');
+        doc.text('EXECUTIVE SUMMARY', 15, 55);
+        doc.line(15, 57, 195, 57);
 
         autoTable(doc, {
-            startY: currentY + 3,
-            head: [['Financial Dimension', 'Amount (USD)', 'Weightage (%)']],
+            startY: 62,
+            head: [['Operational Metric', 'Audit Value']],
             body: [
-                ['Worker Labor Cost', `$ ${parseFloat(job.financials?.workerCost || 0).toLocaleString()}`, `${(job.financials?.workerCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Material Consumption', `$ ${parseFloat(job.financials?.materialCost || 0).toLocaleString()}`, `${(job.financials?.materialCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Equipment Usage', `$ ${parseFloat(job.financials?.equipmentCost || 0).toLocaleString()}`, `${(job.financials?.equipmentCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                ['Subcontractor Cost', `$ ${parseFloat(job.financials?.subcontractorCost || 0).toLocaleString()}`, `${(job.financials?.subcontractorCost / (job.financials?.total || 1) * 100 || 0).toFixed(1)}%`],
-                [{ content: 'TOTAL PROJECT EXPENDITURE', styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: `$ ${parseFloat(job.financials?.total || 0).toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, '100%']
+                ['Current Phase Status', (job.status || 'Active').toUpperCase()],
+                ['Cumulative Job Cost', `$ ${parseFloat(job.totalCost || 0).toLocaleString()}`],
+                ['Completion Percentage', `${job.progress || 0}%`],
+                ['Labor Exposure', `$ ${parseFloat(job.financials?.workerCost || 0).toLocaleString()}`],
+                ['Material Exposure', `$ ${parseFloat(job.financials?.materialCost || 0).toLocaleString()}`]
             ],
-            theme: 'grid',
-            headStyles: { fillColor: [30, 58, 138], textColor: 255, fontSize: 10, fontStyle: 'bold' },
-            bodyStyles: { fontSize: 9, textColor: 50 },
-            margin: { left: 15, right: 15 }
+            theme: 'striped',
+            headStyles: { fillStyle: [30, 58, 138], textColor: 255 }
         });
 
-        // Section: LABOR UTILIZATION
-        if (job.workers?.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(30, 58, 138);
-            doc.text('LABOR & PERSONNEL UTILIZATION', 15, doc.lastAutoTable.finalY + 15);
+        // --- Execution Hierarchy (Tasks) ---
+        let currentY = doc.lastAutoTable.finalY + 15;
+        doc.setFontSize(14);
+        doc.text('EXECUTION HIERARCHY', 15, currentY);
+        doc.line(15, currentY + 2, 195, currentY + 2);
 
-            autoTable(doc, {
-                startY: doc.lastAutoTable.finalY + 18,
-                head: [['Personnel Name', 'Role', 'Total Hours', 'Incurred Cost (USD)']],
-                body: job.workers.map(w => [w.name, w.role, `${w.totalHours}h`, `$ ${parseFloat(w.cost || 0).toLocaleString()}`]),
-                headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 9 }, // slate-600
-                bodyStyles: { fontSize: 8 }
-            });
-        }
-
-        // Section: MATERIAL CONSUMPTION
-        if (job.materials?.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(30, 58, 138);
-            doc.text('MATERIAL PROCUREMENT & CONSUMPTION', 15, doc.lastAutoTable.finalY + 12);
-
-            autoTable(doc, {
-                startY: doc.lastAutoTable.finalY + 15,
-                head: [['Material / Item Description', 'PO Number', 'Quantity', 'Incurred Cost (USD)']],
-                body: job.materials.map(m => [m.itemName, m.poNumber || 'N/A', m.quantity, `$ ${parseFloat(m.cost || 0).toLocaleString()}`]),
-                headStyles: { fillColor: [180, 83, 9], textColor: 255, fontSize: 9 }, // amber-700
-                bodyStyles: { fontSize: 8 }
-            });
-        }
-
-        // Section: EQUIPMENT USAGE
-        if (job.equipment?.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(30, 58, 138);
-            doc.text('EQUIPMENT & TOOL UTILIZATION', 15, doc.lastAutoTable.finalY + 12);
-
-            autoTable(doc, {
-                startY: doc.lastAutoTable.finalY + 15,
-                head: [['Equipment Name', 'Operating Hours', 'Incurred Cost (USD)']],
-                body: job.equipment.map(e => [e.name, `${e.hoursUsed}h`, `$ ${parseFloat(e.cost || 0).toLocaleString()}`]),
-                headStyles: { fillColor: [124, 58, 237], textColor: 255, fontSize: 9 }, // violet-600
-                bodyStyles: { fontSize: 8 }
-            });
-        }
-
-        // Section: TASK INTELLIGENCE TREE
-        if (job.tasks?.length > 0) {
-            doc.setFontSize(12);
-            doc.setTextColor(30, 58, 138);
-            doc.text('TASK EXECUTION & PROGRESS TREE', 15, doc.lastAutoTable.finalY + 12);
-
-            const taskData = [];
-            job.tasks.forEach(task => {
-                taskData.push([task.title, task.status.toUpperCase(), task.assignedTo?.fullName || 'Unassigned', task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP']);
-                if (task.subtasks) {
-                    task.subtasks.forEach(st => {
-                        taskData.push([`  ➥ ${st.title} (Sub-unit)`, st.status.toUpperCase(), st.assignedTo?.fullName || 'Unassigned', '-']);
-                    });
+        const flattenTasks = (tasks, level = 0) => {
+            let result = [];
+            tasks.forEach(t => {
+                const prefix = level > 0 ? '   '.repeat(level) + '└─ ' : '';
+                result.push([
+                    prefix + t.title,
+                    (t.status || 'Active').toUpperCase(),
+                    t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'N/A'
+                ]);
+                if (t.subtasks && t.subtasks.length > 0) {
+                    result = result.concat(flattenTasks(t.subtasks, level + 1));
                 }
             });
+            return result;
+        };
 
+        autoTable(doc, {
+            startY: currentY + 7,
+            head: [['Architecture & Implementation', 'Status', 'Timeline']],
+            body: flattenTasks(job.tasks || []),
+            theme: 'grid',
+            headStyles: { fillColor: [51, 65, 85] }
+        });
+
+        // --- Labor Logs ---
+        if (job.workers && job.workers.length > 0) {
+            currentY = doc.lastAutoTable.finalY + 15;
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
+            doc.setFontSize(14);
+            doc.text('PERSONNEL LOGISTICS', 15, currentY);
             autoTable(doc, {
-                startY: doc.lastAutoTable.finalY + 15,
-                head: [['Task Description', 'Status', 'Personnel', 'Deadline']],
-                body: taskData,
-                headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 9 },
-                bodyStyles: { fontSize: 8 }
+                startY: currentY + 5,
+                head: [['Name', 'Role', 'Hours', 'Cost']],
+                body: job.workers.map(w => [w.name, w.role, w.totalHours, `$${w.cost}`]),
+                theme: 'striped'
             });
         }
 
-        // Footer
-        const finalY = doc.lastAutoTable.finalY + 20;
-        if (finalY < 270) {
-            doc.setFontSize(9);
-            doc.setTextColor(150);
-            doc.text('This is a computer-generated audit report. All financial data is calculated based on approved time-logs and purchase orders.', 15, 280);
-            doc.text(`${now} | Page 1 of 1`, pageWidth - 40, 280);
+        // --- Materials ---
+        if (job.materials && job.materials.length > 0) {
+            currentY = doc.lastAutoTable.finalY + 15;
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
+            doc.setFontSize(14);
+            doc.text('MATERIAL CONSUMPTION', 15, currentY);
+            autoTable(doc, {
+                startY: currentY + 5,
+                head: [['Material', 'PO#', 'Qty', 'Cost']],
+                body: job.materials.map(m => [m.itemName, m.poNumber, m.quantity, `$${m.cost}`]),
+                theme: 'striped'
+            });
         }
 
-        doc.save(`${(job.jobName || 'Job').replace(/\s+/g, '_')}_Analytics.pdf`);
+        // --- Notes/Intelligence ---
+        if (job.notes && job.notes.length > 0) {
+            currentY = doc.lastAutoTable.finalY + 15;
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
+            doc.setFontSize(14);
+            doc.text('FIELD INTELLIGENCE NOTES', 15, currentY);
+            autoTable(doc, {
+                startY: currentY + 5,
+                head: [['Date', 'Personnel', 'Observation']],
+                body: job.notes.map(n => [new Date(n.date).toLocaleDateString(), n.author, n.content]),
+                theme: 'grid',
+                columnStyles: { 2: { cellWidth: 100 } }
+            });
+        }
+
+        doc.save(`${(job.jobName || 'Job').replace(/\s+/g, '_')}_Full_Audit.pdf`);
     };
 
     if (!reportData && loading) return <Loader />;
 
-    const { project, jobs } = reportData || { project: {}, jobs: [] };
+    const project = reportData?.project || {};
+    const jobs = reportData?.jobs || [];
+    const filteredJobs = jobs.filter(j => j.jobName?.toLowerCase().includes(jobSearch.toLowerCase()));
+    const selectedJob = jobs.find(j => j._id === selectedJobId);
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
-            {/* ── HEADER ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="min-h-screen bg-slate-50/50 p-4 md:p-10">
+            {/* ─── HEADER AREA ─── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-blue-600 rounded-xl">
+                        <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
                             <BarChart3 className="text-white" size={24} />
                         </div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Project Intelligence Dashboard</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight uppercase">Intelligence Command Center</h1>
                     </div>
-                    <p className="text-slate-600 font-bold text-sm flex items-center gap-2">
-                        Comprehensive end-to-end analytics for <span className="text-blue-600 font-black">{project.name || 'Select Project'}</span>
-                    </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <select 
+                <div className="flex items-center gap-4">
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
+                        <select
                             value={selectedProjectId}
                             onChange={(e) => setSelectedProjectId(e.target.value)}
-                            className="pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 appearance-none shadow-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all min-w-[240px]"
+                             className="pl-12 pr-10 py-3.5 bg-white border border-slate-200 rounded-2xl text-[12px] font-bold uppercase text-slate-700 appearance-none shadow-sm hover:border-slate-300 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all min-w-[300px]"
                         >
                             {Array.isArray(projects) && projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                         </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     </div>
 
-                    <button 
-                        onClick={() => window.print()}
-                        className="px-5 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all shadow-lg active:scale-95"
-                    >
-                        <Download size={16} /> Export
-                    </button>
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+                        <button
+                            onClick={() => { setActiveTab('jobs'); setSelectedJobId(null); }}
+                            className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === 'jobs' ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Operations
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('site')}
+                            className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === 'site' ? 'bg-slate-900 text-white shadow-xl' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Site Metrics
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {loading ? (
                 <Loader />
             ) : reportData ? (
-                <div className="space-y-8 animate-in fade-in duration-500">
-                    {/* ── LEVEL 1: PROJECT SUMMARY ── */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                        <MetricCard 
-                            label="Overall Progress" 
-                            value={`${((project.completedTasks / project.totalTasks) * 100).toFixed(0)}%`} 
-                            subtext={`${project.completedTasks} of ${project.totalTasks} Tasks Done`}
-                            icon={CheckCircle}
-                            color="text-emerald-600"
-                            bgColor="bg-emerald-50"
-                        />
-                        <MetricCard 
-                            label="Total Spend" 
-                            value={`$${parseFloat(project.totalCost || 0).toLocaleString()}`} 
-                            subtext="Accumulated Project Costs"
-                            icon={DollarSign}
-                            color="text-blue-600"
-                            bgColor="bg-blue-50"
-                        />
-                        <MetricCard 
-                            label="Labour Intel" 
-                            value={`${project.totalHours}h`} 
-                            subtext={`Across ${project.totalWorkers} Workers`}
-                            icon={Users}
-                            color="text-violet-600"
-                            bgColor="bg-violet-50"
-                        />
-                    </div>
+                <div className="w-full mx-auto">
+                    <AnimatePresence mode="wait">
+                        {activeTab === 'jobs' ? (
+                            !selectedJobId ? (
+                                <motion.div
+                                    key="jobs-list"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden"
+                                >
+                                    <div className="p-10 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Active Work Units</h2>
+                                            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Select a phase to view forensic site intelligence</p>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative group">
+                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={14} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search Job unit..."
+                                                    value={jobSearch}
+                                                    onChange={(e) => setJobSearch(e.target.value)}
+                                                    className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold uppercase outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all w-[240px]"
+                                                />
+                                            </div>
+                                            <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full border border-blue-100">{filteredJobs.length} Phases Active</span>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="text-xs font-bold uppercase text-slate-500 border-b border-slate-100">
+                                                    <th className="px-10 py-6">Job Description</th>
+                                                    <th className="px-10 py-6 text-center">Progress Status</th>
+                                                    <th className="px-10 py-6 text-right">Labor Invoiced</th>
+                                                    <th className="px-10 py-6 text-right">Material Invoiced</th>
+                                                    <th className="px-10 py-6 text-right">Job Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {filteredJobs.map(job => (
+                                                    <tr
+                                                        key={job._id}
+                                                        onClick={() => setSelectedJobId(job._id?.toString() || job._id)}
+                                                        className="group cursor-pointer hover:bg-slate-50/80 transition-all active:bg-slate-100"
+                                                    >
+                                                        <td className="px-10 py-8">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                                                                    <Package size={18} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-slate-900 text-sm">{job.jobName}</p>
+                                                                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tactical Phase</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-10 py-8">
+                                                            <div className="flex flex-col items-center gap-2">
+                                                                <div className="w-40 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-blue-600 rounded-full" style={{ width: `${job.progress || 0}%` }} />
+                                                                </div>
+                                                                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{job.progress || 0}% Complete</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-10 py-8 text-right font-bold text-slate-800 text-sm">
+                                                            ${parseFloat(job.financials?.workerCost || 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-10 py-8 text-right font-bold text-slate-800 text-sm">
+                                                            ${parseFloat(job.financials?.materialCost || 0).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-10 py-8 text-right">
+                                                            <div className="inline-flex items-center gap-2">
+                                                                <span className="font-bold text-blue-600 text-sm">${parseFloat(job.totalCost || 0).toLocaleString()}</span>
+                                                                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg group-hover:translate-x-1 transition-transform">
+                                                                    <ChevronRight size={14} />
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {jobs.length === 0 && (
+                                                    <EmptyTableRow colSpan={5} text="No work units found for this selection" />
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="job-detail"
+                                    initial={{ opacity: 0, x: 50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -50 }}
+                                    className="bg-white rounded-[40px] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden"
+                                >
+                                    <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                        <div className="flex items-center gap-6">
+                                            <button
+                                                onClick={() => setSelectedJobId(null)}
+                                                className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-95"
+                                            >
+                                                <ChevronLeft size={20} />
+                                            </button>
+                                            <div>
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{selectedJob?.jobName}</h2>
+                                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase rounded-lg border border-emerald-100 shadow-sm">Audit Active</span>
+                                                </div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-0.5">Tactical Operations & Financial Summary</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleDownloadJobPDF(selectedJob)}
+                                                className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg shadow-slate-900/10 active:scale-95"
+                                            >
+                                                <Download size={14} className="inline mr-2" /> Download Full Intelligence
+                                            </button>
+                                        </div>
+                                    </div>
 
-                    {/* Chart section removed as per client request */}
+                                    <div className="p-8 lg:p-12 space-y-20">
+                                        {/* Financial Bento - simplified */}
 
-                    {/* ── LEVEL 2: JOB-WISE REPORTS ── */}
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between px-2">
-                            <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase flex items-center gap-2">
-                                <Layers size={20} className="text-blue-600" /> Job-Wise Detailed Report
-                            </h2>
-                            <span className="bg-slate-200/50 text-slate-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                                {jobs.length} Active Jobs
-                            </span>
-                        </div>
 
-                        {jobs.map(job => (
-                            <JobReportCard 
-                                key={job._id}
-                                job={job}
-                                isExpanded={expandedJobs[job._id]}
-                                onToggle={() => toggleJob(job._id)}
-                                onDownload={() => handleDownloadJobPDF(job)}
-                                expandedTasks={expandedTasks}
-                                onToggleTask={toggleTask}
-                            />
-                        ))}
-                    </div>
+                                        <div className="space-y-20">
+                                            {/* Sections Rendered as Flat Tables */}
+                                            <SectionTable
+                                                title="Worker Time Tracking"
+                                                icon={Users}
+                                                color="emerald"
+                                                headers={['Personnel Signature', 'Role Identity', 'Hours', 'Net Cost']}
+                                                data={selectedJob?.workers}
+                                                renderRow={(w, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-4 py-5 font-bold text-slate-800 text-sm uppercase">{w?.name || 'FIELD STAFF'}</td>
+                                                        <td className="px-4 py-5 font-semibold text-slate-500 text-xs uppercase italic">{w?.role || 'PERSONNEL'}</td>
+                                                        <td className="px-4 py-5 font-bold text-slate-700 text-sm">{w?.totalHours || 0}h</td>
+                                                        <td className="px-4 py-5 text-right font-bold text-emerald-600 text-sm">${parseFloat(w?.cost || 0).toLocaleString()}</td>
+                                                    </tr>
+                                                )}
+                                            />
+
+                                            <SectionTable
+                                                title="Subcontractor Logistics"
+                                                icon={HardHat}
+                                                color="indigo"
+                                                headers={['Prime/Vendor Identity', 'Trade Classification', 'Hours Recorded', 'Invoice Cost']}
+                                                data={selectedJob?.subcontractors}
+                                                renderRow={(s, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-4 py-5 font-bold text-slate-800 text-sm uppercase">{s?.name || 'VENDOR'}</td>
+                                                        <td className="px-4 py-5 font-semibold text-slate-500 text-xs uppercase italic">{s?.role || 'TRADE'}</td>
+                                                        <td className="px-4 py-5 font-bold text-slate-700 text-sm">{s?.totalHours || 0}h</td>
+                                                        <td className="px-4 py-5 text-right font-bold text-indigo-600 text-sm">${parseFloat(s?.cost || 0).toLocaleString()}</td>
+                                                    </tr>
+                                                )}
+                                            />
+
+                                            <SectionTable
+                                                title="Material Consumption"
+                                                icon={Package}
+                                                color="amber"
+                                                headers={['Material Type', 'PO Reference', 'Qty Distributed', 'Audit Cost']}
+                                                data={selectedJob?.materials}
+                                                renderRow={(m, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-4 py-5 font-bold text-slate-800 text-sm uppercase">{m?.itemName || 'CONSUMABLE'}</td>
+                                                        <td className="px-4 py-5 font-semibold text-slate-500 text-xs uppercase">#{m?.poNumber || 'N/A'}</td>
+                                                        <td className="px-4 py-5 font-bold text-slate-700 text-sm">{m?.quantity || 0} units</td>
+                                                        <td className="px-4 py-5 text-right font-bold text-amber-600 text-sm">${parseFloat(m?.cost || 0).toLocaleString()}</td>
+                                                    </tr>
+                                                )}
+                                            />
+
+                                            <SectionTable
+                                                title="Equipment Usage"
+                                                icon={Truck}
+                                                color="violet"
+                                                headers={['Asset Identity', 'Engagement Hours', 'Logistics Cost']}
+                                                data={selectedJob?.equipment}
+                                                renderRow={(e, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-4 py-5 font-bold text-slate-800 text-sm uppercase">{e?.name || 'ASSET'}</td>
+                                                        <td className="px-4 py-5 font-bold text-slate-700 text-sm">{e?.hoursUsed || 0}h</td>
+                                                        <td className="px-4 py-5 text-right font-bold text-violet-600 text-sm">${parseFloat(e?.cost || 0).toLocaleString()}</td>
+                                                    </tr>
+                                                )}
+                                            />
+
+                                            <SectionTable
+                                                title="Operational Deficiencies"
+                                                icon={ClipboardList}
+                                                color="rose"
+                                                headers={['Deficiency Title', 'Source / Assigned', 'Priority', 'Audit Status']}
+                                                data={selectedJob?.deficiencies}
+                                                renderRow={(d, i) => (
+                                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-4 py-5">
+                                                            <p className="font-bold text-slate-800 text-sm uppercase">{d?.title || 'SITE ISSUE'}</p>
+                                                            <p className="text-[10px] font-semibold text-slate-500 uppercase italic">From: {d?.reportedBy || 'SYSTEM'}</p>
+                                                        </td>
+                                                        <td className="px-4 py-5 font-bold text-slate-600 text-xs uppercase">{d?.assignedTo || 'PENDING'}</td>
+                                                        <td className="px-4 py-5">
+                                                            <span className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${d?.priority === 'critical' || d?.priority === 'high' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>{d?.priority || 'NORMAL'}</span>
+                                                        </td>
+                                                        <td className="px-4 py-5 text-right font-bold text-blue-600 text-[11px] uppercase tracking-widest">{d?.status || 'PENDING'}</td>
+                                                    </tr>
+                                                )}
+                                            />
+
+                                            <SectionTable
+                                                title="Execution Hierarchy"
+                                                icon={Layers}
+                                                color="blue"
+                                                headers={['Task Architecture', 'Status', 'Timeline']}
+                                                data={selectedJob.tasks}
+                                                renderRow={(task) => (
+                                                    <TaskRow
+                                                        key={task._id}
+                                                        task={task}
+                                                        isExpanded={expandedTasks[task._id]}
+                                                        onToggle={toggleTask}
+                                                        expandedTasks={expandedTasks}
+                                                    />
+                                                )}
+                                            />
+
+                                            {/* Job Intelligence Notes */}
+                                            <div className="space-y-8 mt-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-sky-100/50 text-sky-600 border border-sky-200 rounded-xl flex items-center justify-center shadow-sm">
+                                                        <ClipboardList size={16} strokeWidth={2.5} />
+                                                    </div>
+                                                    <h3 className="text-[12px] font-black text-slate-950 uppercase tracking-[0.3em] drop-shadow-sm">Intelligence Notes & Logistics</h3>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    {selectedJob.notes && selectedJob.notes.length > 0 ? (
+                                                        selectedJob.notes.map((note, idx) => (
+                                                            <div key={idx} className="p-8 bg-slate-50/50 rounded-[32px] border border-slate-100 flex flex-col gap-4">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-sm">
+                                                                            {note.author?.[0] || 'S'}
+                                                                        </div>
+                                                                        <div>
+                                                                            <h4 className="text-sm font-bold text-slate-900">{note.author}</h4>
+                                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.date).toLocaleDateString()}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                                                                    {note.content}
+                                                                </p>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="col-span-full py-12 bg-slate-50/30 rounded-[32px] border border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
+                                                            <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
+                                                                <ClipboardList className="text-slate-300" size={24} />
+                                                            </div>
+                                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">No intelligence notes recorded</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )
+                        ) : (
+                            <motion.div
+                                key="site"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="bg-white rounded-[40px] border border-slate-200 p-10 shadow-xl shadow-slate-200/50 space-y-20"
+                            >
+                                <div className="overflow-x-auto">
+                                    <div className="flex items-center justify-between mb-10 pb-10 border-b border-slate-50">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                                                <Sun className="text-amber-500" size={24} /> chronological site logs
+                                            </h2>
+                                            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mt-1">Daily Operations & Condition Forensics</p>
+                                        </div>
+                                    </div>
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="text-xs font-bold uppercase text-slate-500 border-b border-slate-100">
+                                                <th className="pb-6 pr-6">Date Signature</th>
+                                                <th className="pb-6 px-6"> Foreman ID</th>
+                                                <th className="pb-6 px-6">Condition</th>
+                                                <th className="pb-6 px-6 text-center">Staff Count</th>
+                                                <th className="pb-6 pl-6 text-right">Site Observation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {project.recentDailyLogs?.map((log, i) => (
+                                                <tr key={i} className="group hover:bg-slate-50/50 transition-all">
+                                                    <td className="py-8 pr-6">
+                                                        <p className="font-bold text-slate-900 text-sm mb-1">{new Date(log.date).toLocaleDateString()}</p>
+                                                        <p className="text-[10px] font-semibold text-slate-500 uppercase leading-none">Record Entry</p>
+                                                    </td>
+                                                    <td className="py-8 px-6">
+                                                        <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{log.foreman}</p>
+                                                        <p className="text-[10px] font-semibold text-slate-500 uppercase leading-none mt-1">Verified Signature</p>
+                                                    </td>
+                                                    <td className="py-8 px-6">
+                                                        <div className="flex items-center gap-2.5 text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl w-fit">
+                                                            <Sun size={14} />
+                                                            <span className="text-[10px] font-black uppercase">{log.weather}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-8 px-6 text-center">
+                                                        <span className="px-4 py-1.5 bg-slate-100 rounded-xl text-[11px] font-bold text-slate-600 shadow-sm">{log.crewCount} PERSONNEL</span>
+                                                    </td>
+                                                    <td className="py-8 pl-6 text-right">
+                                                        <p className="text-slate-500 text-[11px] font-medium leading-relaxed italic max-w-[400px] ml-auto">
+                                                            "{log.notes || 'Routine site observation recorded'}"
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(!project.recentDailyLogs || project.recentDailyLogs.length === 0) && (
+                                                <EmptyTableRow colSpan={5} text="Zero site records detected for this project cycle" />
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="pt-20 border-t border-slate-50">
+                                    <SectionTable
+                                        title="Project-Wide Deficiency Audit"
+                                        icon={AlertCircle}
+                                        headers={['Audit Item', 'Source / Assigned', 'Priority', 'Audit Status']}
+                                        data={project.deficiencies}
+                                        renderRow={(d, i) => (
+                                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-6">
+                                                    <p className="font-black text-slate-800 text-xs uppercase">{d?.title || 'SITE ISSUE'}</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase italic">From: {d?.reportedBy || 'SYSTEM'}</p>
+                                                </td>
+                                                <td className="px-4 py-6 font-black text-slate-500 text-[10px] uppercase">{d?.assignedTo || 'PENDING'}</td>
+                                                <td className="px-4 py-6">
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${d?.priority === 'critical' || d?.priority === 'high' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>{d?.priority || 'NORMAL'}</span>
+                                                </td>
+                                                <td className="px-4 py-6 text-right font-black text-blue-600 text-[10px] uppercase tracking-widest">{d?.status || 'PENDING'}</td>
+                                            </tr>
+                                        )}
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             ) : (
-                <div className="h-[400px] flex flex-col items-center justify-center bg-white rounded-[40px] border border-slate-200 border-dashed">
-                    <AlertCircle size={48} className="text-slate-300 mb-4" />
-                    <p className="text-slate-400 font-black uppercase tracking-widest">Select a project to generate report</p>
+                <div className="h-[500px] flex flex-col items-center justify-center bg-white rounded-[48px] border-2 border-dashed border-slate-200 w-full mx-auto opacity-60">
+                    <div className="p-6 bg-slate-50 rounded-full mb-6">
+                        <BarChart3 size={48} className="text-slate-300" />
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-[0.3em] mb-2">Systems Hibernating</h3>
+                    <p className="text-xs text-slate-400 font-bold max-w-[300px] text-center px-10">Select a project signature from the primary selector to initialize intelligence streaming.</p>
                 </div>
             )}
         </div>
     );
 };
 
-// ─── HELPER COMPONENTS ───
+// ─── NEW FLAT TABLE COMPONENTS ───
 
-const MetricCard = ({ label, value, subtext, icon: Icon, color, bgColor }) => (
-    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
-        <div className="flex justify-between items-start mb-4">
-            <div className={`p-3 ${bgColor} rounded-2xl ${color} group-hover:scale-110 transition-transform`}>
-                <Icon size={20} />
+const SectionTable = ({ title, icon: Icon, headers, data, renderRow, color = "blue" }) => {
+    const colorClasses = {
+        blue: "bg-blue-100/50 text-blue-600 border-blue-200",
+        indigo: "bg-indigo-100/50 text-indigo-600 border-indigo-200",
+        amber: "bg-amber-100/50 text-amber-600 border-amber-200",
+        emerald: "bg-emerald-100/50 text-emerald-600 border-emerald-200",
+        rose: "bg-rose-100/50 text-rose-600 border-rose-200",
+        violet: "bg-violet-100/50 text-violet-600 border-violet-200",
+        sky: "bg-sky-100/50 text-sky-600 border-sky-200",
+        slate: "bg-slate-100 text-slate-600 border-slate-200"
+    };
+
+    const activeColor = colorClasses[color] || colorClasses.blue;
+
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center gap-3">
+                <div className={`p-2 ${activeColor} rounded-xl border flex items-center justify-center shadow-sm`}>
+                    <Icon size={16} strokeWidth={2.5} />
+                </div>
+                <h3 className="text-[12px] font-black text-slate-950 uppercase tracking-[0.3em] drop-shadow-sm">{title}</h3>
             </div>
-            <ArrowUpRight size={18} className="text-slate-300" />
-        </div>
-        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
-        <h4 className={`text-2xl font-black ${color} tracking-tight mb-1`}>{value}</h4>
-        <p className="text-slate-500 font-bold text-xs">{subtext}</p>
-    </div>
-);
-
-const JobReportCard = ({ job, isExpanded, onToggle, onDownload, expandedTasks, onToggleTask }) => (
-    <div className={`bg-white rounded-3xl border border-slate-200 shadow-sm transition-all overflow-hidden ${isExpanded ? 'ring-2 ring-blue-500/20 shadow-xl' : ''}`}>
-        {/* Job Header */}
-        <div 
-            onClick={onToggle}
-            className="p-6 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-6 hover:bg-slate-50/50 transition-colors"
-        >
-            <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <HardHat size={24} />
-                </div>
-                <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-2">{job.jobName}</h3>
-                    <div className="flex items-center gap-3">
-                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border shadow-sm ${
-                            job.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                            job.status === 'active' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-                            'bg-amber-50 border-amber-100 text-amber-600'
-                        }`}>
-                            {job.status}
-                        </span>
-                        <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                            <Calendar size={12} /> {new Date(job.startDate).toLocaleDateString()} \u2014 {job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Active'}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-6 md:gap-10">
-                <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Total Job Cost</p>
-                    <p className="text-base font-black text-slate-900">
-                        ${parseFloat(job.totalCost || 0).toLocaleString()}
-                    </p>
-                </div>
-
-                <div className="min-w-[120px]">
-                    <div className="flex items-center justify-between mb-1.5">
-                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progress</p>
-                         <p className="text-[10px] font-black text-blue-600">{job.progress}%</p>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full transition-all duration-1000" style={{ width: `${job.progress}%` }} />
-                    </div>
-                </div>
-
-                <div className={`p-2 rounded-xl transition-all ${isExpanded ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                </div>
-
-                <button 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDownload();
-                    }}
-                    className="p-2.5 bg-slate-50 hover:bg-blue-600 hover:text-white rounded-xl text-slate-400 transition-all border border-slate-100 flex items-center justify-center group/btn"
-                    title="Download PDF"
-                >
-                    <Download size={18} />
-                </button>
+            <div className="border border-slate-100 rounded-[32px] overflow-hidden bg-slate-50/30">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 bg-white">
+                            {headers.map((h, i) => (
+                                <th key={i} className={`px-8 py-5 ${i > 0 ? (i === headers.length - 1 ? 'text-right' : 'text-center') : ''}`}>{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {data?.length > 0 ? (
+                            data.map((item, index) => renderRow(item, index))
+                        ) : (
+                            <EmptyTableRow colSpan={headers.length} text={`No ${title.toLowerCase()} recorded`} />
+                        )}
+                    </tbody>
+                </table>
             </div>
         </div>
+    );
+};
 
-        {/* Expanded Details */}
-        <AnimatePresence>
-            {isExpanded && (
-                <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-slate-100"
-                >
-                    <div className="p-8 space-y-12">
-                        {/* Summary metrics cards removed as per client request */}
-
-                        {/* Job Notes / Timeline Updates Section */}
-                        {(job.description || (job.notes && job.notes.length > 0)) && (
-                            <div className="bg-slate-50 border border-slate-200 p-6 rounded-3xl space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-2 flex items-center gap-2">
-                                    <FileText size={14} className="text-blue-600" /> Job Intelligence Notes & Communication
-                                </h4>
-                                
-                                {job.description && (
-                                    <div className="space-y-2 pb-6 border-b border-slate-200/50">
-                                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Job Scope / Base Description</p>
-                                        <p className="text-sm text-slate-600 leading-relaxed font-semibold">{job.description}</p>
-                                    </div>
-                                )}
-
-                                {job.notes && job.notes.length > 0 && (
-                                    <div className="space-y-4">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recent Updates & Site Remarks</p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {job.notes.map((note, i) => (
-                                                <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm group hover:shadow-md transition-all">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <p className="text-[10px] font-black text-slate-900">{note.author}</p>
-                                                        <p className="text-[9px] font-bold text-slate-300">{new Date(note.date).toLocaleDateString()}</p>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 font-medium leading-relaxed italic border-l-2 border-slate-200 pl-3">"{note.content}"</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 gap-8">
-                            {/* Worker Time Tracking */}
-                            <SectionContainer title="Worker Time Tracking" icon={Users}>
-                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
-                                                <th className="pb-3">Worker / Role</th>
-                                                <th className="pb-3 text-right">Hours</th>
-                                                <th className="pb-3 text-right">Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {job.workers.map((worker, i) => (
-                                                <tr key={i} className="text-sm">
-                                                    <td className="py-4">
-                                                        <p className="font-black text-slate-800 text-xs leading-none mb-1">{worker.name}</p>
-                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{worker.role}</span>
-                                                    </td>
-                                                    <td className="py-4 text-right font-bold text-slate-600 text-xs">{worker.totalHours}h</td>
-                                                    <td className="py-4 text-right font-black text-blue-600 text-xs">${parseFloat(worker.cost || 0).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                            {job.workers.length === 0 && <EmptyTableRow colSpan={3} text="No workers logged hours" />}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </SectionContainer>
-                        </div>
-
-                        {/* Material CONSUMPTION */}
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                            <SectionContainer title="Material Consumption" icon={Package}>
-                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
-                                                <th className="pb-3">Material / PO</th>
-                                                <th className="pb-3 text-right">Qty</th>
-                                                <th className="pb-3 text-right">Total Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {job.materials.map((mat, i) => (
-                                                <tr key={i} className="text-sm">
-                                                    <td className="py-4">
-                                                        <p className="font-black text-slate-800 text-xs">{mat.itemName}</p>
-                                                        <span className="text-[9px] font-bold text-slate-600 uppercase">PO: {mat.poNumber}</span>
-                                                    </td>
-                                                    <td className="py-4 text-right font-bold text-slate-600 text-xs">{mat.quantity}</td>
-                                                    <td className="py-4 text-right font-black text-amber-600 text-xs">${parseFloat(mat.cost || 0).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                            {job.materials.length === 0 && <EmptyTableRow colSpan={3} text="No material logs available" />}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </SectionContainer>
-
-                            {/* Equipment USAGE */}
-                            <SectionContainer title="Equipment Usage" icon={Truck}>
-                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
-                                                <th className="pb-3">Equipment</th>
-                                                <th className="pb-3 text-right">Hours</th>
-                                                <th className="pb-3 text-right">Incurred Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {job.equipment.map((eq, i) => (
-                                                <tr key={i} className="text-sm">
-                                                    <td className="py-4 font-black text-slate-800 text-xs">{eq.name}</td>
-                                                    <td className="py-4 text-right font-bold text-slate-600 text-xs">{eq.hoursUsed}h</td>
-                                                    <td className="py-4 text-right font-black text-violet-600 text-xs">${parseFloat(eq.cost || 0).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                            {job.equipment.length === 0 && <EmptyTableRow colSpan={3} text="No equipment usage logged" />}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </SectionContainer>
-                        </div>
-
-                        {/* SUB-CONTRACTOR WORK */}
-                        {job.subcontractors.length > 0 && (
-                            <SectionContainer title="Subcontractor Work" icon={Users}>
-                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-[10px] font-black uppercase text-slate-600 border-b border-slate-200">
-                                                <th className="pb-3">Subcontractor Name</th>
-                                                <th className="pb-3">Description</th>
-                                                <th className="pb-3 text-right">Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {job.subcontractors.map((sub, i) => (
-                                                <tr key={i} className="text-sm">
-                                                    <td className="py-4 font-black text-slate-800 text-xs">{sub.name}</td>
-                                                    <td className="py-4 text-slate-500 font-bold text-[11px]">{sub.work}</td>
-                                                    <td className="py-4 text-right font-black text-emerald-600 text-xs">${parseFloat(sub.cost || 0).toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </SectionContainer>
-                        )}
-
-                        {/* TASK TREE (CRITICAL 🔥) */}
-                        <SectionContainer title="Job Task & Subtask Intelligence Tree" icon={Layers}>
-                            <div className="border border-slate-100 rounded-3xl overflow-hidden bg-slate-50/20">
-                                <table className="w-full text-left">
-                                    <thead className="bg-slate-100/80">
-                                        <tr className="text-[10px] font-black uppercase text-slate-700">
-                                            <th className="px-6 py-4 border-b border-slate-200">Task Name & Structure</th>
-                                            <th className="px-6 py-4 border-b border-slate-200">Status</th>
-                                            <th className="px-6 py-4 border-b border-slate-200">Assigned To</th>
-                                            <th className="px-6 py-4 text-right border-b border-slate-200">Date Line</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {job.tasks.map(task => (
-                                            <TaskRow 
-                                                key={task._id} 
-                                                task={task} 
-                                                isExpanded={expandedTasks[task._id]} 
-                                                onToggle={() => onToggleTask(task._id)} 
-                                            />
-                                        ))}
-                                        {job.tasks.length === 0 && <EmptyTableRow colSpan={4} text="No tasks found for this job" />}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </SectionContainer>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    </div>
+const EmptyTableRow = ({ colSpan, text }) => (
+    <tr>
+        <td colSpan={colSpan} className="py-20 text-center">
+            <div className="inline-flex items-center gap-2 px-6 py-2 bg-slate-50 rounded-full border border-slate-100">
+                <AlertCircle size={14} className="text-slate-300" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{text}</p>
+            </div>
+        </td>
+    </tr>
 );
 
-const TaskRow = ({ task, isExpanded, onToggle }) => {
-    const hasSubtasks = task.subtasks && task.subtasks.length > 0;
-    
+const TaskRow = ({ task, isExpanded, onToggle, expandedTasks, level = 0 }) => {
+    const hasSubtasks = (task?.subtasks?.length > 0);
+
     return (
         <React.Fragment>
-            <tr className={`group transition-colors ${isExpanded ? 'bg-blue-50/30' : 'hover:bg-white'}`}>
-                <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+            <tr className={`group transition-all ${isExpanded ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
+                <td className="px-8 py-5">
+                    <div className="flex items-center gap-3" style={{ marginLeft: `${level * 32}px` }}>
+                        {level > 0 && (
+                            <CornerDownRight size={14} className="text-slate-300 flex-shrink-0" strokeWidth={3} />
+                        )}
                         {hasSubtasks ? (
-                            <button onClick={onToggle} className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors">
-                                {isExpanded ? <Minus size={14} /> : <Plus size={14} />}
+                            <button
+                                onClick={() => onToggle(task?._id)}
+                                className={`p-2 rounded-xl transition-all shadow-sm flex-shrink-0 ${isExpanded ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-white text-slate-400 border border-slate-200'}`}
+                            >
+                                {isExpanded ? <Minus size={12} strokeWidth={4} /> : <Plus size={12} strokeWidth={4} />}
                             </button>
                         ) : (
-                            <div className="w-6" />
+                            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200/50 flex-shrink-0">
+                                <Layers size={14} />
+                            </div>
                         )}
-                        <span className="text-xs font-black text-slate-800">{task.title}</span>
-                    </div>
-                </td>
-                <td className="px-6 py-4">
-                    <StatusBadge status={task.status} />
-                </td>
-                <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-black text-blue-600">
-                            {task.assignedTo?.fullName?.charAt(0) || '?'}
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-800 tracking-tight leading-none mb-1.5 uppercase">{task?.title || 'UNTITLED'}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate max-w-[400px]">{task?.description || 'Operational Milestone'}</p>
                         </div>
-                        <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">
-                            {task.assignedTo?.fullName || 'Unassigned'}
-                        </span>
                     </div>
                 </td>
-                <td className="px-6 py-4 text-right">
-                    <p className="text-[10px] font-black text-slate-600">DUE</p>
-                    <p className="text-[11px] font-bold text-slate-900">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'ASAP'}</p>
+                <td className="px-8 py-5 text-center">
+                    <span className={`px-2.5 py-1 text-[9px] font-bold rounded-lg border uppercase tracking-widest ${task?.status === 'completed' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                        'bg-amber-50 border-amber-100 text-amber-600'
+                        }`}>
+                        {task?.status || 'Active'}
+                    </span>
+                </td>
+                <td className="px-8 py-5 text-right font-bold text-slate-900 text-xs tracking-wider">
+                    {task?.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'NO DEADLINE'}
                 </td>
             </tr>
-            {isExpanded && hasSubtasks && task.subtasks.map(st => (
-                <tr key={st._id} className="bg-slate-50/50">
-                    <td className="px-8 py-3 pl-16">
-                        <div className="flex items-center gap-2">
-                            <ChevronRight size={12} className="text-slate-300" />
-                            <span className="text-xs font-bold text-slate-500">{st.title}</span>
-                        </div>
-                    </td>
-                    <td className="px-6 py-3">
-                        <StatusBadge status={st.status} isSubtask />
-                    </td>
-                    <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-bold text-slate-400">
-                                {st.assignedTo?.fullName?.charAt(0) || '?'}
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-500 truncate max-w-[100px]">
-                                {st.assignedTo?.fullName || 'Unassigned'}
-                            </span>
-                        </div>
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                        <span className="text-[10px] font-bold text-slate-400">{st.dueDate ? new Date(st.dueDate).toLocaleDateString() : '--'}</span>
-                    </td>
-                </tr>
+
+            {isExpanded && task?.subtasks?.map(st => (
+                <TaskRow
+                    key={st?._id}
+                    task={st}
+                    isExpanded={expandedTasks && expandedTasks[st?._id]}
+                    onToggle={onToggle}
+                    expandedTasks={expandedTasks}
+                    level={level + 1}
+                />
             ))}
         </React.Fragment>
     );
 };
 
-const StatusBadge = ({ status, isSubtask = false }) => {
-    const colors = {
-        completed: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-        in_progress: 'bg-blue-50 text-blue-600 border-blue-100',
-        active: 'bg-blue-50 text-blue-600 border-blue-100',
-        todo: 'bg-slate-50 text-slate-400 border-slate-100',
-        pending: 'bg-amber-50 text-amber-600 border-amber-100'
-    };
-    
-    return (
-        <span className={`px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-widest ${colors[status] || colors.todo}`}>
-            {status}
-        </span>
-    );
-};
-
-const SectionContainer = ({ title, icon: Icon, children }) => (
-    <div className="flex flex-col">
-        <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-700 mb-4 flex items-center gap-2">
-            <Icon size={16} className="text-blue-600" /> {title}
-        </h4>
-        <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex-1">
-            {children}
-        </div>
-    </div>
-);
-
-const JobSmallMetric = ({ label, value, total, unit, icon: Icon, color }) => (
-    <div className={`bg-${color}-50/50 border border-${color}-100 p-4 rounded-2xl`}>
-        <div className="flex justify-between items-center mb-1">
-            <Icon size={16} className={`text-${color}-600`} />
-            <span className={`text-[10px] font-black text-${color}-600 uppercase tracking-widest`}>{label}</span>
-        </div>
-        <p className={`text-xl font-black text-slate-800`}>
-            {value}{unit || ''} {total !== undefined && <span className="text-slate-300 text-xs font-bold">/ {total}</span>}
-        </p>
-    </div>
-);
-
-const FinancialRow = ({ label, value, percentage, color }) => (
-    <div className="flex flex-col gap-1.5">
-        <div className="flex justify-between items-center text-xs">
-            <span className="font-bold text-slate-600">{label}</span>
-            <span className="font-black text-slate-900">${parseFloat(value || 0).toLocaleString()}</span>
-        </div>
-        <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                <div className={`h-full ${color}`} style={{ width: `${percentage}%` }} />
-            </div>
-            <span className="text-[10px] font-black text-slate-400 w-8">{percentage}%</span>
-        </div>
-    </div>
-);
-
-const EmptyTableRow = ({ colSpan, text }) => (
-    <tr>
-        <td colSpan={colSpan} className="py-12 text-center text-slate-400 font-bold italic text-xs">
-            {text}
-        </td>
-    </tr>
-);
-
 const Loader = () => (
-    <div className="h-[600px] flex flex-col items-center justify-center gap-4">
-        <div className="w-16 h-16 border-4 border-blue-600/10 border-t-blue-600 rounded-full animate-spin" />
-        <p className="font-black text-slate-400 uppercase tracking-widest text-xs animate-pulse">Computing Intelligence Report...</p>
+    <div className="h-[70vh] flex flex-col items-center justify-center gap-8">
+        <div className="relative">
+            <div className="w-20 h-20 border-[6px] border-slate-100 rounded-full" />
+            <div className="absolute top-0 left-0 w-20 h-20 border-[6px] border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <div className="text-center">
+            <p className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-900 mb-2">Syncing Data Store</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400 animate-pulse">Initializing forensic audit modules...</p>
+        </div>
     </div>
 );
 

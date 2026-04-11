@@ -16,6 +16,63 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+const TopScrollbar = ({ containerRef }) => {
+    const topScrollRef = useRef(null);
+    const [tableWidth, setTableWidth] = useState(0);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const topScroll = topScrollRef.current;
+        if (!container || !topScroll) return;
+
+        const syncTop = () => {
+            if (topScroll.scrollLeft !== container.scrollLeft) {
+                topScroll.scrollLeft = container.scrollLeft;
+            }
+        };
+
+        const syncContainer = () => {
+            if (container.scrollLeft !== topScroll.scrollLeft) {
+                container.scrollLeft = topScroll.scrollLeft;
+            }
+        };
+
+        container.addEventListener('scroll', syncTop);
+        topScroll.addEventListener('scroll', syncContainer);
+
+        // Resize observer to keep widths in sync
+        const resizeObserver = new ResizeObserver(() => {
+            const table = container.querySelector('table');
+            if (table) {
+                setTableWidth(table.scrollWidth);
+            }
+        });
+        
+        const table = container.querySelector('table');
+        if (table) {
+            resizeObserver.observe(table);
+            setTableWidth(table.scrollWidth);
+        }
+
+        return () => {
+            container.removeEventListener('scroll', syncTop);
+            topScroll.removeEventListener('scroll', syncContainer);
+            resizeObserver.disconnect();
+        };
+    }, [containerRef]);
+
+    return (
+        <div 
+            ref={topScrollRef}
+            className="w-full overflow-x-auto border-b border-slate-100 sticky top-0 z-[30] bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent h-3 cursor-pointer"
+            style={{ borderRadius: '24px 24px 0 0' }}
+        >
+            <div style={{ width: `${tableWidth}px`, height: '1px' }} />
+        </div>
+    );
+};
+
+
 
 import GanttView from '../../components/tasks/GanttView';
 import CalendarView from '../../components/tasks/CalendarView';
@@ -1282,6 +1339,7 @@ const Tasks = () => {
     const [jobs, setJobs] = useState([]);
     const [isCompactView, setIsCompactView] = useState(true);
     const [selectedTasks, setSelectedTasks] = useState(new Set());
+    const tableContainerRef = useRef(null);
 
     // Quick Template States
     const [isQuickTemplateModalOpen, setIsQuickTemplateModalOpen] = useState(false);
@@ -2198,8 +2256,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
     return (
         <div className={`space-y-4 animate-fade-in ${['calendar', 'list', 'kanban', 'gantt'].includes(view) ? 'pb-20' : 'h-[calc(100vh-80px)] flex flex-col'}`}>
 
-            {/* ── Header ── */}
-            <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 shrink-0 w-full">
+            <div className="flex justify-between items-center gap-4 shrink-0 w-full mb-2">
                 <div className="shrink-0">
                     <h1 className="text-2xl font-black text-slate-900 tracking-tighter whitespace-nowrap">Task Command Center</h1>
                     <p className="text-slate-400 font-bold text-[10px] mt-0.5 uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
@@ -2240,25 +2297,6 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         </button>
                     </div>
 
-                    {/* Cell Adjustment Feature */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-1 flex shadow-sm shrink-0">
-                        <button
-                            onClick={() => setIsCompactView(true)}
-                            title="Compact View (Truncate text)"
-                            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                        >
-                            <LayoutGrid size={14} />
-                            <span className="text-[9px] font-black uppercase tracking-tight hidden sm:inline">Compact</span>
-                        </button>
-                        <button
-                            onClick={() => setIsCompactView(false)}
-                            title="Comfortable View (Wrap text)"
-                            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-2 ${!isCompactView ? 'bg-blue-500 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                        >
-                            <AlignLeft size={14} />
-                            <span className="text-[9px] font-black uppercase tracking-tight hidden sm:inline">Comfortable</span>
-                        </button>
-                    </div>
                     {canManage && (
                         <div className="flex gap-2 shrink-0">
                             {selectedTasks.size > 0 && (
@@ -2398,9 +2436,13 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                 ))}
                             </div>
                         ) : (
-                            /* ── List View ── */
-                            <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 mb-20 relative h-[calc(100vh-230px)] min-h-[600px] overflow-auto hide-scrollbar-y">
-                                <div className="w-full">
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl relative h-[calc(100vh-190px)] min-h-[600px] flex flex-col overflow-hidden group/container">
+                                <TopScrollbar containerRef={tableContainerRef} />
+                                <div 
+                                    ref={tableContainerRef}
+                                    className="flex-1 overflow-auto p-4 pt-0 custom-scrollbar-sync cursor-pointer"
+                                >
+                                    <div className="w-full">
                                   
                                     <table className="text-left border-separate border-spacing-0 w-full" style={{ width: 'max-content', minWidth: '100%' }}>
                                         <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
@@ -2534,7 +2576,8 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                     </table>
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    )}
                     </DndContext>
                 )}
             </div>
@@ -2999,19 +3042,8 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                 placeholder="Main task name when applied"
                             />
                         </div>
-                        <div className="space-y-1.5 w-32 shrink-0">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Clock size={12} className="text-blue-500" /> est. Hours
-                            </label>
-                            <input
-                                type="number"
-                                value={templateFormData.estimatedHours}
-                                onChange={e => setTemplateFormData({ ...templateFormData, estimatedHours: e.target.value })}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500 text-sm"
-                                placeholder="0"
-                            />
-                        </div>
                     </div>
+
 
                     <div className="space-y-3">
                         <div className="flex justify-between items-center px-1">
@@ -3032,7 +3064,8 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                             </button>
                         </div>
 
-                        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 flex flex-col gap-2">
+                        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 flex flex-col gap-2">
+
                             {templateFormData.steps.length === 0 ? (
                                 <div className="py-6 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/30">
                                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">No sub-tasks added to template</p>
@@ -3050,7 +3083,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                                 newSteps[idx].title = e.target.value;
                                                 setTemplateFormData({ ...templateFormData, steps: newSteps });
                                             }}
-                                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-300 transition-all"
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                                         />
                                     </div>
                                     <button
