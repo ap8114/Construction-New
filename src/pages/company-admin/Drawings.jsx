@@ -63,6 +63,8 @@ const Drawings = () => {
       setDrawings(res.data);
     } catch (err) {
       console.error('Error fetching drawings:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -152,14 +154,20 @@ const Drawings = () => {
   };
 
   const confirmDelete = async () => {
+    const drawingId = selectedDrawing._id;
     try {
-      setLoading(true);
-      await api.delete(`/drawings/${selectedDrawing._id}`);
-      await fetchDrawings();
       setIsDeleteOpen(false);
-      alert('Drawing deleted successfully');
+      // Optimistic Update: Remove from list immediately
+      setDrawings(prev => prev.filter(d => d._id !== drawingId));
+      
+      await api.delete(`/drawings/${drawingId}`);
+      // Notification is enough, data is already updated locally
+      // but we call fetchDrawings in background to stay in sync
+      fetchDrawings();
     } catch (error) {
       console.error('Error deleting drawing:', error);
+      alert('Failed to delete drawing');
+      fetchDrawings(); // Revert on failure
     }
   };
 

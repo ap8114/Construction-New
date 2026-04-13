@@ -1785,9 +1785,9 @@ const Tasks = () => {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const params = {
                 status: filterStatus || undefined,
                 projectId: filterProject || undefined,
@@ -1810,7 +1810,7 @@ const Tasks = () => {
         } catch (error) {
             console.error('Error fetching task data:', error);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -2014,8 +2014,9 @@ const Tasks = () => {
 
                 await api.patch(endpoint, finalUpdates);
             }
-            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
-            fetchData();
+            // Silent sync after optimistic update
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData(false);
+            fetchData(false);
         } catch (error) {
             console.error('Failed to update task:', error);
             // Revert on failure
@@ -2024,7 +2025,7 @@ const Tasks = () => {
         }
     };
 
-    const fetchScheduleData = async () => {
+    const fetchScheduleData = async (showLoading = true) => {
         try {
             const params = {
                 projectId: filterProject || undefined,
@@ -2164,12 +2165,21 @@ const Tasks = () => {
             const taskId = activeTask._id || activeTask.id;
             const isSubTask = !!activeTask.parentSubTaskId || !!activeTask.parentTaskTitle;
 
-            // OPTIMISTIC UPDATES FOR IMMEDIATE FLUIDITY
-            if (!isSubTask) {
-                setTasks(prev => prev.map(t => (t._id || t.id) === taskId ? { ...t, status: newStatus } : t));
-            }
+            // --- OPTIMISTIC UPDATES FOR ALL SOURCES ---
 
-            // Always Optimistically update `scheduleTasks` tree to immediately reflect in Board View
+            // 1. Update tasks (root list)
+            setTasks(prev => prev.map(t => (t._id || t.id) === taskId ? { ...t, status: newStatus } : t));
+
+            // 2. Update subTasksMap (for list view and modal view)
+            setSubTasksMap(prev => {
+                const updatedMap = { ...prev };
+                Object.keys(updatedMap).forEach(key => {
+                    updatedMap[key] = updatedMap[key].map(st => (st._id || st.id) === taskId ? { ...st, status: newStatus } : st);
+                });
+                return updatedMap;
+            });
+
+            // 3. Update scheduleTasks tree (for board view, gantt, calendar)
             setScheduleTasks(prev => {
                 const processUpdates = (list) => {
                     return list.map(t => {
@@ -2184,7 +2194,8 @@ const Tasks = () => {
             });
 
             await handleTaskUpdate(taskId, { status: newStatus }, isSubTask, activeTask);
-        } catch {
+        } catch (error) {
+            console.error('Drag and drop error:', error);
             fetchData();
             if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
         }
@@ -3538,7 +3549,7 @@ const Tasks = () => {
                         <div>
                             <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight mb-1">Separate Tasks Creation</p>
                             <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-                                You are about to create <span className="text-blue-600 font-black">{selectedTemplates.size} separate main tasks</span>. 
+                                You are about to create <span className="text-blue-600 font-black">{selectedTemplates.size} separate main tasks</span>.
                                 Each task will include its own sub-tasks and hierarchy.
                             </p>
                         </div>
