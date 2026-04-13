@@ -116,6 +116,7 @@ const ProjectDetails = () => {
 
     // Contacts states
     const [isAddingContact, setIsAddingContact] = useState(false);
+    const [editingContactIndex, setEditingContactIndex] = useState(null);
     const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' });
     const [contactToDelete, setContactToDelete] = useState(null);
 
@@ -366,17 +367,23 @@ const ProjectDetails = () => {
         }
     };
 
-    const handleAddContact = async (e) => {
+    const handleSaveContact = async (e) => {
         e.preventDefault();
         try {
-            const updatedContacts = [...(project?.contacts || []), newContact];
+            let updatedContacts;
+            if (editingContactIndex !== null) {
+                updatedContacts = project.contacts.map((c, idx) => idx === editingContactIndex ? newContact : c);
+            } else {
+                updatedContacts = [...(project?.contacts || []), newContact];
+            }
             const res = await api.patch(`/projects/${projectId}`, { contacts: updatedContacts });
             setProject(res.data);
             setIsAddingContact(false);
+            setEditingContactIndex(null);
             setNewContact({ name: '', email: '', phone: '', role: '' });
         } catch (err) {
             console.error(err);
-            alert('Failed to add contact');
+            alert('Failed to save contact');
         }
     };
 
@@ -2014,13 +2021,26 @@ const ProjectDetails = () => {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) ? (
-                                                    <button 
-                                                        onClick={() => handleDeleteContact(idx)} 
-                                                        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-100 transition-all mx-auto"
-                                                        title="Remove Contact"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setNewContact({ ...contact });
+                                                                setEditingContactIndex(idx);
+                                                                setIsAddingContact(true);
+                                                            }} 
+                                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all"
+                                                            title="Edit Contact"
+                                                        >
+                                                            <Edit size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteContact(idx)} 
+                                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-100 transition-all"
+                                                            title="Remove Contact"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 ) : <span className="text-slate-300">—</span>}
                                             </td>
                                         </tr>
@@ -2047,21 +2067,25 @@ const ProjectDetails = () => {
                     <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-8 border-b border-slate-100/50 shrink-0">
                             <button 
-                                onClick={() => setIsAddingContact(false)}
+                                onClick={() => {
+                                    setIsAddingContact(false);
+                                    setEditingContactIndex(null);
+                                    setNewContact({ name: '', email: '', phone: '', role: '' });
+                                }}
                                 className="absolute top-8 right-8 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 transition-colors"
                             >
                                 <X size={18} />
                             </button>
                             
                             <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
-                                <UserCheck size={20} />
+                                {editingContactIndex !== null ? <Edit size={20} /> : <UserCheck size={20} />}
                             </div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Add Contact</h3>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-1">{editingContactIndex !== null ? 'Edit Contact' : 'Add Contact'}</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Project Directory</p>
                         </div>
                         
                         <div className="p-8 overflow-y-auto min-h-0">
-                            <form onSubmit={handleAddContact} className="space-y-5">
+                            <form onSubmit={handleSaveContact} className="space-y-5">
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Full Name *</label>
                                     <input 
@@ -2075,31 +2099,14 @@ const ProjectDetails = () => {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Role *</label>
-                                    <div className="relative">
-                                        <select 
-                                            required
-                                            value={newContact.role} 
-                                            onChange={e => setNewContact({...newContact, role: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-4 pr-10 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer"
-                                        >
-                                            <option value="" disabled>Select a role...</option>
-                                            <option value="Client">Client</option>
-                                            <option value="Architect">Architect</option>
-                                            <option value="General Contractor">General Contractor</option>
-                                            <option value="Subcontractor">Subcontractor</option>
-                                            <option value="Engineer">Engineer</option>
-                                            <option value="Supplier">Supplier</option>
-                                            <option value="Plumber">Plumber</option>
-                                            <option value="Electrician">Electrician</option>
-                                            <option value="HVAC Tech">HVAC Tech</option>
-                                            <option value="Inspector">Inspector</option>
-                                            <option value="Consultant">Consultant</option>
-                                            <option value="Project Manager">Project Manager</option>
-                                            <option value="Site Supervisor">Site Supervisor</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                                    </div>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={newContact.role} 
+                                        onChange={e => setNewContact({...newContact, role: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none placeholder:text-slate-300"
+                                        placeholder="e.g. Electrician, Architect..."
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Email Address</label>
@@ -2127,7 +2134,7 @@ const ProjectDetails = () => {
                                         type="submit"
                                         className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-blue-50 outline-none"
                                     >
-                                        Save Contact
+                                        {editingContactIndex !== null ? 'Update Contact' : 'Save Contact'}
                                     </button>
                                 </div>
                             </form>

@@ -94,7 +94,7 @@ const UpcomingTaskCard = ({ title, project, dueDate, priority, onClick }) => (
   </div>
 );
 
-const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
+const QuickTodoWidget = ({ users, onTaskCreated, currentUser, showToast }) => {
   const [todo, setTodo] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -145,7 +145,7 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser }) => {
       setAssignedTo('');
       setSearchTerm('');
       setShowDropdown(false);
-      onTaskCreated();
+      await onTaskCreated(true);
       showToast('Task created successfully!');
     } catch (err) {
       console.error('Failed to create todo:', err);
@@ -473,126 +473,145 @@ const CompanyAdminDashboard = () => {
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [clockInReason, setClockInReason] = useState('');
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (silent = false) => {
     try {
-      setLoading(true);
-      const res = await api.get('/reports/stats');
-      const data = res.data;
+      if (!silent) setLoading(true);
 
-      if (data.metrics) setMetrics(prev => ({ ...data.metrics, myJobs: data.myJobs || prev.myJobs || [] }));
-      if (data.trendData) setTrendData(data.trendData);
-      if (data.crewActivity) setCrewActivity(data.crewActivity);
-      if (data.recentDailyLogs) setRecentDailyLogs(data.recentDailyLogs);
-      if (data.topProject) setTopProject(data.topProject);
+      // Define independent data fetching blocks
+      const fetchBasicStats = async () => {
+        try {
+          const res = await api.get('/reports/stats');
+          const data = res.data;
+          if (data.metrics) setMetrics(prev => ({ ...data.metrics, myJobs: data.myJobs || prev.myJobs || [] }));
+          if (data.trendData) setTrendData(data.trendData);
+          if (data.crewActivity) setCrewActivity(data.crewActivity);
+          if (data.recentDailyLogs) setRecentDailyLogs(data.recentDailyLogs);
+          if (data.topProject) setTopProject(data.topProject);
 
-      if (data.workerMetrics) {
-        const processedMetrics = { ...data.workerMetrics };
-        if (processedMetrics.isClockedIn && processedMetrics.currentJob) {
-          // Sync currentJob name with selection labels for consistency
-          const pMatch = processedMetrics.assignedProjects?.find(p => p.name === processedMetrics.currentJob);
-          if (pMatch) {
-            processedMetrics.currentJob = `Project: ${pMatch.name} (${pMatch.jobName})`;
-          } else {
-            const tMatch = processedMetrics.assignedTasks?.find(t => t.title === processedMetrics.currentJob);
-            if (tMatch) {
-              processedMetrics.currentJob = `Task: ${tMatch.title} (${tMatch.jobName})`;
+          if (data.workerMetrics) {
+            const processedMetrics = { ...data.workerMetrics };
+            if (processedMetrics.isClockedIn && processedMetrics.currentJob) {
+              const pMatch = processedMetrics.assignedProjects?.find(p => p.name === processedMetrics.currentJob);
+              if (pMatch) {
+                processedMetrics.currentJob = `Project: ${pMatch.name} (${pMatch.jobName})`;
+              } else {
+                const tMatch = processedMetrics.assignedTasks?.find(t => t.title === processedMetrics.currentJob);
+                if (tMatch) {
+                  processedMetrics.currentJob = `Task: ${tMatch.title} (${tMatch.jobName})`;
+                }
+              }
+              if (processedMetrics.currentJob === 'random') {
+                processedMetrics.currentJob = 'Random Site / Emergency Attendance';
+              }
+            }
+            setWorkerMetrics(processedMetrics);
+            setIsClockedIn(processedMetrics.isClockedIn);
+            setTimer(processedMetrics.timer || 0);
+
+            if (processedMetrics.assignedProjects?.length === 1 && !selectedProjectId) {
+              setSelectedProjectId(processedMetrics.assignedProjects[0]._id);
             }
           }
-          if (processedMetrics.currentJob === 'random') {
-            processedMetrics.currentJob = 'Random Site / Emergency Attendance';
+          if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
+        } catch (err) {
+          console.error('Error fetching basic stats:', err);
+        }
+      };
+
+      const fetchTasks = async () => {
+        if (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(user?.role)) {
+          try {
+            const [jobTasksRes, globalTasksRes] = await Promise.all([
+              api.get('/job-tasks/worker'),
+              api.get('/tasks/my-tasks')
+            ]);
+            const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
+              ...t,
+              isGlobal: true,
+              jobId: t.projectId
+            }));
+            const combined = [...(jobTasksRes.data || []), ...normalizedGlobal]
+              .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            setMyTasks(combined);
+          } catch (err) {
+            console.error('Error fetching worker tasks:', err);
           }
         }
-        setWorkerMetrics(processedMetrics);
-        setIsClockedIn(processedMetrics.isClockedIn);
-        setTimer(processedMetrics.timer || 0);
+      };
 
-        // Auto-select project if only one exists and not selected yet
-        if (processedMetrics.assignedProjects?.length === 1 && !selectedProjectId) {
-          setSelectedProjectId(processedMetrics.assignedProjects[0]._id);
-        }
-      }
-      if (data.myRecentActivity) setMyRecentActivity(data.myRecentActivity);
-
-      // Fetch worker tasks (JobTasks) and global Tasks
-      if (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(user?.role)) {
+      const fetchTodosData = async () => {
         try {
-          const [jobTasksRes, globalTasksRes] = await Promise.all([
-            api.get('/job-tasks/worker'),
-            api.get('/tasks/my-tasks')
+          const [todosRes, assignedRes] = await Promise.all([
+            api.get('/todos'),
+            api.get('/todos/assigned-by')
           ]);
-
-          // Normalize global tasks to look like job tasks for the dashboard widget
-          const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
-            ...t,
-            isGlobal: true,
-            jobId: t.projectId // Map projectId to jobId for UI consistency
-          }));
-
-          const combined = [...(jobTasksRes.data || []), ...normalizedGlobal]
-            .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-          setMyTasks(combined);
-        } catch (taskErr) {
-          console.error('Error fetching tasks for dashboard:', taskErr);
-        }
-      }
-
-      // Fetch equipment alerts separately as it's a new feature
-      const equipRes = await api.get('/equipment');
-      const alertsCount = equipRes.data?.filter(e => e.assignedJob?.status === 'completed').length || 0;
-      setMetrics(prev => ({ ...prev, equipmentAlerts: alertsCount }));
-
-      // Fetch team for assignment if Admin/PM
-      if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
-        try {
-          const teamRes = await api.get('/auth/users');
-          setTeamMembers(Array.isArray(teamRes.data) ? teamRes.data : []);
+          setMyTodos(Array.isArray(todosRes.data) ? todosRes.data : []);
+          setAssignedByMeTodos(Array.isArray(assignedRes.data) ? assignedRes.data : []);
         } catch (err) {
-          console.error('Error fetching team for dashboard:', err);
+          console.error('Error fetching todos:', err);
         }
-      }
+      };
 
-      // Fetch Todos
-      try {
-        const [todosRes, assignedRes] = await Promise.all([
-          api.get('/todos'),
-          api.get('/todos/assigned-by')
-        ]);
-        setMyTodos(Array.isArray(todosRes.data) ? todosRes.data : []);
-        setAssignedByMeTodos(Array.isArray(assignedRes.data) ? assignedRes.data : []);
-      } catch (err) {
-        console.error('Error fetching todos:', err);
-      }
+      const fetchTeamData = async () => {
+        if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
+          try {
+            const teamRes = await api.get('/auth/users');
+            setTeamMembers(Array.isArray(teamRes.data) ? teamRes.data : []);
+          } catch (err) {
+            console.error('Error fetching team:', err);
+          }
+        }
+      };
 
-      // Fetch all overdue tasks for Admin/PM to show in alerts details
-      if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role)) {
+      const fetchOverdueData = async () => {
+        if (['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(user?.role)) {
+          try {
+            const tasksRes = await api.get('/tasks');
+            const allTasks = Array.isArray(tasksRes.data) ? tasksRes.data : [];
+            const overdue = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed');
+            setOverdueTasksList(overdue);
+            const upcoming = allTasks
+              .filter(t => t.dueDate && new Date(t.dueDate) >= new Date() && t.status !== 'completed')
+              .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+              .slice(0, 7);
+            setUpcomingTasks(upcoming);
+          } catch (err) {
+            console.error('Error fetching overdue tasks:', err);
+          }
+        }
+      };
+
+      const fetchEquipmentData = async () => {
         try {
-          const tasksRes = await api.get('/tasks');
-          const allTasks = Array.isArray(tasksRes.data) ? tasksRes.data : [];
-          const overdue = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed');
-          setOverdueTasksList(overdue);
-
-          // Get upcoming 7 tasks
-          const upcoming = allTasks
-            .filter(t => t.dueDate && new Date(t.dueDate) >= new Date() && t.status !== 'completed')
-            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-            .slice(0, 7);
-          setUpcomingTasks(upcoming);
+          const equipRes = await api.get('/equipment');
+          const alertsCount = equipRes.data?.filter(e => e.assignedJob?.status === 'completed').length || 0;
+          setMetrics(prev => ({ ...prev, equipmentAlerts: alertsCount }));
         } catch (err) {
-          console.error('Error fetching overdue/upcoming tasks for dashboard:', err);
+          console.error('Error fetching equipment:', err);
         }
-      }
+      };
+
+      // Run all fetches in parallel for maximum speed
+      await Promise.all([
+        fetchBasicStats(),
+        fetchTasks(),
+        fetchTodosData(),
+        fetchTeamData(),
+        fetchOverdueData(),
+        fetchEquipmentData()
+      ]);
 
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('Error in fetchDashboardData:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   const handleTodoUpdate = async (id, data) => {
     try {
       await api.patch(`/todos/${id}`, data);
-      fetchDashboardData();
+      fetchDashboardData(true);
     } catch (err) {
       console.error('Failed to update todo:', err);
     }
@@ -602,7 +621,7 @@ const CompanyAdminDashboard = () => {
     try {
       if (window.confirm('Delete this todo?')) {
         await api.delete(`/todos/${id}`);
-        fetchDashboardData();
+        fetchDashboardData(true);
       }
     } catch (err) {
       console.error('Failed to delete todo:', err);
@@ -1055,14 +1074,15 @@ const CompanyAdminDashboard = () => {
           )}
 
           {/* Quick To-Do Section - Independent of Projects */}
-          {/* <QuickTodoWidget
+          <QuickTodoWidget
             users={teamMembers}
             currentUser={user}
             onTaskCreated={fetchDashboardData}
-          /> */}
+            showToast={showToast}
+          />
 
           {/* Dynamic To-Do Lists Layout */}
-          {/* <div className={`grid grid-cols-1 ${(['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role)) ? 'md:grid-cols-3' : ''} gap-6 mb-6`}>
+          <div className={`grid grid-cols-1 ${(['FOREMAN', 'PM', 'SUBCONTRACTOR'].includes(user?.role)) ? 'md:grid-cols-3' : ''} gap-6 mb-6`}>
             {!['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
               <div className="md:col-span-1">
                 <TodoList
@@ -1089,7 +1109,7 @@ const CompanyAdminDashboard = () => {
                 />
               </div>
             )}
-          </div> */}
+          </div>
 
           {/* Assigned Jobs - For Subcontractors & Foremen */}
           {(isForeman || isSubcontractor) && metrics.myJobs?.length > 0 && (
@@ -1269,145 +1289,7 @@ const CompanyAdminDashboard = () => {
           )}
 
           {/* Live Crew Activity Table */}
-          {(isOwnerOrPM || isForeman) && (
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="text-lg font-black text-slate-800 tracking-tight">Live Crew Activity</h3>
-              </div>
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Employee</th>
-                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Job</th>
-                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Clock In</th>
-                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                      <th className="px-5 py-3 text-[11px] font-black text-slate-500 uppercase tracking-widest">GPS</th>
-                      <th className="px-5 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {crewActivity
-                      .filter(member => {
-                        if (isForeman) {
-                          // Foreman only sees themselves
-                          return member.name.toLowerCase().includes(user?.fullName?.split(' ')[0].toLowerCase());
-                        }
-                        return true; // Admin/PM see everyone
-                      })
-                      .map((member, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 border border-slate-300">
-                              {member.avatar}
-                            </div>
-                            <span className="text-sm font-bold text-slate-900">{member.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-sm font-bold text-slate-600">{member.job}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-slate-900">{member.time}</span>
-                            {member.subtext && <span className="text-[10px] text-slate-400 font-bold">{member.subtext}</span>}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${member.status === 'On Site' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
-                            }`}>
-                            {member.status === 'On Site' ? <CheckCircle size={12} /> : <X size={12} />}
-                            {member.status}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3">
-                          <button
-                            onClick={() => {
-                              if (member.lat && member.lng) {
-                                window.open(`https://www.google.com/maps?q=${member.lat},${member.lng}`, '_blank');
-                              } else {
-                                window.open(`https://www.google.com/maps/search/?api=1&query=my+location`, '_blank');
-                              }
-                            }}
-                            title={member.lat ? `View location: ${member.lat.toFixed(4)}, ${member.lng.toFixed(4)}` : 'No GPS recorded'}
-                            className="group flex items-center gap-1.5 text-xs font-black text-emerald-600 hover:text-emerald-700 transition-all"
-                          >
-                            <div className="relative">
-                              <MapPin size={15} className="text-emerald-500 group-hover:scale-125 transition-transform" />
-                              {member.lat && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-pulse border border-white" />}
-                            </div>
-                            <span className="hidden sm:inline">{member.lat ? 'View' : 'N/A'}</span>
-                          </button>
-                        </td>
-                        <td className="px-5 py-3">
-                          <div className={`w-12 h-8 rounded border overflow-hidden text-[8px] flex items-center justify-center font-black ${member.status === 'On Site' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-400'
-                            }`}>
-                            {member.status === 'On Site' ? '● LIVE' : 'OUT'}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {crewActivity.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className="px-6 py-10 text-center text-slate-400 text-sm font-bold">No crew activity found today.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
 
-              {/* Mobile Card View */}
-              <div className="md:hidden divide-y divide-slate-100">
-                {crewActivity
-                  .filter(member => {
-                    if (isForeman) {
-                      return member.name.toLowerCase().includes(user?.fullName?.split(' ')[0].toLowerCase());
-                    }
-                    return true;
-                  })
-                  .map((member, i) => (
-                  <div key={i} className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-600 border border-slate-200">
-                          {member.avatar}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900">{member.name}</p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{member.job}</p>
-                        </div>
-                      </div>
-                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${member.status === 'On Site' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                        {member.status}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 bg-slate-50 p-3 rounded-xl px-4">
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-blue-500" />
-                        <span>In: {member.time}</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (member.lat && member.lng) {
-                            window.open(`https://www.google.com/maps?q=${member.lat},${member.lng}`, '_blank');
-                          } else {
-                            window.open(`https://www.google.com/maps/search/?api=1&query=my+location`, '_blank');
-                          }
-                        }}
-                        className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 transition-colors"
-                      >
-                        <div className="relative">
-                          <MapPin size={13} className="text-emerald-500" />
-                          {member.lat && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />}
-                        </div>
-                        <span>{member.lat ? 'View on Map' : 'No GPS'}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
 
         </div>
