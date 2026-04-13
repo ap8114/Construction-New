@@ -724,19 +724,21 @@ const CompanyAdminDashboard = () => {
         let pId = null;
         let tId = null;
         let jId = null;
+        let taskType = null;
 
         if (selectedAssignment.startsWith('task_')) {
           tId = selectedAssignment.replace('task_', '');
           const tMatch = workerMetrics.assignedTasks?.find(t => t._id === tId);
           if (tMatch) {
-            pId = tMatch.projectId;
-            jId = tMatch.jobId;
+            pId = tMatch.projectId?._id || tMatch.projectId;
+            jId = tMatch.jobId?._id || tMatch.jobId;
+            taskType = tMatch.type || 'JobTask';
           }
         } else if (selectedAssignment.startsWith('project_')) {
           pId = selectedAssignment.replace('project_', '');
           const pMatch = workerMetrics.assignedProjects?.find(p => p._id === pId);
           if (pMatch) {
-            jId = pMatch.jobId;
+            jId = pMatch.jobId?._id || pMatch.jobId;
           }
         }
 
@@ -745,6 +747,7 @@ const CompanyAdminDashboard = () => {
           projectId: pId,
           jobId: jId,
           taskId: tId,
+          taskType: taskType,
           reason: selectedAssignment === 'random' ? clockInReason : undefined,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
@@ -961,7 +964,7 @@ const CompanyAdminDashboard = () => {
                     {workerMetrics.assignedTasks?.length > 0 && <optgroup label="My Tasks">
                       {workerMetrics.assignedTasks.map(t => (
                         <option key={`task_${t._id}`} value={`task_${t._id}`}>
-                          Task: {t.title} ({t.jobName})
+                          {t.type === 'SubTask' ? 'Sub: ' : t.type === 'Task' ? 'Global: ' : 'Task: '}{t.title} ({t.jobName} / {t.projectName})
                         </option>
                       ))}
                     </optgroup>}

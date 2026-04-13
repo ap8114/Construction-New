@@ -46,21 +46,7 @@ const WorkerPunch = () => {
                 }
 
                 // Fetch tasks for the dropdown (same as dashboard)
-                try {
-                    const [jobTasksRes, globalTasksRes] = await Promise.all([
-                        api.get('/job-tasks/worker'),
-                        api.get('/tasks/my-tasks')
-                    ]);
-                    const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
-                        ...t,
-                        isGlobal: true,
-                        jobName: t.projectId?.name || 'Global'
-                    }));
-                    const combined = [...(jobTasksRes.data || []), ...normalizedGlobal];
-                    setAssignedTasks(combined);
-                } catch (taskErr) {
-                    console.error('Error fetching tasks for punch page:', taskErr);
-                }
+                    setAssignedTasks(statsRes.data.workerMetrics.assignedTasks || []);
 
                 const res = await api.get('/timelogs');
                 // Filter logs for this user
@@ -199,6 +185,7 @@ const WorkerPunch = () => {
                 let pId = null;
                 let tId = null;
                 let jId = null;
+                let taskType = null;
 
                 if (selectedAssignment.startsWith('task_')) {
                     tId = selectedAssignment.replace('task_', '');
@@ -206,6 +193,7 @@ const WorkerPunch = () => {
                     if (tMatch) {
                         pId = tMatch.projectId?._id || tMatch.projectId;
                         jId = tMatch.jobId?._id || tMatch.jobId;
+                        taskType = tMatch.type || 'JobTask';
                     }
                 } else if (selectedAssignment.startsWith('project_')) {
                     pId = selectedAssignment.replace('project_', '');
@@ -220,6 +208,7 @@ const WorkerPunch = () => {
                     projectId: pId,
                     taskId: tId,
                     jobId: jId,
+                    taskType: taskType,
                     reason: selectedAssignment === 'random' ? clockInReason : undefined,
                     latitude: coords?.latitude,
                     longitude: coords?.longitude,
@@ -366,7 +355,7 @@ const WorkerPunch = () => {
                                         <optgroup label="My Tasks">
                                             {assignedTasks.map(t => (
                                                 <option key={`task_${t._id}`} value={`task_${t._id}`}>
-                                                    Task: {t.title} ({t.jobName || t.jobId?.name || 'Assigned Job'})
+                                                    {t.type === 'SubTask' ? 'Sub: ' : t.type === 'Task' ? 'Global: ' : 'Task: '}{t.title} ({t.jobName} / {t.projectName})
                                                 </option>
                                             ))}
                                         </optgroup>
