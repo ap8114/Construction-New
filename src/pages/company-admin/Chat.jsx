@@ -39,24 +39,45 @@ const Chat = () => {
         scrollToBottom();
     }, [messages]);
 
+    // Use a ref for activeRoom to access it in the socket listener without causing re-connections
+    const activeRoomRef = useRef(activeRoom);
     useEffect(() => {
+        activeRoomRef.current = activeRoom;
+    }, [activeRoom]);
+
+    useEffect(() => {
+        if (!user) return;
+
         const token = localStorage.getItem('token');
         const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
 
-        socketRef.current = io(socketUrl, { auth: { token } });
+        // Initialize socket only if it doesn't exist
+        if (!socketRef.current) {
+            socketRef.current = io(socketUrl, { 
+                auth: { token },
+                transports: ['websocket', 'polling'], // Fallback mechanism
+                reconnection: true
+            });
+        }
 
-        socketRef.current.on('connect', () => {
-            socketRef.current.emit('register_user', user);
-        });
+        const socket = socketRef.current;
 
-        socketRef.current.on('online_users_count', (count) => {
-            setOnlineCount(count);
-        });
+        const handleConnect = () => {
+            console.log('Real-time channel established');
+            socket.emit('register_user', user);
+            // Re-join known rooms if we reconnect
+            rooms.forEach(room => {
+                socket.emit('join_room', room.id || room._id);
+            });
+        };
 
-        socketRef.current.on('new_message', (payload) => {
+        const handleNewMessage = (payload) => {
+            // Update rooms preview list regardless of active room
             setRooms(prev => {
                 const currentRooms = Array.isArray(prev) ? prev : [];
-                const roomIndex = currentRooms.findIndex(r => r.id === payload.roomId);
+                // Handle different roomId formats (string vs object)
+                const payloadRoomId = typeof payload.roomId === 'object' ? payload.roomId._id : payload.roomId;
+                const roomIndex = currentRooms.findIndex(r => r.id === payloadRoomId);
                 if (roomIndex === -1) return currentRooms;
 
                 const room = { ...currentRooms[roomIndex] };
@@ -65,19 +86,42 @@ const Chat = () => {
                     sender: payload.sender?.fullName || 'Unknown',
                     time: payload.createdAt
                 };
-                room.unreadCount = (activeRoom?.id === payload.roomId) ? 0 : (room.unreadCount || 0) + 1;
+                
+                // Use the ref to check against latest activeRoom
+                const currentActiveRoom = activeRoomRef.current;
+                room.unreadCount = (currentActiveRoom?.id === payloadRoomId) ? 0 : (room.unreadCount || 0) + 1;
 
-                const otherRooms = currentRooms.filter(r => r.id !== payload.roomId);
+                const otherRooms = currentRooms.filter(r => r.id !== payloadRoomId);
                 return [room, ...otherRooms];
             });
 
             const isIncoming = payload.sender?._id !== user?._id && payload.sender !== user?._id;
+            const currentActiveRoom = activeRoomRef.current;
+            const payloadRoomId = typeof payload.roomId === 'object' ? payload.roomId._id : payload.roomId;
             
-            if (activeRoom && payload.roomId === activeRoom.id) {
+            if (currentActiveRoom && payloadRoomId === currentActiveRoom.id) {
                 setMessages(prev => {
                     const currentMessages = Array.isArray(prev) ? prev : [];
+                    
+                    // 1. Exact ID Deduplication (already processed or from server sync)
                     if (currentMessages.some(m => m.id === payload._id)) return currentMessages;
 
+                    // 2. Optimistic Deduplication (If I sent this and it's already in list as 'pending')
+                    if (!isIncoming) {
+                        const pendingIndex = currentMessages.findIndex(m => m.pending && m.text === payload.message);
+                        if (pendingIndex !== -1) {
+                            const updated = [...currentMessages];
+                            updated[pendingIndex] = {
+                                ...updated[pendingIndex],
+                                id: payload._id,
+                                pending: false,
+                                time: new Date(payload.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            };
+                            return updated;
+                        }
+                    }
+
+                    // 3. New message (Incoming or just not found in local state)
                     return [...currentMessages, {
                         id: payload._id,
                         sender: payload.sender?.fullName || 'Unknown',
@@ -88,16 +132,17 @@ const Chat = () => {
                         isMe: !isIncoming
                     }];
                 });
-                api.put(`/chat/mark-read/${activeRoom.id}`).catch(() => {});
+                api.put(`/chat/mark-read/${currentActiveRoom.id}`).catch(() => {});
                 if (isIncoming) playSound('MESSAGE_RECEIVED');
             } else {
                 if (isIncoming) playSound('MESSAGE_RECEIVED');
             }
-        });
+        };
 
-        socketRef.current.on('new_notification', (notif) => {
+        const handleNotification = (notif) => {
             if (notif.type === 'chat') {
-                if (!activeRoom || notif.roomId !== activeRoom.id) {
+                const currentActiveRoom = activeRoomRef.current;
+                if (!currentActiveRoom || notif.roomId !== currentActiveRoom.id) {
                     setRooms(prev => {
                         const currentRooms = Array.isArray(prev) ? prev : [];
                         const roomIndex = currentRooms.findIndex(r => r.id === notif.roomId);
@@ -113,12 +158,28 @@ const Chat = () => {
                     playSound('NOTIFICATION');
                 }
             }
-        });
+        };
+
+        const handleOnlineCount = (count) => setOnlineCount(count);
+
+        // Register listeners
+        socket.on('connect', handleConnect);
+        socket.on('new_message', handleNewMessage);
+        socket.on('new_notification', handleNotification);
+        socket.on('online_users_count', handleOnlineCount);
+
+        // If already connected, register user immediately
+        if (socket.connected) handleConnect();
 
         return () => {
-            if (socketRef.current) socketRef.current.disconnect();
+            socket.off('connect', handleConnect);
+            socket.off('new_message', handleNewMessage);
+            socket.off('new_notification', handleNotification);
+            socket.off('online_users_count', handleOnlineCount);
+            // We only fully disconnect if the user or component unmounts
+            // This allows the socket to persist across room changes
         };
-    }, [user, activeRoom?.id]);
+    }, [user?._id]);
 
     const fetchDirectoryUsers = async () => {
         try {

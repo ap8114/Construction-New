@@ -331,22 +331,26 @@ const Projects = () => {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const isJobView = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
-
-      const [projRes, clientRes, usersRes, jobsRes] = await Promise.all([
-        api.get('/projects'),
-        api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
-        api.get('/auth/users').catch(() => ({ data: [] })),
-        isJobView ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-      ]);
-
+      // High Priority: Projects list
+      const projRes = await api.get('/projects');
       setProjects(projRes.data || []);
-      setClients(clientRes.data || []);
-      setAllUsers(usersRes.data || []);
-      if (isJobView) setJobs(jobsRes.data || []);
+      setLoading(false); // Move to false as soon as we have projects
+
+      // Low Priority: Secondary data for modals and workers
+      const isJobView = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
+      
+      Promise.all([
+        api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
+        api.get('/auth/users?role=PM').catch(() => ({ data: [] })),
+        isJobView ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      ]).then(([clientRes, usersRes, jobsRes]) => {
+        setClients(clientRes.data || []);
+        setAllUsers(usersRes.data || []);
+        if (isJobView) setJobs(jobsRes.data || []);
+      });
+
     } catch (err) {
       console.error('Projects fetch error:', err);
-    } finally {
       setLoading(false);
     }
   };

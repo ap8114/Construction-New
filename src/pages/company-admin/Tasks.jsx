@@ -47,7 +47,7 @@ const TopScrollbar = ({ containerRef }) => {
                 setTableWidth(table.scrollWidth);
             }
         });
-        
+
         const table = container.querySelector('table');
         if (table) {
             resizeObserver.observe(table);
@@ -62,7 +62,7 @@ const TopScrollbar = ({ containerRef }) => {
     }, [containerRef]);
 
     return (
-        <div 
+        <div
             ref={topScrollRef}
             className="w-full overflow-x-auto border-b border-slate-100 sticky top-0 z-[30] bg-white scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent h-3 cursor-pointer"
             style={{ borderRadius: '24px 24px 0 0' }}
@@ -260,7 +260,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
 // ─── Sortable Template Item ───────────────────────────────────────────────────
 const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, setEditingTemplate, setTemplateFormData, setIsSaveTemplateModalOpen, api, fetchTemplates, priorityStyles, user, setFormData, setSubTasksList, setIsTemplateModalOpen, setIsModalOpen }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tmpl._id });
-    
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -270,22 +270,22 @@ const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, s
     };
 
     return (
-        <div 
-            ref={setNodeRef} 
+        <div
+            ref={setNodeRef}
             style={style}
             className={`bg-white border hover:shadow-md transition-all rounded-xl p-3 flex justify-between items-center group ${selectedTemplates.has(tmpl._id) ? 'border-blue-500 bg-blue-50/5' : 'border-slate-200 hover:border-blue-200'} ${isDragging ? 'shadow-2xl ring-2 ring-blue-500/20' : ''}`}
         >
             <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className="flex items-center gap-3">
-                    <div 
-                        {...attributes} 
-                        {...listeners} 
+                    <div
+                        {...attributes}
+                        {...listeners}
                         className="p-1.5 hover:bg-slate-100 rounded text-slate-300 hover:text-slate-500 transition-colors cursor-grab active:cursor-grabbing"
                     >
                         <GripVertical size={14} />
                     </div>
                     <div className="shrink-0" onClick={e => e.stopPropagation()}>
-                        <input 
+                        <input
                             type="checkbox"
                             checked={selectedTemplates.has(tmpl._id)}
                             onChange={(e) => handleSelectTemplate(tmpl._id, e.target.checked)}
@@ -315,7 +315,7 @@ const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, s
                     </div>
                 </div>
             </div>
-            
+
             <div className="flex items-center gap-4 shrink-0 ml-4">
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -398,12 +398,12 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
             <div className="p-3 space-y-3 overflow-y-auto max-h-[1200px] hide-scrollbar-y px-5">
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     {colTasks.map(task => (
-                        <DraggableTask 
-                            key={task._id || task.id} 
-                            task={task} 
-                            onEdit={onEdit} 
-                            onDelete={onDelete} 
-                            onClick={onTaskClick} 
+                        <DraggableTask
+                            key={task._id || task.id}
+                            task={task}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onClick={onTaskClick}
                             isHighlighted={highlightTaskId === (task._id || task.id)}
                         />
                     ))}
@@ -440,7 +440,7 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                 className={`hover:bg-slate-50/50 cursor-pointer transition-colors group ${props.urgency === 'overdue' ? 'bg-red-50/30' : props.urgency === 'due-soon' ? 'bg-yellow-50/20' : ''} ${isDragging ? 'shadow-2xl' : ''} ${isHighlighted ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/20 relative z-[20]' : ''}`}
             >
                 <td className="w-10 px-4 py-2.5" onClick={e => e.stopPropagation()}>
-                    <input 
+                    <input
                         type="checkbox"
                         checked={props.isSelected}
                         onChange={(e) => props.onSelect(task._id, e.target.checked)}
@@ -535,8 +535,8 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                 {props.canManage && (
                     <td className="px-4 py-2.5 text-right">
                         <div className="flex justify-end gap-1">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); props.onSaveAsTemplate && props.onSaveAsTemplate(task); }} 
+                            <button
+                                onClick={(e) => { e.stopPropagation(); props.onSaveAsTemplate && props.onSaveAsTemplate(task); }}
                                 title="Save as Template"
                                 className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
                             >
@@ -652,7 +652,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
-const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName, isSelected, onSelect }) => {
+const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName, isSelected, onSelect, setNodeRef, style, attributes, listeners }) => {
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -711,18 +711,31 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     return (
         <React.Fragment>
             {/* ── Subtask Row ── */}
-            <tr className={`bg-white hover:bg-slate-50/40 transition-colors border-b border-slate-50 relative group`}>
+            <tr
+                ref={setNodeRef}
+                style={style}
+                className={`bg-white hover:bg-slate-50/40 transition-colors border-b border-slate-50 relative group`}
+            >
                 {/* Selection Checkbox */}
                 <td className="w-10 px-4 py-2.5">
-                    <input 
+                    <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => onSelect(subTask._id, e.target.checked)}
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                 </td>
-                {/* Grip placeholder column (Column 1) */}
-                <td className="w-10 px-4 py-2.5" />
+                {/* Grip column (Column 1) */}
+                <td className="w-10 px-4 py-2.5">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        onClick={e => e.stopPropagation()}
+                        className="p-1 hover:bg-slate-200 rounded-md text-slate-300 hover:text-slate-600 transition-colors cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100"
+                    >
+                        <GripVertical size={14} />
+                    </div>
+                </td>
 
                 {/* Task — indent + toggle + checkbox + title (Column 2) */}
                 <td className="py-2.5 px-4 relative" style={{ paddingLeft: `${indentPx}px` }}>
@@ -1311,6 +1324,32 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
     );
 };
 
+// ─── Sortable SubTask Row wrapper ─────────────────────────────────────────────
+const SortableSubTaskRow = (props) => {
+    const { subTask } = props;
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: subTask._id || subTask.id
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.3 : 1,
+        position: isDragging ? 'relative' : 'static',
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    return (
+        <SubTaskTableRow
+            {...props}
+            setNodeRef={setNodeRef}
+            style={style}
+            attributes={attributes}
+            listeners={listeners}
+        />
+    );
+};
+
 // ─── Main Tasks Page ───────────────────────────────────────────────────────────
 const Tasks = () => {
     const { user } = useAuth();
@@ -1350,8 +1389,8 @@ const Tasks = () => {
     useEffect(() => {
         if (highlightTaskId && !loading && tasks.length > 0) {
             const timer = setTimeout(() => {
-                const element = document.getElementById(`task-row-${highlightTaskId}`) || 
-                               document.getElementById(`task-card-${highlightTaskId}`);
+                const element = document.getElementById(`task-row-${highlightTaskId}`) ||
+                    document.getElementById(`task-card-${highlightTaskId}`);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
@@ -1416,6 +1455,12 @@ const Tasks = () => {
     const [isSubTaskDeleteModalOpen, setIsSubTaskDeleteModalOpen] = useState(false);
     const [subTaskToDeleteInfo, setSubTaskToDeleteInfo] = useState(null);
 
+    // Bulk Apply States
+    const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
+    const [bulkApplyProject, setBulkApplyProject] = useState('');
+    const [bulkApplyJob, setBulkApplyJob] = useState('');
+    const [bulkJobs, setBulkJobs] = useState([]);
+
     // Filters
     const [filterStatus, setFilterStatus] = useState('');
     const [filterRole, setFilterRole] = useState('');
@@ -1446,6 +1491,24 @@ const Tasks = () => {
         };
         fetchJobs();
     }, [formData.projectId]);
+
+    useEffect(() => {
+        const fetchBulkJobs = async () => {
+            if (!bulkApplyProject) {
+                setBulkJobs([]);
+                setBulkApplyJob('');
+                return;
+            }
+            try {
+                const res = await api.get(`/jobs?projectId=${bulkApplyProject}`);
+                setBulkJobs(res.data);
+            } catch (err) {
+                console.error('Error fetching bulk jobs:', err);
+                setBulkJobs([]);
+            }
+        };
+        fetchBulkJobs();
+    }, [bulkApplyProject]);
 
     const [newSubTask, setNewSubTask] = useState({
         title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium'
@@ -1524,6 +1587,65 @@ const Tasks = () => {
         }
     };
 
+    const handleBulkUseTemplates = () => {
+        if (selectedTemplates.size === 0) return;
+        setBulkApplyProject('');
+        setBulkApplyJob('');
+        setIsBulkApplyModalOpen(true);
+        setIsTemplateModalOpen(false);
+    };
+
+    const confirmBulkApply = async () => {
+        if (!bulkApplyProject) {
+            toast.error('Please select a project');
+            return;
+        }
+        try {
+            setIsSubmitting(true);
+            const selected = templates.filter(t => selectedTemplates.has(t._id));
+
+            const promises = selected.map(tmpl => {
+                const basicPayload = {
+                    title: tmpl.taskTitle,
+                    description: tmpl.description || '',
+                    priority: tmpl.priority || 'Medium',
+                    assignedRoleType: tmpl.assignedRole,
+                    projectId: bulkApplyProject,
+                    status: 'todo',
+                    category: 'TASK',
+                    subTasksList: tmpl.steps || []
+                };
+
+                if (bulkApplyJob) {
+                    return api.post('/job-tasks', {
+                        ...basicPayload,
+                        jobId: bulkApplyJob,
+                        priority: basicPayload.priority.toLowerCase(),
+                        status: 'pending',
+                        assignedTo: undefined // Match existing logic
+                    });
+                } else {
+                    return api.post('/tasks', {
+                        ...basicPayload,
+                        assignedTo: []
+                    });
+                }
+            });
+
+            await Promise.all(promises);
+            toast.success(`Successfully created ${selected.length} separate tasks!`);
+            setIsBulkApplyModalOpen(false);
+            setSelectedTemplates(new Set());
+            fetchData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
+        } catch (err) {
+            console.error('Bulk apply error:', err);
+            toast.error(err.response?.data?.message || 'Failed to apply templates');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleBulkDeleteTemplates = () => {
         if (selectedTemplates.size === 0) return;
         setIsBulkDeleteTemplateModalOpen(true);
@@ -1554,7 +1676,7 @@ const Tasks = () => {
         try {
             setIsSubmitting(true);
             setIsBulkSaveConfirmModalOpen(false);
-            
+
             // All tasks and subtasks flat list
             const allTasksFull = [...tasks];
             Object.values(subTasksMap).forEach(list => allTasksFull.push(...list));
@@ -1563,13 +1685,13 @@ const Tasks = () => {
             const topMostSelected = Array.from(selectedTasks).filter(id => {
                 const task = allTasksFull.find(t => (t._id || t.id) === id);
                 if (!task) return false;
-                
+
                 // If it has a parent in the selection, skip it (because parent will include it)
                 let current = task;
                 while (current) {
                     const pid = current.parentSubTaskId || current.taskId || current.parentTask?._id || current.parentTask?.id;
                     if (pid && selectedTasks.has(pid)) return false;
-                    
+
                     // Traverse up
                     if (pid) {
                         current = allTasksFull.find(t => (t._id || t.id) === pid);
@@ -1582,9 +1704,9 @@ const Tasks = () => {
 
             const promises = topMostSelected.map(taskId => {
                 const task = allTasksFull.find(t => (t._id || t.id) === taskId);
-                return api.post('/task-templates/from-task', { 
-                    taskId, 
-                    isJobTask: !!task?.isJobTask 
+                return api.post('/task-templates/from-task', {
+                    taskId,
+                    isJobTask: !!task?.isJobTask
                 });
             });
 
@@ -1643,7 +1765,7 @@ const Tasks = () => {
 
         if (oldIndex !== -1 && newIndex !== -1) {
             const newOrderedTemplates = arrayMove(templates, oldIndex, newIndex);
-            
+
             // Optimistic UI update
             setTemplates(newOrderedTemplates);
 
@@ -1652,7 +1774,7 @@ const Tasks = () => {
                     id: t._id,
                     position: idx
                 }));
-                
+
                 await api.post('/task-templates/reorder', { templates: reorderPayload });
                 toast.success('Templates reordered');
             } catch (error) {
@@ -1727,15 +1849,20 @@ const Tasks = () => {
         const currentUserId = user?._id || user?.id;
         if (!currentUserId) return false;
 
-        // Check assignedTo array (from Task or mapped JobTask)
-        const assignedIds = Array.isArray(task.assignedTo)
-            ? task.assignedTo.map(u => (u._id || u.id || u).toString())
-            : (task.assignedTo ? [(task.assignedTo._id || task.assignedTo.id || task.assignedTo).toString()] : []);
+        const checkMe = (t) => {
+            const assignedIds = Array.isArray(t.assignedTo)
+                ? t.assignedTo.map(u => (u._id || u.id || u).toString())
+                : (t.assignedTo ? [(t.assignedTo._id || t.assignedTo.id || t.assignedTo).toString()] : []);
+            if (assignedIds.includes(currentUserId.toString())) return true;
+            if (t.createdBy === currentUserId.toString() || t.createdBy?._id === currentUserId.toString()) return true;
+            return false;
+        };
 
-        if (assignedIds.includes(currentUserId.toString())) return true;
+        if (checkMe(task)) return true;
 
-        // Check if user is creator
-        if (task.createdBy === currentUserId.toString() || task.createdBy?._id === currentUserId.toString()) return true;
+        // Check assigned children if any (helps parent show up in List view if child is assigned)
+        const children = task.subTasks || subTasksMap[task._id || task.id] || [];
+        if (children.some(checkMe)) return true;
 
         return false;
     };
@@ -1813,15 +1940,48 @@ const Tasks = () => {
                 if (flat.some(f => (f._id || f.id) === subId)) return;
 
                 flat.push({ ...t, parentTaskTitle: parentTitle });
-                const subs = t.subTasks || subTasksMap[subId] || [];
+
+                // Merge subtasks from inline t.subTasks and the loaded subTasksMap
+                // Prioritize whatever has data to prevent "disappearing" on empty refreshes
+                const subsFromTask = t.subTasks || [];
+                const subsFromMap = subTasksMap[subId] || [];
+                const subs = subsFromTask.length > 0 ? subsFromTask : subsFromMap;
+
                 if (subs.length > 0) process(subs, t.title);
             });
         };
-        // Fallback to filteredTasks so root tasks appear immediately on reload
-        const source = filteredScheduleTasks.length > 0 ? filteredScheduleTasks : filteredTasks;
-        process(source);
-        return flat;
-    }, [filteredTasks, filteredScheduleTasks, subTasksMap]);
+
+        // Start processing from both sources to ensure we catch all potential tasks
+        // We use the UNFILTERED results as base for flattening so we don't skip children
+        // whose parents might have been filtered out (e.g. parent not assigned to worker)
+        process([...scheduleTasks, ...tasks]);
+
+        // NOW filter the flat list for what should actually appear on the board
+        return flat.filter(task => {
+            // Apply similar logic to filteredTasks but on the flattened individual items
+            const matchSearch = !searchTerm ||
+                String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+            const matchStatus = !filterStatus || task.status === filterStatus;
+            const matchRole = !filterRole || task.assignedRoleType === filterRole;
+            const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
+            const matchCategory = !filterCategory || task.category === filterCategory;
+
+            // Important for Worker Dashboard: only show tasks they are involved in if on 'my_tasks'
+            const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
+
+            let matchDue = true;
+            if (task.dueDate) {
+                const due = new Date(task.dueDate);
+                if (filterDueFrom) matchDue = matchDue && due >= new Date(filterDueFrom);
+                if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
+            }
+
+            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
+        });
+    }, [tasks, scheduleTasks, subTasksMap, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
     const handleTaskUpdate = async (taskId, updates, isSubTask = false, activeTask = null) => {
         try {
             if (isSubTask) {
@@ -1882,8 +2042,15 @@ const Tasks = () => {
     useEffect(() => {
         if (['kanban', 'gantt', 'calendar'].includes(view)) {
             fetchScheduleData();
+
+            // For Kanban view, if we have tasks with sub-tasks that aren't loaded yet, fetch them
+            // This ensures workers see all their sub-tasks on the board immediately
+            if (view === 'kanban') {
+                const tasksWithSubs = tasks.filter(t => t.subTaskCount > 0 && !subTasksMap[t._id]);
+                tasksWithSubs.forEach(t => fetchSubTasks(t._id, false));
+            }
         }
-    }, [view, filterProject, filterStatus, filterRole, filterCategory]);
+    }, [view, filterProject, filterStatus, filterRole, filterCategory, tasks]);
 
     // Stats
     const stats = useMemo(() => ({
@@ -1915,7 +2082,6 @@ const Tasks = () => {
                 });
 
                 try {
-                    console.log('DRAG_EVENT: Reordering', newOrderedTasks.length, 'tasks');
                     const reorderPayload = newOrderedTasks.map((t, idx) => ({
                         id: t._id || t.id,
                         position: idx,
@@ -1923,13 +2089,55 @@ const Tasks = () => {
                         isJobTask: !!t.isJobTask,
                         isSubTask: !!t.isSubTask
                     }));
-                    console.log('DRAG_EVENT: Payload:', reorderPayload);
-                    
+
                     await api.patch('/tasks/reorder', { tasks: reorderPayload });
-                    console.log('DRAG_EVENT: Reorder call successful');
                 } catch (error) {
-                    console.error('DRAG_EVENT: Failed to reorder tasks:', error);
+                    console.error('Failed to reorder tasks:', error);
                     fetchData();
+                }
+            } else {
+                // Check if it's a sub-task reorder
+                let activeParentId = null;
+                let activeTask = null;
+
+                // Find the dragged subtask and its root parent task
+                for (const rootId in subTasksMap) {
+                    const list = subTasksMap[rootId];
+                    const found = list.find(st => (st._id || st.id) === activeId);
+                    if (found) {
+                        activeParentId = rootId;
+                        activeTask = found;
+                        break;
+                    }
+                }
+
+                if (activeParentId && activeTask) {
+                    const list = subTasksMap[activeParentId];
+                    const oldSTIndex = list.findIndex(st => (st._id || st.id) === activeId);
+                    const newSTIndex = list.findIndex(st => (st._id || st.id) === overId);
+
+                    if (oldSTIndex !== -1 && newSTIndex !== -1) {
+                        const newOrderedSubTasks = arrayMove(list, oldSTIndex, newSTIndex);
+
+                        // Optimistic UI update
+                        setSubTasksMap(prev => ({ ...prev, [activeParentId]: newOrderedSubTasks }));
+
+                        try {
+                            const reorderPayload = newOrderedSubTasks.map((st, idx) => ({
+                                id: st._id || st.id,
+                                position: idx,
+                                status: st.status,
+                                isSubTask: true
+                            }));
+
+                            await api.patch('/tasks/reorder', { tasks: reorderPayload });
+                            toast.success('Subtasks reordered');
+                        } catch (error) {
+                            console.error('Failed to reorder subtasks:', error);
+                            fetchSubTasks(activeParentId);
+                            toast.error('Failed to save subtask order');
+                        }
+                    }
                 }
             }
             return;
@@ -2033,11 +2241,11 @@ const Tasks = () => {
     const confirmSubTaskDelete = async () => {
         if (!subTaskToDeleteInfo) return;
         const { subTask, taskId } = subTaskToDeleteInfo;
-        
+
         try {
             setIsSubmitting(true);
             await api.delete(`/tasks/${taskId}/subtasks/${subTask._id}`);
-            
+
             // Handle List View map update
             setSubTasksMap(prev => {
                 const current = prev[taskId] || [];
@@ -2193,7 +2401,7 @@ const Tasks = () => {
     const handleQuickSubTaskSave = async (taskId, subTaskData) => {
         try {
             setIsSubmittingSubTask(true);
-const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
+            const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
 
             // Update local map
             setSubTasksMap(prev => ({
@@ -2300,7 +2508,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                     {canManage && (
                         <div className="flex gap-2 shrink-0">
                             {selectedTasks.size > 0 && (
-                                <button 
+                                <button
                                     onClick={handleBulkSaveAsTemplate}
                                     disabled={isSubmitting}
                                     className="bg-emerald-600 text-white px-4 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-emerald-700 transition shadow-lg shadow-emerald-200 font-black text-[10px] uppercase tracking-tight"
@@ -2386,8 +2594,8 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         <button
                             onClick={() => setActiveTab('my_tasks')}
                             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'my_tasks'
-                                    ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             <UserCheck size={13} />
@@ -2396,8 +2604,8 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         <button
                             onClick={() => setActiveTab('all_tasks')}
                             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${activeTab === 'all_tasks'
-                                    ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                ? 'bg-white text-blue-600 shadow-md transform scale-[1.02]'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             <Users size={13} />
@@ -2438,146 +2646,150 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         ) : (
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-xl relative h-[calc(100vh-190px)] min-h-[600px] flex flex-col overflow-hidden group/container">
                                 <TopScrollbar containerRef={tableContainerRef} />
-                                <div 
+                                <div
                                     ref={tableContainerRef}
                                     className="flex-1 overflow-auto p-4 pt-0 custom-scrollbar-sync cursor-pointer"
                                 >
                                     <div className="w-full">
-                                  
-                                    <table className="text-left border-separate border-spacing-0 w-full" style={{ width: 'max-content', minWidth: '100%' }}>
-                                        <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
-                                            <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                <th className="w-10 px-4 py-3">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={isAllSelected}
-                                                        onChange={handleSelectAll}
-                                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                    />
-                                                </th>
-                                                <th className="w-10 px-4 py-3"></th>
-                                                {[
-                                                    { key: 'task', label: 'Task' },
-                                                    { key: 'project', label: 'Project' },
-                                                    { key: 'assignee', label: 'Assigned To' },
-                                                    { key: 'role', label: 'Role' },
-                                                    { key: 'status', label: 'Status' },
-                                                    { key: 'priority', label: 'Priority' },
-                                                    { key: 'startDate', label: 'Start Date' },
-                                                    { key: 'endDate', label: 'End Date' }
-                                                ].map(col => (
-                                                    <th
-                                                        key={col.key}
-                                                        className={`px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0 ${col.key === 'task' ? 'w-full' : ''}`}
-                                                       style={{ 
-    width: col.key === 'task' ? 'auto' : `${columnWidths[col.key]}px`, 
-    minWidth: col.key === 'task' ? '300px' : '50px' 
-}}
-                                                    >
-                                                        <div className="flex items-center justify-between pointer-events-none">
-                                                            <span className="truncate">{col.label}</span>
-                                                        </div>
-                                                        {/* Visible Resize Handle */}
-                                                        <div
-                                                            onMouseDown={(e) => handleResizeStart(e, col.key)}
-                                                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group-hover:bg-blue-400/30 active:bg-blue-600 transition-all z-20 flex justify-center items-center"
-                                                        >
-                                                            {/* Subtle Visual Line */}
-                                                            <div className="w-[1.5px] h-4 bg-slate-200 group-hover:bg-blue-400 active:bg-white rounded-full transition-colors opacity-0 group-hover:opacity-100" />
-                                                        </div>
-                                                    </th>
-                                                ))}
-                                                {canManage && <th className="px-4 py-3 text-right" style={{ width: `${columnWidths.actions}px` }}>Actions</th>}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            <SortableContext items={filteredTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
-                                                {filteredTasks.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={9} className="px-6 py-20 text-center">
-                                                            <div className="flex flex-col items-center gap-3 text-slate-300">
-                                                                <Layers size={36} />
-                                                                <p className="font-black uppercase tracking-widest text-xs">No tasks found</p>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ) : filteredTasks.map(task => {
-                                                    const urgency = getTaskUrgency(task);
-                                                    const isExpanded = expandedTasks.has(task._id);
-                                                    const taskSubTasks = subTasksMap[task._id] || [];
 
-                                                    return (
-                                                        <SortableTaskRow
-                                                            key={task._id}
-                                                            task={task}
-                                                            urgency={urgency}
-                                                            isExpanded={isExpanded}
-                                                            isSelected={selectedTasks.has(task._id)}
-                                                            isCompactView={isCompactView}
-                                                            columnWidths={columnWidths}
-                                                            canManage={canManage}
-                                                            isHighlighted={highlightTaskId === task._id}
-                                                            onTaskClick={openDetails}
-                                                            onSelect={handleSelectTask}
-                                                            onToggleExpansion={toggleTaskExpansion}
-                                                            onSaveAsTemplate={handleSaveAsTemplate}
-                                                            onEdit={openEdit}
-                                                            onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
-                                                            renderChildren={() => {
-                                                                const renderSubTaskRows = (parentId, depth, levelLines = [], currentProjectName) => {
-                                                                    const nodes = taskSubTasks.filter(st =>
-                                                                        parentId === null
-                                                                            ? !st.parentSubTaskId
-                                                                            : (st.parentSubTaskId === parentId || st.parentSubTaskId?._id === parentId)
-                                                                    );
-                                                                    return nodes.map((st, index) => (
-                                                                        <SubTaskTableRow
-                                                                            key={st._id}
-                                                                            subTask={st}
-                                                                            depth={depth}
-                                                                            isSelected={selectedTasks.has(st._id)}
-                                                                            allSubTasks={taskSubTasks}
-                                                                            taskId={task._id}
-                                                                            team={filteredTeamByRole}
-                                                                            canManage={canManage}
-                                                                            onSelect={handleSelectTask}
-                                                                            onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
-                                                                            onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
-                                                                            onAddChild={handleQuickSubTaskSave}
-                                                                            isSubmitting={isSubmittingSubTask}
-                                                                            renderChildren={renderSubTaskRows}
-                                                                            isLast={index === nodes.length - 1}
-                                                                            levelLines={levelLines}
-                                                                            isCompactView={isCompactView}
-                                                                            columnWidths={columnWidths}
-                                                                            projectName={currentProjectName}
-                                                                        />
-                                                                    ));
-                                                                };
-                                                                return (
-                                                                    <>
-                                                                        {renderSubTaskRows(null, 0, [true], task.projectId?.name || task.jobName || '—')}
-                                                                        {canManage && (
-                                                                            <QuickAddSubTask
-                                                                                taskId={task._id}
-                                                                                onSave={handleQuickSubTaskSave}
-                                                                                team={filteredTeamByRole}
-                                                                                isSubmitting={isSubmittingSubTask}
-                                                                            />
-                                                                        )}
-                                                                    </>
-                                                                );
-                                                            }}
+                                        <table className="text-left border-separate border-spacing-0 w-full" style={{ width: 'max-content', minWidth: '100%' }}>
+                                            <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+                                                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                    <th className="w-10 px-4 py-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isAllSelected}
+                                                            onChange={handleSelectAll}
+                                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                         />
-                                                    );
-                                                })}
-                                            </SortableContext>
-                                        </tbody>
-                                    </table>
+                                                    </th>
+                                                    <th className="w-10 px-4 py-3"></th>
+                                                    {[
+                                                        { key: 'task', label: 'Task' },
+                                                        { key: 'project', label: 'Project' },
+                                                        { key: 'assignee', label: 'Assigned To' },
+                                                        { key: 'role', label: 'Role' },
+                                                        { key: 'status', label: 'Status' },
+                                                        { key: 'priority', label: 'Priority' },
+                                                        { key: 'startDate', label: 'Start Date' },
+                                                        { key: 'endDate', label: 'End Date' }
+                                                    ].map(col => (
+                                                        <th
+                                                            key={col.key}
+                                                            className={`px-4 py-3 relative group select-none transition-colors border-r border-slate-100 last:border-r-0 ${col.key === 'task' ? 'w-full' : ''}`}
+                                                            style={{
+                                                                width: col.key === 'task' ? 'auto' : `${columnWidths[col.key]}px`,
+                                                                minWidth: col.key === 'task' ? '300px' : '50px'
+                                                            }}
+                                                        >
+                                                            <div className="flex items-center justify-between pointer-events-none">
+                                                                <span className="truncate">{col.label}</span>
+                                                            </div>
+                                                            {/* Visible Resize Handle */}
+                                                            <div
+                                                                onMouseDown={(e) => handleResizeStart(e, col.key)}
+                                                                className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group-hover:bg-blue-400/30 active:bg-blue-600 transition-all z-20 flex justify-center items-center"
+                                                            >
+                                                                {/* Subtle Visual Line */}
+                                                                <div className="w-[1.5px] h-4 bg-slate-200 group-hover:bg-blue-400 active:bg-white rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+                                                            </div>
+                                                        </th>
+                                                    ))}
+                                                    {canManage && <th className="px-4 py-3 text-right" style={{ width: `${columnWidths.actions}px` }}>Actions</th>}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                <SortableContext items={filteredTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
+                                                    {filteredTasks.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={9} className="px-6 py-20 text-center">
+                                                                <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                                    <Layers size={36} />
+                                                                    <p className="font-black uppercase tracking-widest text-xs">No tasks found</p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ) : filteredTasks.map(task => {
+                                                        const urgency = getTaskUrgency(task);
+                                                        const isExpanded = expandedTasks.has(task._id);
+                                                        const taskSubTasks = subTasksMap[task._id] || [];
+
+                                                        return (
+                                                            <SortableTaskRow
+                                                                key={task._id}
+                                                                task={task}
+                                                                urgency={urgency}
+                                                                isExpanded={isExpanded}
+                                                                isSelected={selectedTasks.has(task._id)}
+                                                                isCompactView={isCompactView}
+                                                                columnWidths={columnWidths}
+                                                                canManage={canManage}
+                                                                isHighlighted={highlightTaskId === task._id}
+                                                                onTaskClick={openDetails}
+                                                                onSelect={handleSelectTask}
+                                                                onToggleExpansion={toggleTaskExpansion}
+                                                                onSaveAsTemplate={handleSaveAsTemplate}
+                                                                onEdit={openEdit}
+                                                                onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
+                                                                renderChildren={() => {
+                                                                    const renderSubTaskRows = (parentId, depth, levelLines = [], currentProjectName) => {
+                                                                        const nodes = taskSubTasks.filter(st =>
+                                                                            parentId === null
+                                                                                ? !st.parentSubTaskId
+                                                                                : (st.parentSubTaskId === parentId || st.parentSubTaskId?._id === parentId)
+                                                                        );
+                                                                        return (
+                                                                            <SortableContext items={nodes.map(n => n._id)} strategy={verticalListSortingStrategy}>
+                                                                                {nodes.map((st, index) => (
+                                                                                    <SortableSubTaskRow
+                                                                                        key={st._id}
+                                                                                        subTask={st}
+                                                                                        depth={depth}
+                                                                                        isSelected={selectedTasks.has(st._id)}
+                                                                                        allSubTasks={taskSubTasks}
+                                                                                        taskId={task._id}
+                                                                                        team={filteredTeamByRole}
+                                                                                        canManage={canManage}
+                                                                                        onSelect={handleSelectTask}
+                                                                                        onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
+                                                                                        onUpdate={(s, updates) => handleSubTaskUpdateInList(task._id, s, updates)}
+                                                                                        onAddChild={handleQuickSubTaskSave}
+                                                                                        isSubmitting={isSubmittingSubTask}
+                                                                                        renderChildren={renderSubTaskRows}
+                                                                                        isLast={index === nodes.length - 1}
+                                                                                        levelLines={levelLines}
+                                                                                        isCompactView={isCompactView}
+                                                                                        columnWidths={columnWidths}
+                                                                                        projectName={currentProjectName}
+                                                                                    />
+                                                                                ))}
+                                                                            </SortableContext>
+                                                                        );
+                                                                    };
+                                                                    return (
+                                                                        <>
+                                                                            {renderSubTaskRows(null, 0, [true], task.projectId?.name || task.jobName || '—')}
+                                                                            {canManage && (
+                                                                                <QuickAddSubTask
+                                                                                    taskId={task._id}
+                                                                                    onSave={handleQuickSubTaskSave}
+                                                                                    team={filteredTeamByRole}
+                                                                                    isSubmitting={isSubmittingSubTask}
+                                                                                />
+                                                                            )}
+                                                                        </>
+                                                                    );
+                                                                }}
+                                                            />
+                                                        );
+                                                    })}
+                                                </SortableContext>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                     </DndContext>
                 )}
             </div>
@@ -2743,28 +2955,28 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
 
                     <div className="flex justify-between items-center pt-3 border-t border-slate-100 gap-3">
                         <div className="flex gap-2">
-                           <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
-                           {!editingTask && (
-                               <button 
-                                   type="button" 
-                                   onClick={() => {
-                                       setTemplateFormData({
-                                           templateName: formData.title + ' Template',
-                                           assignedRole: formData.assignedRoleType || '',
-                                           taskTitle: formData.title,
-                                           description: formData.description || '',
-                                           priority: formData.priority || 'Medium',
-                                           estimatedHours: 0,
-                                           steps: []
-                                       });
-                                       setIsSaveTemplateModalOpen(true);
-                                   }}
-                                   disabled={!formData.title}
-                                   className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2 transition-all disabled:opacity-50"
-                               >
-                                   <Save size={12} /> Save Template
-                               </button>
-                           )}
+                            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">Cancel</button>
+                            {!editingTask && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTemplateFormData({
+                                            templateName: formData.title + ' Template',
+                                            assignedRole: formData.assignedRoleType || '',
+                                            taskTitle: formData.title,
+                                            description: formData.description || '',
+                                            priority: formData.priority || 'Medium',
+                                            estimatedHours: 0,
+                                            steps: []
+                                        });
+                                        setIsSaveTemplateModalOpen(true);
+                                    }}
+                                    disabled={!formData.title}
+                                    className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 border border-blue-100 flex items-center gap-2 transition-all disabled:opacity-50"
+                                >
+                                    <Save size={12} /> Save Template
+                                </button>
+                            )}
                         </div>
                         <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-tight hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2 disabled:opacity-60">
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
@@ -2843,7 +3055,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                 )}
                                 {subTasks
                                     .filter(st => !st.parentSubTaskId)
-                                    .sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                                    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                                     .map(root => (
                                         <SubTaskTreeNode
                                             key={root._id}
@@ -3121,7 +3333,7 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                     <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-200/60">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <input 
+                                <input
                                     type="checkbox"
                                     checked={templates.length > 0 && selectedTemplates.size === templates.length}
                                     onChange={(e) => handleSelectAllTemplates(e.target.checked)}
@@ -3138,14 +3350,22 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
 
                         <div className="flex items-center gap-2">
                             {selectedTemplates.size > 0 && (
-                                <button
-                                    onClick={handleBulkDeleteTemplates}
-                                    disabled={isSubmitting}
-                                    title={`Delete ${selectedTemplates.size} selected template${selectedTemplates.size > 1 ? 's' : ''}`}
-                                    className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all flex items-center justify-center shadow-sm"
-                                >
-                                    {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                                </button>
+                                <>
+                                    <button
+                                        onClick={handleBulkUseTemplates}
+                                        className="h-8 px-3 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center gap-2 active:scale-95"
+                                    >
+                                        <ArrowRight size={14} /> Use Selected ({selectedTemplates.size})
+                                    </button>
+                                    <button
+                                        onClick={handleBulkDeleteTemplates}
+                                        disabled={isSubmitting}
+                                        title={`Delete ${selectedTemplates.size} selected template${selectedTemplates.size > 1 ? 's' : ''}`}
+                                        className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all flex items-center justify-center shadow-sm"
+                                    >
+                                        {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                                    </button>
+                                </>
                             )}
                             <button
                                 onClick={() => {
@@ -3172,9 +3392,9 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                                 <SortableContext items={templates.map(t => t._id)} strategy={verticalListSortingStrategy}>
                                     <div className="space-y-2.5">
                                         {templates.map(tmpl => (
-                                            <SortableTemplateItem 
-                                                key={tmpl._id} 
-                                                tmpl={tmpl} 
+                                            <SortableTemplateItem
+                                                key={tmpl._id}
+                                                tmpl={tmpl}
                                                 selectedTemplates={selectedTemplates}
                                                 handleSelectTemplate={handleSelectTemplate}
                                                 setEditingTemplate={setEditingTemplate}
@@ -3261,15 +3481,15 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         You are about to convert <span className="text-emerald-600 font-black">{selectedTasks.size} tasks</span> and all their nested subtasks into reusable templates.
                     </p>
                     <div className="flex gap-3 px-2">
-                        <button 
-                            onClick={() => setIsBulkSaveConfirmModalOpen(false)} 
+                        <button
+                            onClick={() => setIsBulkSaveConfirmModalOpen(false)}
                             className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
                         >
                             Cancel
                         </button>
-                        <button 
-                            onClick={confirmBulkSaveAsTemplate} 
-                            disabled={isSubmitting} 
+                        <button
+                            onClick={confirmBulkSaveAsTemplate}
+                            disabled={isSubmitting}
                             className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-200 transition active:scale-95 flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
@@ -3290,19 +3510,86 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         This action <span className="text-red-600 font-black underline">cannot be undone</span>. All selected templates will be permanently removed from your library.
                     </p>
                     <div className="flex gap-3 px-2">
-                        <button 
-                            onClick={() => setIsBulkDeleteTemplateModalOpen(false)} 
+                        <button
+                            onClick={() => setIsBulkDeleteTemplateModalOpen(false)}
                             className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
                         >
                             Cancel
                         </button>
-                        <button 
-                            onClick={confirmBulkDeleteTemplates} 
-                            disabled={isSubmitting} 
+                        <button
+                            onClick={confirmBulkDeleteTemplates}
+                            disabled={isSubmitting}
                             className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-200 transition active:scale-95 flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
                             Delete Templates
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Bulk Apply Templates Config Modal ── */}
+            <Modal isOpen={isBulkApplyModalOpen} onClose={() => setIsBulkApplyModalOpen(false)} title={`Bulk Apply ${selectedTemplates.size} Templates`} maxWidth="max-w-md">
+                <div className="p-4 space-y-6">
+                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 flex items-start gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 shrink-0">
+                            <Layers size={20} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight mb-1">Separate Tasks Creation</p>
+                            <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                                You are about to create <span className="text-blue-600 font-black">{selectedTemplates.size} separate main tasks</span>. 
+                                Each task will include its own sub-tasks and hierarchy.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                                <Briefcase size={12} className="text-blue-600" /> Target Project
+                            </label>
+                            <select
+                                required
+                                value={bulkApplyProject}
+                                onChange={e => setBulkApplyProject(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                <option value="">Select Project...</option>
+                                {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                                <Target size={12} className="text-blue-600" /> Target Job (Optional)
+                            </label>
+                            <select
+                                value={bulkApplyJob}
+                                onChange={e => setBulkApplyJob(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm appearance-none cursor-pointer disabled:opacity-50"
+                                disabled={!bulkApplyProject}
+                            >
+                                <option value="">Select Job...</option>
+                                {bulkJobs.map(j => <option key={j._id} value={j._id}>{j.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={() => setIsBulkApplyModalOpen(false)}
+                            className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmBulkApply}
+                            disabled={!bulkApplyProject || isSubmitting}
+                            className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-200 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                            Create {selectedTemplates.size} Tasks
                         </button>
                     </div>
                 </div>
@@ -3320,15 +3607,15 @@ const res = await api.post(`/tasks/${taskId}/subtasks`, subTaskData);
                         <span className="text-[11px] uppercase tracking-widest text-slate-400 mt-2 block">All nested sub-tasks will be permanently removed.</span>
                     </p>
                     <div className="flex gap-3 px-2">
-                        <button 
-                            onClick={() => setIsSubTaskDeleteModalOpen(false)} 
+                        <button
+                            onClick={() => setIsSubTaskDeleteModalOpen(false)}
                             className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
                         >
                             Cancel
                         </button>
-                        <button 
-                            onClick={confirmSubTaskDelete} 
-                            disabled={isSubmitting} 
+                        <button
+                            onClick={confirmSubTaskDelete}
+                            disabled={isSubmitting}
                             className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-200 transition active:scale-95 flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}

@@ -35,6 +35,28 @@ const CompanyAdminLayout = () => {
   const currentProjectId = location.pathname.split('/projects/')[1]?.split('/')[0];
   const activeProject = projectsList.find(p => p._id === currentProjectId);
 
+  const fetchSidebarMetrics = async () => {
+    try {
+      const res = await api.get('/reports/sidebar-metrics');
+      const { 
+        taskCount, 
+        issueCount, 
+        chatUnreadCount, 
+        notificationCount, 
+        projects 
+      } = res.data;
+      
+      setTaskCount(taskCount);
+      setIssueCount(issueCount);
+      setChatUnreadCount(chatUnreadCount);
+      setProjectsList(projects || []);
+      // Pre-fetch notifications but only if needed or keep separate as they are specific
+      // For now let's just use the count for the badge
+    } catch (error) {
+      console.error('Error fetching sidebar metrics:', error);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
@@ -44,66 +66,10 @@ const CompanyAdminLayout = () => {
     }
   };
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await api.get('/chat/unread-count');
-      setChatUnreadCount(res.data.count);
-    } catch (error) {
-      console.error('Error fetching unread chat count:', error);
-    }
-  };
-
-  const fetchProjects = async () => {
-    try {
-      const res = await api.get('/projects');
-      setProjectsList(res.data || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    }
-  };
-
-  const fetchTaskCount = async () => {
-    try {
-      const res = await api.get('/tasks/schedule');
-      const taskList = res.data || [];
-      let totalCount = 0;
-
-      const countNode = (node) => {
-        if (node.status !== 'completed') {
-          totalCount++;
-        }
-        if (node.subTasks && Array.isArray(node.subTasks)) {
-          node.subTasks.forEach(countNode);
-        }
-      };
-
-      taskList.forEach(countNode);
-      setTaskCount(totalCount);
-    } catch (error) {
-      console.error('Error fetching task count:', error);
-    }
-  };
-
-  const fetchIssueCount = async () => {
-    try {
-      const res = await api.get('/issues');
-      // Only count specifically active issues (not fixed/resolved/closed)
-      const count = (res.data || []).filter(i => 
-        ['open', 'in_progress', 'in_review'].includes(i.status)
-      ).length;
-      setIssueCount(count);
-    } catch (error) {
-      console.error('Error fetching issue count:', error);
-    }
-  };
-
   useEffect(() => {
     if (user) {
+      fetchSidebarMetrics();
       fetchNotifications();
-      fetchUnreadCount();
-      fetchProjects();
-      fetchTaskCount();
-      fetchIssueCount();
 
       const token = localStorage.getItem('token');
       const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
@@ -150,12 +116,9 @@ const CompanyAdminLayout = () => {
       });
 
       const interval = setInterval(() => {
+        fetchSidebarMetrics();
         fetchNotifications();
-        fetchUnreadCount();
-        fetchProjects();
-        fetchTaskCount();
-        fetchIssueCount();
-      }, 60000); // Pulse every minute for safety
+      }, 120000); // Pulse every 2 minutes
 
       return () => {
         clearInterval(interval);

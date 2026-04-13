@@ -522,8 +522,8 @@ const CompanyAdminDashboard = () => {
         if (['WORKER', 'SUBCONTRACTOR', 'FOREMAN'].includes(user?.role)) {
           try {
             const [jobTasksRes, globalTasksRes] = await Promise.all([
-              api.get('/job-tasks/worker'),
-              api.get('/tasks/my-tasks')
+              api.get('/job-tasks/worker?excludeCompleted=true'),
+              api.get('/tasks/my-tasks?excludeCompleted=true')
             ]);
             const normalizedGlobal = (globalTasksRes.data || []).map(t => ({
               ...t,
@@ -591,15 +591,18 @@ const CompanyAdminDashboard = () => {
         }
       };
 
-      // Run all fetches in parallel for maximum speed
-      await Promise.all([
-        fetchBasicStats(),
+      // Prioritize basic stats to show metrics quickly
+      await fetchBasicStats();
+      if (!silent) setLoading(false);
+
+      // Fetch the rest in parallel without blocking the main UI loading state
+      Promise.all([
         fetchTasks(),
         fetchTodosData(),
         fetchTeamData(),
         fetchOverdueData(),
         fetchEquipmentData()
-      ]);
+      ]).catch(err => console.error('Error in background dashboard fetches:', err));
 
     } catch (error) {
       console.error('Error in fetchDashboardData:', error);

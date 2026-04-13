@@ -57,6 +57,15 @@ const Drawings = () => {
     projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null
   });
 
+  const fetchDrawings = async () => {
+    try {
+      const res = await api.get('/drawings');
+      setDrawings(res.data);
+    } catch (err) {
+      console.error('Error fetching drawings:', err);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -112,8 +121,9 @@ const Drawings = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      fetchData();
+      await fetchDrawings();
       setIsUploadOpen(false);
+      alert('Drawing uploaded successfully!');
     } catch (error) {
       console.error('Error uploading drawing:', error);
       alert('Failed to upload drawing. Please try again.');
@@ -143,9 +153,11 @@ const Drawings = () => {
 
   const confirmDelete = async () => {
     try {
+      setLoading(true);
       await api.delete(`/drawings/${selectedDrawing._id}`);
-      fetchData();
+      await fetchDrawings();
       setIsDeleteOpen(false);
+      alert('Drawing deleted successfully');
     } catch (error) {
       console.error('Error deleting drawing:', error);
     }

@@ -119,6 +119,7 @@ const ProjectDetails = () => {
     const [editingContactIndex, setEditingContactIndex] = useState(null);
     const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', role: '' });
     const [contactToDelete, setContactToDelete] = useState(null);
+    const [isSubmittingContact, setIsSubmittingContact] = useState(false);
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -370,6 +371,7 @@ const ProjectDetails = () => {
     const handleSaveContact = async (e) => {
         e.preventDefault();
         try {
+            setIsSubmittingContact(true);
             let updatedContacts;
             if (editingContactIndex !== null) {
                 updatedContacts = project.contacts.map((c, idx) => idx === editingContactIndex ? newContact : c);
@@ -384,6 +386,8 @@ const ProjectDetails = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to save contact');
+        } finally {
+            setIsSubmittingContact(false);
         }
     };
 
@@ -394,6 +398,7 @@ const ProjectDetails = () => {
     const confirmDeleteContact = async () => {
         if (contactToDelete === null) return;
         try {
+            setIsSubmittingContact(true);
             const updatedContacts = project.contacts.filter((_, idx) => idx !== contactToDelete);
             const res = await api.patch(`/projects/${projectId}`, { contacts: updatedContacts });
             setProject(res.data);
@@ -401,6 +406,8 @@ const ProjectDetails = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to remove contact');
+        } finally {
+            setIsSubmittingContact(false);
         }
     };
 
@@ -2132,9 +2139,17 @@ const ProjectDetails = () => {
                                 <div className="pt-4 pb-2">
                                     <button 
                                         type="submit"
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-blue-50 outline-none"
+                                        disabled={isSubmittingContact}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-blue-50 outline-none flex items-center justify-center gap-2"
                                     >
-                                        {editingContactIndex !== null ? 'Update Contact' : 'Save Contact'}
+                                        {isSubmittingContact ? (
+                                            <>
+                                                <Loader size={16} className="animate-spin" />
+                                                <span>Saving...</span>
+                                            </>
+                                        ) : (
+                                            editingContactIndex !== null ? 'Update Contact' : 'Save Contact'
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -2168,9 +2183,10 @@ const ProjectDetails = () => {
                             </button>
                             <button 
                                 onClick={confirmDeleteContact}
+                                disabled={isSubmittingContact}
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2"
                             >
-                                <Trash2 size={16} /> Remove
+                                {isSubmittingContact ? <Loader size={16} className="animate-spin" /> : <><Trash2 size={16} /> Remove</>}
                             </button>
                         </div>
                     </div>
