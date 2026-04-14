@@ -205,15 +205,14 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser, showToast }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setAssignedTo('');
-                        setSearchTerm('');
+                        setAssignedTo(currentUser?._id);
+                        setSearchTerm(currentUser?.fullName || 'Myself');
                         setShowDropdown(false);
                       }}
                       className="w-full px-4 py-2.5 text-left rounded-xl hover:bg-slate-50 transition-colors flex flex-col gap-0.5 group"
                     >
                       <span className="text-xs font-black text-slate-900">
-                        {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(currentUser?.role) ? 'Assign to Myself (Default)' : 
-                         currentUser?.role === 'PM' ? 'Select User...' : 'Assign to Myself'}
+                        {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role) ? 'Assign to Myself' : 'Assign to Myself'}
                       </span>
                     </button>
                     {users
@@ -225,13 +224,14 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser, showToast }) => {
                           return !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role);
                         }
                         if (isPM) {
-                          return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                          return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role);
                         }
                         return u.role === 'WORKER';
                       })
                       .filter(u => {
                         const nameMatches = u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || u.role.toLowerCase().includes(searchTerm.toLowerCase());
-                        return nameMatches && u._id !== currentUser?._id;
+                        const isPM = currentUser?.role === 'PM';
+                        return nameMatches && (isPM ? true : u._id !== currentUser?._id);
                       })
                       .map(u => (
                         <button
@@ -251,7 +251,8 @@ const QuickTodoWidget = ({ users, onTaskCreated, currentUser, showToast }) => {
                     {users.filter(u => {
                       const isManagement = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM'].includes(currentUser?.role);
                       const roleMatches = isManagement ? !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role) : u.role === 'WORKER';
-                      return roleMatches && u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) && u._id !== currentUser?._id;
+                      const isPM = currentUser?.role === 'PM';
+                      return roleMatches && u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) && (isPM ? true : u._id !== currentUser?._id);
                     }).length === 0 && (
                       <div className="p-4 text-center text-slate-400 text-[10px] font-bold italic">No matching users found</div>
                     )}
@@ -326,7 +327,7 @@ const TodoList = ({ todos, onUpdate, onDelete, currentUser, title = "My Tasks", 
                   const isFieldManager = ['FOREMAN', 'SUBCONTRACTOR'].includes(currentUser?.role);
                   const isPM = currentUser?.role === 'PM';
                   if (isFieldManager) return u.role === 'WORKER';
-                  if (isPM) return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                  if (isPM) return ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role);
                   return !['CLIENT', 'ADMIN', 'COMPANY_OWNER', 'SUPER_ADMIN'].includes(u.role);
                 }).map(u => (
                   <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
