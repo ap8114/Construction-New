@@ -1959,10 +1959,11 @@ const Tasks = () => {
         // NOW filter the flat list for what should actually appear on the board
         return flat.filter(task => {
             // Apply similar logic to filteredTasks but on the flattened individual items
+            const assignees = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
             const matchSearch = !searchTerm ||
                 String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+                assignees.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
