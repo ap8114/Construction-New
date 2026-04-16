@@ -57,30 +57,33 @@ const JobDetails = () => {
     const fetchJobDetails = async () => {
         try {
             setLoading(true);
-            const [jobRes, tasksRes, usersRes, poRes, logsRes] = await Promise.all([
-                api.get(`/jobs/${jobId}`),
-                api.get(`/job-tasks/job/${jobId}`),
+            // 1. Fetch Core Job data first
+            const jobRes = await api.get(`/jobs/${jobId}`);
+            setJob(jobRes.data);
+            setLoading(false); // Unblock the UI
+
+            // 2. Fetch everything else in background
+            const [tasksRes, usersRes, poRes, logsRes] = await Promise.all([
+                api.get(`/job-tasks/job/${jobId}`).catch(() => ({ data: [] })),
                 api.get('/auth/users').catch(() => ({ data: [] })),
                 api.get(`/purchase-orders?jobId=${jobId}`).catch(() => ({ data: [] })),
                 api.get(`/timelogs?userId=${user?._id}`).catch(() => ({ data: [] }))
             ]);
-            setJob(jobRes.data);
-            setTasks(tasksRes.data);
+            
+            setTasks(tasksRes.data || []);
+            const users = usersRes.data || [];
+            setCompanyUsers(users);
+            setJobPOs(poRes?.data || []);
 
             const logs = logsRes.data || [];
             const activeLog = logs.find(l => !l.clockOut);
             setActiveTimeLog(activeLog || null);
-            const users = usersRes.data || [];
-            console.log('fetchJobDetails - Raw Users:', users);
-            setCompanyUsers(users);
-            setJobPOs(poRes?.data || []);
-            // Pre-load workers for foreman assign modal
+            
             if (user?.role === 'FOREMAN') {
                 setAvailableWorkers(users.filter(u => u.role === 'WORKER'));
             }
         } catch (err) {
             console.error('Error fetching job details:', err);
-        } finally {
             setLoading(false);
         }
     };

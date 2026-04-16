@@ -55,26 +55,31 @@ export const AuthProvider = ({ children }) => {
 
       if (storedUser && token) {
         try {
-          // Verify/Refresh permissions on load
-          const permRes = await api.get('/roles/my-permissions');
-          const parsedUser = JSON.parse(storedUser);
-          const updatedUser = {
-            ...parsedUser,
-            permissions: permRes.data.permissions || []
-          };
-          setUser(updatedUser);
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-
-          // Start location tracking
-          locationTracker.init(updatedUser);
-        } catch (error) {
-          console.error('Failed to refresh permissions:', error);
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          locationTracker.init(parsedUser);
+          setLoading(false); // Set loading to false immediately after setting local user
+
+          // Refresh permissions/verify token in background
+          api.get('/roles/my-permissions').then(permRes => {
+            const updatedUser = {
+              ...parsedUser,
+              permissions: permRes.data.permissions || []
+            };
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            locationTracker.init(updatedUser);
+          }).catch(error => {
+            console.error('Background permission refresh failed:', error);
+            // If token is invalid, we might want to logout, but for now just let it be
+          });
+
+        } catch (error) {
+          console.error('Init Auth error:', error);
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();

@@ -8,7 +8,44 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import Toast from '../../components/Toast';
+import { playSound } from '../../utils/notificationSound';
 import api from '../../utils/api';
+
+const ProjectCardImage = ({ projectId, projectName }) => {
+    const [image, setImage] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchImage = async () => {
+            try {
+                const res = await api.get(`/projects/${projectId}/image`);
+                setImage(res.data.image);
+            } catch (err) {
+                console.error("Image load failed", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchImage();
+    }, [projectId]);
+
+    const fallback = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800';
+
+    return (
+        <div className="relative w-full h-full overflow-hidden bg-slate-100 flex items-center justify-center">
+            {loading ? (
+                <div className="animate-pulse w-full h-full bg-slate-200" />
+            ) : (
+                <img
+                    src={image || fallback}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    alt={projectName}
+                />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
+        </div>
+    );
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const getLocationStr = (loc) => {
@@ -155,14 +192,14 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
         <label className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
           <Users size={14} /> Project Lead / Assigned To
         </label>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Step 1: Filter by Role */}
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Select Role</label>
             <div className="relative">
-              <select 
-                value={selectedRole} 
+              <select
+                value={selectedRole}
                 onChange={e => {
                   setSelectedRole(e.target.value);
                   setData({ ...data, pmId: '' }); // Reset user selection when role changes
@@ -180,7 +217,7 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
           {/* Step 2: Searchable User Selection */}
           <div className="space-y-2 relative" ref={userDropdownRef}>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Select Identity</label>
-            <div 
+            <div
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
               className={inputCls + ' cursor-pointer flex items-center justify-between group-hover:border-blue-500/30'}
             >
@@ -331,31 +368,41 @@ const Projects = () => {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      // High Priority: Projects list
-      const projRes = await api.get('/projects');
-      setProjects(projRes.data || []);
-      setLoading(false); // Move to false as soon as we have projects
-
-      // Low Priority: Secondary data for modals and workers
       const isJobView = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
-      
-      Promise.all([
-        api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
-        api.get('/auth/users?role=PM').catch(() => ({ data: [] })),
-        isJobView ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-      ]).then(([clientRes, usersRes, jobsRes]) => {
-        setClients(clientRes.data || []);
-        setAllUsers(usersRes.data || []);
-        if (isJobView) setJobs(jobsRes.data || []);
-      });
+
+      // Focus only on essential data for the list view
+      const projectReq = api.get('/projects');
+      const jobReq = isJobView ? api.get('/jobs').catch(() => ({ data: [] })) : Promise.resolve({ data: [] });
+
+      const [projRes, jobsRes] = await Promise.all([projectReq, jobReq]);
+
+      setProjects(projRes.data || []);
+      if (isJobView) setJobs(jobsRes.data || []);
 
     } catch (err) {
       console.error('Projects fetch error:', err);
+    } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  const ensureAdminDataLoaded = async () => {
+    if (clients.length > 0 && allUsers.length > 0) return;
+    try {
+      const [clientRes, pmRes] = await Promise.all([
+        api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
+        api.get('/auth/users?role=PM').catch(() => ({ data: [] }))
+      ]);
+      setClients(clientRes.data || []);
+      setAllUsers(pmRes.data || []);
+    } catch (err) {
+      console.error('Error loading admin data:', err);
+    }
+  };
+
+  useEffect(() => { 
+    if (user) fetchAll(); 
+  }, [user?._id, user?.role]);
 
   // ── CRUD ───────────────────────────────────────────────────────────────────
   const handleCreate = async () => {
@@ -369,14 +416,14 @@ const Projects = () => {
     } catch (err) {
       console.error('Project creation error:', err);
       if (err.response?.status === 403) {
-        setToast({ 
-          message: err.response?.data?.message || 'Project limit reached for your plan (5 projects). Please upgrade your plan to create more projects.', 
-          type: 'error' 
+        setToast({
+          message: err.response?.data?.message || 'Project limit reached for your plan (5 projects). Please upgrade your plan to create more projects.',
+          type: 'error'
         });
       } else {
-        setToast({ 
-          message: err.response?.data?.message || 'Failed to create project. Please try again.', 
-          type: 'error' 
+        setToast({
+          message: err.response?.data?.message || 'Failed to create project. Please try again.',
+          type: 'error'
         });
       }
     } finally {
@@ -384,15 +431,15 @@ const Projects = () => {
     }
   };
 
-  
+
   const handleUpdate = async () => {
     try {
       setSaving(true);
       await api.patch(`/projects/${editingProject._id}`, editingProject);
       setIsEditOpen(false);
       fetchAll();
-    } catch (err) { 
-      console.error(err); 
+    } catch (err) {
+      console.error(err);
     } finally {
       setSaving(false);
     }
@@ -417,8 +464,9 @@ const Projects = () => {
     } catch (err) { console.error(err); }
   };
 
-  const openEdit = (project, e) => {
+  const openEdit = async (project, e) => {
     e.stopPropagation();
+    await ensureAdminDataLoaded();
     setEditingProject({
       ...project,
       location: getLocationStr(project.location),
@@ -458,7 +506,7 @@ const Projects = () => {
   const filteredJobs = jobs.filter(j => {
     const matchSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     let matchTab = true;
     if (!isForeman) {
       const status = (j.status || '').toLowerCase().replace(' ', '-');
@@ -536,7 +584,11 @@ const Projects = () => {
                 </button>
               </div>
               {user?.role === 'COMPANY_OWNER' && (
-                <button onClick={() => { setFormData(EMPTY); setIsCreateOpen(true); }}
+                <button onClick={async () => { 
+                  await ensureAdminDataLoaded();
+                  setFormData(EMPTY); 
+                  setIsCreateOpen(true); 
+                }}
                   className="bg-blue-600 text-white px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-[11px] md:text-sm uppercase tracking-tight ml-auto md:ml-0">
                   <Plus size={16} /> <span className="hidden sm:inline">Create Project</span><span className="sm:hidden">Create</span>
                 </button>
@@ -603,7 +655,7 @@ const Projects = () => {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Manage Status</span>
-                  <select 
+                  <select
                     value={job.status}
                     onChange={(e) => handleUpdateJobStatus(job._id, e.target.value)}
                     className="text-[10px] font-black uppercase tracking-tight bg-slate-900 text-white px-3 py-1.5 rounded-xl border-none outline-none cursor-pointer hover:bg-blue-600 transition-all shadow-md appearance-none text-center min-w-[100px]"
@@ -667,13 +719,11 @@ const Projects = () => {
               className="group bg-white rounded-[28px] md:rounded-[36px] border border-slate-200/60 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden flex flex-col cursor-pointer">
 
               {/* Image */}
-              <div className="relative h-44 md:h-56 overflow-hidden">
-                <img
-                  src={project.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800'}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  alt={project.name}
+              <div className="relative h-44 md:h-56">
+                <ProjectCardImage 
+                    projectId={project._id} 
+                    projectName={project.name} 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
                 <div className="absolute top-4 left-4">
                   <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-lg backdrop-blur-md ${statusColor(project.status)}`}>
                     {statusLabel(project.status)}

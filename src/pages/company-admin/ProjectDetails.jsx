@@ -127,30 +127,49 @@ const ProjectDetails = () => {
     const fetchAll = async () => {
         try {
             setLoading(true);
-            const [projRes, jobsRes, usersRes, equipRes, finRes, posRes, uRes] = await Promise.all([
-                api.get(`/projects/${projectId}`),
-                api.get(`/jobs?projectId=${projectId}`).catch(() => ({ data: [] })),
-                api.get('/auth/users').catch(() => ({ data: [] })),
-                api.get('/equipment').catch(() => ({ data: [] })),
-                api.get(`/projects/${projectId}/financial-summary`).catch(() => ({ data: null })),
-                api.get(`/purchase-orders?projectId=${projectId}`).catch(() => ({ data: [] })),
-                api.get(`/projects/${projectId}/client-updates`).catch(() => ({ data: [] }))
-            ]);
+            // 1. Fetch High Priority Project data first
+            const projRes = await api.get(`/projects/${projectId}`);
             setProject(projRes.data);
-            setJobs(jobsRes.data || []);
-            setUsers(usersRes.data || []);
-            setEquipment(equipRes.data || []);
-            setFinancials(finRes?.data);
-            setProjectPOs(posRes.data || []);
-            setUpdates(uRes?.data || []);
+            setLoading(false); // Reveal page structure immediately
+
+            // 2. Fetch critical sub-data non-blocking (sequentially but setting state immediately)
+            api.get(`/jobs?projectId=${projectId}`).then(res => setJobs(res.data || [])).catch(console.error);
+            api.get(`/projects/${projectId}/financial-summary`).then(res => setFinancials(res.data)).catch(console.error);
+            api.get(`/projects/${projectId}/client-updates`).then(res => setUpdates(res.data || [])).catch(console.error);
+            api.get(`/purchase-orders?projectId=${projectId}`).then(res => setProjectPOs(res.data || [])).catch(console.error);
+            
+            // Note: Users and Equipment will be fetched on demand when specific actions are taken
         } catch (err) {
             console.error(err);
-        } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchAll(); }, [projectId]);
+    // Helper for lazy loading users/personnel
+    const ensureUsersLoaded = async () => {
+        if (users.length > 0) return;
+        try {
+            const res = await api.get('/auth/users?role=PM&role=FOREMAN&role=WORKER');
+            setUsers(res.data || []);
+        } catch (err) {
+            console.error('Failed to load users:', err);
+        }
+    };
+
+    // Helper for lazy loading equipment
+    const ensureEquipmentLoaded = async () => {
+        if (equipment.length > 0) return;
+        try {
+            const res = await api.get('/equipment');
+            setEquipment(res.data || []);
+        } catch (err) {
+            console.error('Failed to load equipment:', err);
+        }
+    };
+
+    useEffect(() => { 
+        if (user && projectId) fetchAll(); 
+    }, [projectId, user?._id]);
 
     const handleAssignPM = async (pmId) => {
         try {
@@ -520,7 +539,10 @@ const ProjectDetails = () => {
                                                 {user?.role === 'COMPANY_OWNER' && (
                                                     <div className="relative" onClick={(e) => e.stopPropagation()}>
                                                         <button 
-                                                            onClick={() => setActiveDropdown(activeDropdown === 'pm' ? null : 'pm')}
+                                                            onClick={async () => {
+                                                                await ensureUsersLoaded();
+                                                                setActiveDropdown(activeDropdown === 'pm' ? null : 'pm');
+                                                            }}
                                                             className="text-[9px] font-black text-blue-400 uppercase tracking-widest cursor-pointer hover:text-blue-300 transition-colors flex items-center gap-1"
                                                         >
                                                             EDIT <ChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === 'pm' ? 'rotate-180' : ''}`} />
@@ -888,6 +910,7 @@ const ProjectDetails = () => {
                                                             <select
                                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full"
                                                                 value={job.foremanId?._id || (typeof job.foremanId === 'string' ? job.foremanId : '')}
+                                                                onMouseDown={ensureUsersLoaded}
                                                                 onChange={(e) => handleAssignForeman(job._id, e.target.value)}
                                                             >
                                                                 <option value="">Assign {user?.role === 'PM' ? 'Foreman/Sub' : 'Project Manager'}</option>
@@ -912,12 +935,16 @@ const ProjectDetails = () => {
                                                         </span>
                                                     </div>
                                                     {['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role) && (
-                                                        <div className="absolute inset-0 opacity-0 cursor-pointer w-full" onClick={() => setIsAssigningWorkers(job._id)}></div>
+                                                        <div className="absolute inset-0 opacity-0 cursor-pointer w-full" onClick={async () => {
+                                                            await ensureUsersLoaded();
+                                                            setIsAssigningWorkers(job._id);
+                                                        }}></div>
                                                     )}
                                                     {['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
                                                         <select
                                                             className="absolute inset-0 opacity-0 cursor-pointer w-full"
                                                             value={typeof job.foremanId === 'object' ? job.foremanId._id : (job.foremanId || '')}
+                                                            onMouseDown={ensureUsersLoaded}
                                                             onChange={(e) => handleAssignForeman(job._id, e.target.value)}
                                                         >
                                                             <option value="">Assign Worker</option>
@@ -981,7 +1008,8 @@ const ProjectDetails = () => {
                                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Equipment On Site</span>
                                                             {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) && (
                                                                 <button
-                                                                    onClick={() => {
+                                                                    onClick={async () => {
+                                                                        await ensureEquipmentLoaded();
                                                                         setIsAssigningEquipment(job._id);
                                                                         setSelectedEquipmentIds([]);
                                                                     }}
