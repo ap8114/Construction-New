@@ -9,8 +9,8 @@ import emailjs from '@emailjs/browser';
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in border border-white/20">
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <h3 className="font-bold text-slate-800">{title}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
@@ -46,8 +46,10 @@ const Drawings = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isFullViewerOpen, setIsFullViewerOpen] = useState(false);
   const [isDistributionOpen, setIsDistributionOpen] = useState(false);
+  const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
+  const [warningMessage, setWarningMessage] = useState({ title: '', message: '' });
 
   const [trades, setTrades] = useState([]);
   const [selectedTrades, setSelectedTrades] = useState([]);
@@ -113,6 +115,17 @@ const Drawings = () => {
         return;
       }
 
+      // Check file size (10MB limit)
+      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+      if (formData.file.size > MAX_SIZE) {
+        setWarningMessage({
+          title: 'File Too Large!',
+          message: `Your file size is too large (${(formData.file.size / (1024 * 1024)).toFixed(2)} MB). Please upload a file smaller than 10 MB to ensure compatibility.`
+        });
+        setIsWarningOpen(true);
+        return;
+      }
+
       setLoading(true);
       const data = new FormData();
       data.append('projectId', formData.projectId);
@@ -142,16 +155,9 @@ const Drawings = () => {
 
   const handleView = (drawing) => {
     const latestVersion = drawing.versions?.[drawing.versions.length - 1];
-    const isPDF = latestVersion?.fileUrl?.toLowerCase().endsWith('.pdf');
-
     setSelectedDrawing(drawing);
     setSelectedVersion(latestVersion);
-
-    if (isPDF) {
-      setIsFullViewerOpen(true);
-    } else {
-      setIsViewOpen(true);
-    }
+    setIsFullViewerOpen(true);
   };
 
   const handleDelete = (drawing) => {
@@ -445,7 +451,7 @@ const Drawings = () => {
             ) : (
               <>
                 <p className="text-sm font-medium text-slate-600">Click to upload or drag and drop</p>
-                <p className="text-xs text-slate-400">PDF, DWG, DXF up to 50MB</p>
+                <p className="text-xs text-slate-400">PDF, DWG, DXF up to 10MB</p>
               </>
             )}
           </div>
@@ -532,68 +538,65 @@ const Drawings = () => {
       <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Drawing Details">
         {selectedDrawing && (
           <div className="space-y-6">
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 flex items-center justify-center text-blue-600">
-                {selectedDrawing.versions?.[selectedDrawing.versions.length - 1]?.fileUrl?.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={getServerUrl(selectedDrawing.versions[selectedDrawing.versions.length - 1].fileUrl)}
-                    alt={selectedDrawing.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <FileText size={32} />
-                )}
+            <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-center gap-4">
+              <div className="w-14 h-14 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-blue-600">
+                <FileText size={28} />
               </div>
-              <div>
-                <h4 className="font-bold text-slate-800 text-lg">{selectedDrawing.title}</h4>
-                <p className="text-sm text-slate-500 font-bold uppercase tracking-tight">{selectedDrawing.drawingNumber || 'N/A'} • {selectedDrawing.category}</p>
+              <div className="overflow-hidden">
+                <h4 className="font-extrabold text-slate-800 text-lg leading-tight truncate">{selectedDrawing.title}</h4>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                  {selectedDrawing.drawingNumber || 'NO #'} • {selectedDrawing.category}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-sm">
               <div>
-                <p className="text-slate-500 mb-1">Project</p>
-                <p className="font-medium text-slate-800">{selectedDrawing.projectId?.name || '---'}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Project</p>
+                <p className="font-bold text-slate-700">{selectedDrawing.projectId?.name || '---'}</p>
               </div>
               <div>
-                <p className="text-slate-500 mb-1">Current Version</p>
-                <p className="font-medium text-slate-800">v{selectedDrawing.currentVersion}.0</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Current Version</p>
+                <p className="font-bold text-slate-700 text-blue-600">v{selectedDrawing.currentVersion}.0</p>
               </div>
               <div>
-                <p className="text-slate-500 mb-1">Upload Date</p>
-                <p className="font-medium text-slate-800">{new Date(selectedDrawing.createdAt).toLocaleDateString()}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Upload Date</p>
+                <p className="font-bold text-slate-700">{new Date(selectedDrawing.createdAt).toLocaleDateString()}</p>
               </div>
               <div>
-                <p className="text-slate-500 mb-1">Status</p>
-                <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase inline-block
-                        ${selectedDrawing.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                    selectedDrawing.status === 'superseded' ? 'bg-orange-100 text-orange-700' :
-                      'bg-slate-100 text-slate-600'}`}>
-                  {selectedDrawing.status}
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Status</p>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest inline-block border border-emerald-200">
+                  {selectedDrawing.status || 'ACTIVE'}
                 </span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Version History ({selectedDrawing.versions?.length})</p>
-              <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            <div className="space-y-3">
+              <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Version History ({selectedDrawing.versions?.length})</h5>
+              <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                 {selectedDrawing.versions?.map((v, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-100 text-xs">
+                  <div key={idx} className="flex justify-between items-center px-4 py-3 rounded-xl bg-slate-50/80 border border-slate-100 group hover:border-blue-200 transition">
                     <div>
-                      <span className="font-bold text-slate-700">v{v.versionNumber}.0</span>
-                      <p className="text-slate-500 italic">{v.description || 'No description'}</p>
+                      <span className="text-xs font-black text-slate-800">v{v.versionNumber}.0</span>
+                      <p className="text-[10px] text-slate-500 font-bold mt-0.5">{v.description || 'Initial Version'}</p>
                     </div>
-                    <span className="text-slate-400">{new Date(v.uploadedAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] font-bold text-slate-400">{new Date(v.uploadedAt).toLocaleDateString()}</span>
                   </div>
                 )).reverse()}
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button onClick={() => handleDownload(selectedDrawing)} className="flex-1 bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
-                <Download size={18} /> Download Drawing
+            <div className="flex gap-4 pt-4">
+              <button 
+                onClick={() => handleDownload(selectedDrawing)} 
+                className="flex-1 bg-blue-600 text-white py-3.5 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/30 flex justify-center items-center gap-2 active:scale-95"
+              >
+                <Download size={16} /> DOWNLOAD DRAWING
               </button>
-              <button onClick={() => setIsViewOpen(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 transition font-medium">
+              <button 
+                onClick={() => setIsViewOpen(false)} 
+                className="flex-1 bg-slate-100 text-slate-600 py-3.5 rounded-xl hover:bg-slate-200 transition font-black uppercase text-[10px] tracking-widest active:scale-95 border border-slate-200"
+              >
                 Close
               </button>
             </div>
@@ -689,6 +692,27 @@ const Drawings = () => {
             className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 flex justify-center items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader className="animate-spin" size={18} /> : <><Send size={18} /> Send to {selectedTrades.length} Trades</>}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Warning Modal */}
+      <Modal isOpen={isWarningOpen} onClose={() => setIsWarningOpen(false)} title="Attention Needed">
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 mx-auto border border-orange-100 shadow-sm animate-pulse">
+            <AlertTriangle size={40} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black text-slate-900">{warningMessage.title}</h3>
+            <p className="text-slate-500 font-bold mt-2 leading-relaxed">
+              {warningMessage.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsWarningOpen(false)}
+            className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-200 transition active:scale-95 mt-4"
+          >
+            I Understand
           </button>
         </div>
       </Modal>
