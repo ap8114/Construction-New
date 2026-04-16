@@ -1796,23 +1796,33 @@ const Tasks = () => {
                 dueFrom: filterDueFrom || undefined,
                 dueTo: filterDueTo || undefined
             };
-            const [tasksRes, projectsRes, usersRes] = await Promise.all([
-                api.get('/tasks', { params }),
-                api.get('/projects'),
-                api.get('/auth/users')
-            ]);
+            const tasksRes = await api.get('/tasks', { params });
             setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
-            setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
-            // Only include field workers for assignment dropdown
-            setTeam((usersRes.data || []).filter(u =>
-                ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role)
-            ));
         } catch (error) {
             console.error('Error fetching task data:', error);
         } finally {
             if (showLoading) setLoading(false);
         }
     };
+
+    const fetchDropdownData = async () => {
+        try {
+            const [projectsRes, usersRes] = await Promise.all([
+                api.get('/projects'),
+                api.get('/auth/users')
+            ]);
+            setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+            setTeam((usersRes.data || []).filter(u =>
+                ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role)
+            ));
+        } catch (error) {
+            console.error('Error fetching dropdown data:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchDropdownData();
+    }, []);
 
     useEffect(() => {
         fetchData();
