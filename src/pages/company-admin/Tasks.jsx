@@ -258,7 +258,7 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
 };
 
 // ─── Sortable Template Item ───────────────────────────────────────────────────
-const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, setEditingTemplate, setTemplateFormData, setIsSaveTemplateModalOpen, api, fetchTemplates, priorityStyles, user, setFormData, setSubTasksList, setIsTemplateModalOpen, setIsModalOpen }) => {
+const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, setEditingTemplate, setTemplateFormData, setIsSaveTemplateModalOpen, api, fetchTemplates, priorityStyles, user, setFormData, setSubTasksList, setIsTemplateModalOpen, setIsModalOpen, setTemplateToDelete, setIsTemplateDeleteModalOpen }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tmpl._id });
 
     const style = {
@@ -338,14 +338,9 @@ const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, s
                         <Edit size={16} />
                     </button>
                     <button
-                        onClick={async () => {
-                            if (window.confirm('Delete this template?')) {
-                                try {
-                                    await api.delete(`/task-templates/${tmpl._id}`);
-                                    toast.success('Template deleted');
-                                    fetchTemplates();
-                                } catch (err) { toast.error('Failed to delete template'); }
-                            }
+                        onClick={() => {
+                            setTemplateToDelete(tmpl);
+                            setIsTemplateDeleteModalOpen(true);
                         }}
                         className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all"
                         title="Delete Template"
@@ -1439,6 +1434,8 @@ const Tasks = () => {
     const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
     const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
+    const [isTemplateDeleteModalOpen, setIsTemplateDeleteModalOpen] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState(null);
     const [templateFormData, setTemplateFormData] = useState({
         templateName: '',
         assignedRole: '',
@@ -1662,6 +1659,23 @@ const Tasks = () => {
         } catch (err) {
             console.error('Bulk delete error:', err);
             toast.error(err.response?.data?.message || 'Failed to delete templates');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const confirmTemplateDelete = async () => {
+        if (!templateToDelete) return;
+        try {
+            setIsSubmitting(true);
+            await api.delete(`/task-templates/${templateToDelete._id}`);
+            toast.success('Template deleted successfully');
+            setIsTemplateDeleteModalOpen(false);
+            setTemplateToDelete(null);
+            fetchTemplates();
+        } catch (error) {
+            console.error('Error deleting template:', error);
+            toast.error('Failed to delete template');
         } finally {
             setIsSubmitting(false);
         }
@@ -3430,6 +3444,8 @@ const Tasks = () => {
                                                 setSubTasksList={setSubTasksList}
                                                 setIsTemplateModalOpen={setIsTemplateModalOpen}
                                                 setIsModalOpen={setIsModalOpen}
+                                                setTemplateToDelete={setTemplateToDelete}
+                                                setIsTemplateDeleteModalOpen={setIsTemplateDeleteModalOpen}
                                             />
                                         ))}
                                     </div>
@@ -3642,6 +3658,35 @@ const Tasks = () => {
                         >
                             {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
                             Delete Sub-task
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Template Delete Confirmation Modal ── */}
+            <Modal isOpen={isTemplateDeleteModalOpen} onClose={() => setIsTemplateDeleteModalOpen(false)} title="Delete Template">
+                <div className="p-4 text-center">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 border border-red-100 mx-auto mb-6 shadow-sm">
+                        <Trash2 size={36} />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">Delete Template?</h3>
+                    <p className="text-slate-500 font-bold mb-8 text-sm px-4">
+                        Are you sure you want to delete <span className="text-red-600 font-black underline italic">"{templateToDelete?.templateName}"</span>? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 px-2">
+                        <button
+                            onClick={() => setIsTemplateDeleteModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmTemplateDelete}
+                            disabled={isSubmitting}
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-200 transition active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            Delete Template
                         </button>
                     </div>
                 </div>

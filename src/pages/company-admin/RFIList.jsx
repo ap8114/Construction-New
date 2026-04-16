@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
     Plus, Search, Filter, Eye, XCircle,
     ChevronUp, ChevronDown, AlertTriangle, Clock,
-    Loader, RefreshCw, CheckCircle2, FileQuestion
+    Loader, RefreshCw, CheckCircle2, FileQuestion, X
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,26 @@ const priorityColors = {
     high: 'bg-red-100 text-red-700 font-bold'
 };
 
+const Modal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+    return createPortal(
+        <div onClick={(e) => e.target === e.currentTarget && onClose()} className="fixed inset-0 bg-slate-900/60 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-scale-in border border-white">
+                <div className="px-8 py-5 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-black text-slate-800 tracking-tight text-lg">{title}</h3>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-8">
+                    {children}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 const RFIList = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -29,6 +50,9 @@ const RFIList = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({ projectId: '', status: '', priority: '' });
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+    const [rfiToClose, setRfiToClose] = useState(null);
+    const [closing, setClosing] = useState(false);
 
     const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
 
@@ -42,14 +66,24 @@ const RFIList = () => {
         }).catch(console.error).finally(() => setLoading(false));
     }, []);
 
-    const handleCloseRFI = async (id, e) => {
+    const handleCloseRFI = (id, e) => {
         e.stopPropagation();
-        if (!window.confirm('Close this RFI?')) return;
+        setRfiToClose(id);
+        setIsCloseModalOpen(true);
+    };
+
+    const confirmCloseRFI = async () => {
+        if (!rfiToClose) return;
         try {
-            const res = await api.patch(`/rfis/${id}`, { status: 'closed' });
-            setRfis(prev => prev.map(r => r._id === id ? { ...r, status: 'closed' } : r));
+            setClosing(true);
+            await api.patch(`/rfis/${rfiToClose}`, { status: 'closed' });
+            setRfis(prev => prev.map(r => r._id === rfiToClose ? { ...r, status: 'closed' } : r));
+            setIsCloseModalOpen(false);
+            setRfiToClose(null);
         } catch (err) {
             alert('Failed to close RFI');
+        } finally {
+            setClosing(false);
         }
     };
 
@@ -269,6 +303,38 @@ const RFIList = () => {
                     </>
                 )}
             </div>
+
+            {/* Close Confirmation Modal */}
+            <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title="Close RFI">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto border border-amber-100 shadow-sm animate-pulse">
+                        <AlertTriangle size={40} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Finalize RFI?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed">
+                            Are you sure you want to mark this RFI as <span className="text-emerald-600">Closed</span>? This indicates that all queries have been resolved.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                        <button
+                            onClick={() => setIsCloseModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmCloseRFI}
+                            disabled={closing}
+                            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition shadow-lg shadow-emerald-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {closing ? <Loader size={16} className="animate-spin" /> : "Close RFI"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

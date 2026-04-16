@@ -40,7 +40,7 @@ const Lightbox = ({ photo, onClose, onDelete }) => {
                         <button className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-white" title="Download">
                             <Download size={20} />
                         </button>
-                        <button onClick={() => onDelete(photo._id)} className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 hover:text-red-100 rounded-lg transition" title="Delete Photo">
+                        <button onClick={() => onDelete(photo)} className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 hover:text-red-100 rounded-lg transition" title="Delete Photo">
                             <Trash2 size={20} />
                         </button>
                     </div>
@@ -60,6 +60,8 @@ const Photos = () => {
 
     const [uploadData, setUploadData] = useState({ description: '', projectId: '', imageUrl: '', file: null });
     const [uploading, setUploading] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [photoToDelete, setPhotoToDelete] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -113,15 +115,25 @@ const Photos = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this photo?')) {
-            try {
-                await api.delete(`/photos/${id}`);
-                setPhotos(photos.filter(p => p._id !== id));
-                setSelectedPhoto(null);
-            } catch (error) {
-                console.error('Error deleting photo:', error);
-            }
+    const handleDelete = (photo) => {
+        setPhotoToDelete(photo);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!photoToDelete) return;
+        try {
+            setUploading(true); // Using uploading state for delete loader too or create separate
+            await api.delete(`/photos/${photoToDelete._id}`);
+            setPhotos(photos.filter(p => p._id !== photoToDelete._id));
+            setSelectedPhoto(null);
+            setIsDeleteModalOpen(false);
+            setPhotoToDelete(null);
+        } catch (error) {
+            console.error('Error deleting photo:', error);
+            alert('Error deleting photo');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -174,7 +186,7 @@ const Photos = () => {
                                     <div className="p-3">
                                         <div className="flex justify-between items-start">
                                             <h4 className="font-semibold text-slate-800 text-sm truncate pr-2">{photo.description || 'Untitled'}</h4>
-                                            <button onClick={() => handleDelete(photo._id)} className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-50 transition">
+                                            <button onClick={() => handleDelete(photo)} className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-50 transition">
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
@@ -276,6 +288,36 @@ const Photos = () => {
             {/* Lightbox */}
             <Lightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} onDelete={handleDelete} />
 
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Photo">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-sm">
+                        <Trash2 size={32} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800">Are you sure?</h3>
+                        <p className="text-slate-500 text-sm mt-1">
+                            You are about to delete <span className="font-bold text-slate-700 italic">"{photoToDelete?.description || 'Untitled Photo'}"</span>. This action cannot be undone.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold text-sm transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            disabled={uploading}
+                            className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition shadow-lg shadow-red-200 flex items-center justify-center gap-2"
+                        >
+                            {uploading ? <Loader size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                            Delete Now
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

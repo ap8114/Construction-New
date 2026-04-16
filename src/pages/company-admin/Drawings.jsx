@@ -46,6 +46,8 @@ const Drawings = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isFullViewerOpen, setIsFullViewerOpen] = useState(false);
   const [isDistributionOpen, setIsDistributionOpen] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   const [trades, setTrades] = useState([]);
   const [selectedTrades, setSelectedTrades] = useState([]);
@@ -125,7 +127,11 @@ const Drawings = () => {
 
       await fetchDrawings();
       setIsUploadOpen(false);
-      alert('Drawing uploaded successfully!');
+      setSuccessMessage({
+        title: 'Drawing Uploaded!',
+        message: `"${formData.title}" has been successfully added to the project repository.`
+      });
+      setIsSuccessOpen(true);
     } catch (error) {
       console.error('Error uploading drawing:', error);
       alert('Failed to upload drawing. Please try again.');
@@ -222,7 +228,11 @@ const Drawings = () => {
       await Promise.all(emailPromises);
 
       setIsDistributionOpen(false);
-      alert(`Drawing sent successfully to ${selectedTrades.length} trades via EmailJS!`);
+      setSuccessMessage({
+        title: 'Distribution Complete!',
+        message: `Drawings have been dispatched to ${selectedTrades.length} trades via email successfully.`
+      });
+      setIsSuccessOpen(true);
     } catch (error) {
       console.error('Error sending drawing:', error);
       alert('Failed to send emails. Make sure your EmailJS IDs are correct.');
@@ -679,6 +689,27 @@ const Drawings = () => {
             className="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 flex justify-center items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader className="animate-spin" size={18} /> : <><Send size={18} /> Send to {selectedTrades.length} Trades</>}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal isOpen={isSuccessOpen} onClose={() => setIsSuccessOpen(false)} title="Action Successful">
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mx-auto border border-emerald-100 shadow-sm animate-bounce">
+            <CheckCircle size={40} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black text-slate-900">{successMessage.title}</h3>
+            <p className="text-slate-500 font-bold mt-2 leading-relaxed">
+              {successMessage.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsSuccessOpen(false)}
+            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-200 transition active:scale-95 mt-4"
+          >
+            Great, Got it!
           </button>
         </div>
       </Modal>

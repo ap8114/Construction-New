@@ -6,7 +6,7 @@ import {
     TrendingUp, Activity, MapPin, Calendar, Hash, X, Save,
     Fuel, Settings, Shield, ArrowUpRight, BarChart2, Zap, LayoutGrid, List,
     Hammer, Box, RotateCcw, Link2, AlertCircle, Camera, ImageIcon, Briefcase,
-    History, FileText, Printer, DollarSign
+    History, FileText, Printer, DollarSign, Check
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -102,9 +102,9 @@ const EquipmentCard = ({ item, onEdit, onDelete, onAssign, onReturn, onViewHisto
                         <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-tight">{item.type} · #{item.serialNumber || 'SN-NA'}</p>
                     </div>
                     {canManage && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
                             <button onClick={() => onEdit(item)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"><Edit size={14} /></button>
-                            <button onClick={() => onDelete(item._id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
+                            <button onClick={() => onDelete(item)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={14} /></button>
                         </div>
                     )}
                 </div>
@@ -260,7 +260,7 @@ const EquipmentTable = ({ items, onEdit, onDelete, onAssign, onReturn, onViewHis
                                 {item.lastServiceDate ? new Date(item.lastServiceDate).toLocaleDateString() : 'N/A'}
                             </td>
                             <td className="px-6 py-4 text-right">
-                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex justify-end gap-1">
                                     <button onClick={() => onViewHistory(item)} title="View History" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition"><History size={15} /></button>
                                     {canManage && (
                                         <>
@@ -270,7 +270,7 @@ const EquipmentTable = ({ items, onEdit, onDelete, onAssign, onReturn, onViewHis
                                                 <button onClick={() => onAssign(item)} title="Assign" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition"><Link2 size={15} /></button>
                                             )}
                                             <button onClick={() => onEdit(item)} title="Edit" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"><Edit size={15} /></button>
-                                            <button onClick={() => onDelete(item._id)} title="Delete" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition"><Trash2 size={15} /></button>
+                                            <button onClick={() => onDelete(item)} title="Delete" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition"><Trash2 size={15} /></button>
                                         </>
                                     )}
                                 </div>
@@ -303,6 +303,8 @@ const Equipment = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
     const [assignTarget, setAssignTarget] = useState(null);
     const [selectedJobId, setSelectedJobId] = useState('');
     const [form, setForm] = useState(EMPTY_FORM);
@@ -389,12 +391,22 @@ const Equipment = () => {
         }
     };
 
-    const handleDelete = async id => {
-        if (!window.confirm('Remove this equipment?')) return;
+    const handleDelete = item => {
+        setItemToDelete(item);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         try {
-            await api.delete(`/equipment/${id}`);
-            setEquipment(prev => prev.filter(e => e._id !== id));
-        } catch (err) { }
+            await api.delete(`/equipment/${itemToDelete._id}`);
+            setEquipment(prev => prev.filter(e => e._id !== itemToDelete._id));
+            setIsDeleteModalOpen(false);
+            setItemToDelete(null);
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('Failed to delete equipment');
+        }
     };
 
     const handleAssign = async () => {
@@ -1350,6 +1362,41 @@ const Equipment = () => {
                     </div>
                 </div>
                 , document.body)}
+            {/* Delete Confirmation Modal */}
+            {isDeleteModalOpen && createPortal(
+                <div onClick={(e) => { if (e.target === e.currentTarget) setIsDeleteModalOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(0,0,0,0.65)' }}>
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-sm transform -rotate-6 transition-transform duration-500">
+                                <Trash2 size={40} />
+                            </div>
+                            
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Delete Asset?</h3>
+                                <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed px-4">
+                                    Are you sure you want to remove <span className="text-red-600 font-black italic underline">"{itemToDelete?.name}"</span>? This action cannot be reversed.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl transition shadow-lg shadow-red-200 active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <Check size={16} /> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

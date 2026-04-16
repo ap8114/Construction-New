@@ -19,6 +19,8 @@ const Invoices = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [invoiceToDelete, setInvoiceToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Form State
@@ -254,14 +256,24 @@ const Invoices = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this invoice?')) {
-            try {
-                await api.delete(`/invoices/${id}`);
-                setInvoices(invoices.filter(inv => inv._id !== id));
-            } catch (error) {
-                console.error('Error deleting invoice:', error);
-            }
+    const handleDelete = (inv) => {
+        setInvoiceToDelete(inv);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!invoiceToDelete) return;
+        try {
+            setIsSubmitting(true);
+            await api.delete(`/invoices/${invoiceToDelete._id}`);
+            setInvoices(invoices.filter(inv => inv._id !== invoiceToDelete._id));
+            setIsDeleteModalOpen(false);
+            setInvoiceToDelete(null);
+        } catch (error) {
+            console.error('Error deleting invoice:', error);
+            alert('Failed to delete invoice');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -399,7 +411,7 @@ const Invoices = () => {
                                             <Download size={16} />
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(inv._id)}
+                                            onClick={() => handleDelete(inv)}
                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                             title="Delete"
                                         >
@@ -555,6 +567,38 @@ const Invoices = () => {
                         >
                             {isSubmitting ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
                             Generate Invoice
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Invoice">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-red-50 rounded-[28px] flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-sm transform -rotate-6 transition-transform hover:rotate-0 duration-500">
+                        <Trash2 size={40} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Delete Invoice?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed px-4">
+                            Are you sure you want to delete <span className="text-red-600 font-black underline italic">"{invoiceToDelete?.invoiceNumber}"</span>?<br/>
+                            This data will be removed permanently.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            disabled={isSubmitting}
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl transition shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? <Loader size={16} className="animate-spin" /> : "Confirm Delete"}
                         </button>
                     </div>
                 </div>
