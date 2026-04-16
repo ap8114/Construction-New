@@ -352,6 +352,8 @@ const Projects = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
   const [saving, setSaving] = useState(false);
 
@@ -455,13 +457,30 @@ const Projects = () => {
     }
   };
 
-  const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Archive this project?')) return;
+  const requestDelete = (project, e) => {
+    if (e) e.stopPropagation();
+    setDeleteTarget(project);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || isDeleting) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/projects/${id}`);
+      await api.delete(`/projects/${deleteTarget._id}`);
+      setToast({ message: 'Project archived successfully!', type: 'success' });
+      setDeleteTarget(null);
       fetchAll();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Project delete error:', err);
+      setToast({ message: err.response?.data?.message || 'Failed to delete project. Please try again.', type: 'error' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
   };
 
   const openEdit = async (project, e) => {
@@ -843,7 +862,7 @@ const Projects = () => {
                   )}
 
                   {user?.role !== 'CLIENT' && (
-                    <button onClick={(e) => handleDelete(project._id, e)}
+                    <button onClick={(e) => requestDelete(project, e)}
                       className="p-2 md:p-2.5 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-300 hover:text-red-500 rounded-lg md:rounded-xl transition-all border border-red-100/50 shrink-0 shadow-sm"
                       title="Delete Project"
                     >
@@ -946,7 +965,7 @@ const Projects = () => {
                       >
                         <Edit size={18} />
                       </button>
-                      <button onClick={(e) => handleDelete(project._id, e)}
+                      <button onClick={(e) => requestDelete(project, e)}
                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
                         title="Delete Project"
                       >
@@ -973,6 +992,36 @@ const Projects = () => {
             submitLabel="Save Changes" clients={clients} allUsers={allUsers} saving={saving} />
         )}
       </Modal>
+
+      <Modal isOpen={Boolean(deleteTarget)} onClose={cancelDelete} title="Archive Project" maxWidth="max-w-md">
+        <div className="space-y-5">
+          <p className="text-sm text-slate-600">
+            Are you sure you want to archive the project <span className="font-black text-slate-900">{deleteTarget?.name}</span>? This action will remove it from the project list.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <button
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className={`w-full inline-flex items-center justify-center rounded-2xl px-4 py-3 font-black uppercase tracking-wider text-sm transition ${isDeleting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Archiving...
+                </>
+              ) : 'Yes, Archive'}
+            </button>
+            <button
+              onClick={cancelDelete}
+              disabled={isDeleting}
+              className="w-full rounded-2xl px-4 py-3 font-black uppercase tracking-wider text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Toast Notification */}
       {toast && (
         <Toast
