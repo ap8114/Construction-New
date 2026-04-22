@@ -2,6 +2,7 @@ import { Save, Lock, Camera, Shield, CheckCircle, Loader } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const Settings = () => {
   const { user, updateUserData } = useAuth();
@@ -9,7 +10,9 @@ const Settings = () => {
     name: user?.fullName || '',
     email: user?.email || '',
     role: user?.role || '',
-    avatar: user?.avatar || null
+    avatar: user?.avatar || null,
+    phone: user?.phone || '',
+    address: user?.address || ''
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [password, setPassword] = useState({
@@ -19,15 +22,27 @@ const Settings = () => {
   });
 
   useEffect(() => {
-    if (user) {
-      setProfile({
-        name: user.fullName || '',
-        email: user.email || '',
-        role: user.role || '',
-        avatar: user.avatar || null
-      });
-    }
-  }, [user]);
+    const fetchLatestProfile = async () => {
+      try {
+        const res = await api.get('/auth/profile');
+        const userData = res.data;
+        setProfile({
+          name: userData.fullName || '',
+          email: userData.email || '',
+          role: userData.role || '',
+          avatar: userData.avatar || null,
+          phone: userData.phone || '',
+          address: userData.address || ''
+        });
+        // Sync context too
+        updateUserData(userData);
+      } catch (error) {
+        console.error('Error fetching latest profile:', error);
+      }
+    };
+    
+    fetchLatestProfile();
+  }, []);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -36,7 +51,9 @@ const Settings = () => {
       const updateData = { 
         fullName: profile.name, 
         email: profile.email,
-        avatar: profile.avatar // Include avatar in sync
+        avatar: profile.avatar,
+        phone: profile.phone,
+        address: profile.address
       };
       
       await api.patch('/auth/profile', updateData);
@@ -44,10 +61,10 @@ const Settings = () => {
       // Critical: Sync local auth context so Sidebar/Navbar update immediately
       updateUserData(updateData);
       
-      alert("Profile details updated successfully.");
+      toast.success("Profile details updated successfully.");
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert("Failed to update profile.");
+      toast.error("Failed to update profile.");
     } finally {
       setIsUpdating(false);
     }
@@ -56,16 +73,16 @@ const Settings = () => {
   const handlePasswordReset = async (e) => {
     e.preventDefault();
     if (password.new !== password.confirm) {
-      alert("New passwords do not match.");
+      toast.error("New passwords do not match.");
       return;
     }
     try {
       await api.patch('/auth/updatepassword', { currentPassword: password.current, newPassword: password.new });
-      alert("Password reset successfully.");
+      toast.success("Password reset successfully.");
       setPassword({ current: '', new: '', confirm: '' });
     } catch (error) {
       console.error('Error resetting password:', error);
-      alert(error.response?.data?.message || "Failed to reset password.");
+      toast.error(error.response?.data?.message || "Failed to reset password.");
     }
   };
 
@@ -139,6 +156,29 @@ const Settings = () => {
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
+                <input
+                  type="text"
+                  value={profile.phone}
+                  placeholder="e.g. +1 234 567 890"
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={profile.address}
+                  placeholder="e.g. 123 Construction St, New York, NY"
+                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 transition"
+                />
+              </div>
             </div>
             <div className="flex justify-end pt-2">
               <button 
@@ -288,10 +328,10 @@ const RoleSettings = () => {
     try {
       setIsSubmitting(true);
       await api.put(`/roles/${activeRole}`, { permissions: allPermissions[activeRole] });
-      alert(`Permissions for ${roleDisplayNames[activeRole] || activeRole} updated successfully.`);
+      toast.success(`Permissions for ${roleDisplayNames[activeRole] || activeRole} updated successfully.`);
     } catch (error) {
       console.error('Error saving permissions:', error);
-      alert("Failed to save permissions.");
+      toast.error("Failed to save permissions.");
     } finally {
       setIsSubmitting(false);
     }
@@ -305,10 +345,10 @@ const RoleSettings = () => {
         permissions
       }));
       await api.put(`/roles/bulk`, { roleUpdates });
-      alert("All role permissions updated successfully.");
+      toast.success("All role permissions updated successfully.");
     } catch (error) {
       console.error('Error in bulk saving permissions:', error);
-      alert("Failed to save all permissions.");
+      toast.error("Failed to save all permissions.");
     } finally {
       setIsSubmitting(false);
     }

@@ -560,68 +560,107 @@ const Companies = () => {
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Company Details">
         {viewingCompany && (
           <div className="space-y-6">
-            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center text-2xl font-bold text-blue-600 border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-[2rem] border border-slate-200">
+              <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-bold text-blue-600 border border-slate-100 shadow-sm">
                 {viewingCompany.name.charAt(0)}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900">{viewingCompany.name}</h3>
-                <p className="text-slate-500 text-sm">ID: COMP-{viewingCompany.displayId}</p>
+                <h3 className="text-xl font-bold text-slate-900 leading-none">{viewingCompany.name}</h3>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1.5">ID: COMP-{viewingCompany.displayId}</p>
               </div>
               <div className="ml-auto">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${viewingCompany.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                  viewingCompany.status === 'Past Due' ? 'bg-orange-50 text-orange-600 border-orange-200' :
-                    'bg-red-50 text-red-600 border-red-200'
-                  }`}>
-                  {viewingCompany.status}
+                <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border
+                   ${(viewingCompany.subscriptionStatus === 'active' || viewingCompany.status === 'Active') ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                    (viewingCompany.subscriptionStatus === 'past_due' || viewingCompany.status === 'Past Due') ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                      'bg-red-50 text-red-600 border-red-200'}`}>
+                  {viewingCompany.subscriptionStatus || viewingCompany.status || 'Unknown'}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center gap-2 mb-2 text-slate-500 text-sm font-medium">
-                  <Shield size={16} /> Current Plan
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Plan Info */}
+              <div className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm space-y-3">
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Company Contact</label>
+                  <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <span className="text-blue-500">@</span> {viewingCompany.email || 'No email provided'}
+                  </p>
+                  <p className="text-xs font-bold text-slate-800 flex items-center gap-2 mt-1">
+                    <span className="text-blue-500">#</span> {viewingCompany.phone || 'No phone provided'}
+                  </p>
                 </div>
-                <p className="text-lg font-bold text-slate-800">{typeof viewingCompany.subscriptionPlanId === 'object' ? (viewingCompany.subscriptionPlanId?.name || 'No Plan') : (viewingCompany.subscriptionPlanId || 'No Plan')}</p>
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Address</label>
+                  <p className="text-xs font-bold text-slate-600 leading-relaxed italic">{viewingCompany.address || 'No address provided'}</p>
+                </div>
               </div>
-              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center gap-2 mb-2 text-slate-500 text-sm font-medium">
-                  <Users size={16} /> Total Users
+
+              {/* Usage Stats */}
+              <div className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <Users size={12} className="text-blue-500" /> Seats
+                  </div>
+                  <p className="text-lg font-black text-slate-900">{viewingCompany.users || 0}</p>
                 </div>
-                <p className="text-lg font-bold text-slate-800">{viewingCompany.users} Members</p>
-              </div>
-              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center gap-2 mb-2 text-slate-500 text-sm font-medium">
-                  <Briefcase size={16} /> Active Projects
+                <div>
+                  <div className="flex items-center gap-2 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <Shield size={12} className="text-indigo-500" /> Plan
+                  </div>
+                  <p className="text-xs font-black text-slate-700 uppercase">{typeof viewingCompany.subscriptionPlanId === 'object' ? (viewingCompany.subscriptionPlanId?.name || 'No Plan') : (viewingCompany.subscriptionPlanId || 'No Plan')}</p>
                 </div>
-                <p className="text-lg font-bold text-slate-800">{viewingCompany.projects}</p>
-              </div>
-              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center gap-2 mb-2 text-slate-500 text-sm font-medium">
-                  <Calendar size={16} /> Subscription Status
+                <div>
+                  <div className="flex items-center gap-2 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <Briefcase size={12} className="text-emerald-500" /> Projects
+                  </div>
+                  <p className="text-lg font-black text-slate-900">{viewingCompany.projects || 0}</p>
                 </div>
-                <p className="text-lg font-bold text-slate-800">{viewingCompany.status === 'Active' ? 'Good Standing' : 'Attention Needed'}</p>
-              </div>
-              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-                <div className="flex items-center gap-2 mb-2 text-slate-500 text-sm font-medium">
-                  <Calendar size={16} /> Plan Dates
-                </div>
-                <div className="text-sm">
-                  <p className="text-slate-700"><span className="font-semibold">Start:</span> {viewingCompany.startDate ? new Date(viewingCompany.startDate).toLocaleDateString() : 'N/A'}</p>
-                  <p className="text-slate-700"><span className="font-semibold">Expire:</span> {viewingCompany.expireDate ? new Date(viewingCompany.expireDate).toLocaleDateString() : 'N/A'}</p>
+                <div>
+                  <div className="flex items-center gap-2 mb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <Shield size={12} className="text-red-500" /> Storage
+                  </div>
+                  <p className="text-xs font-black text-slate-700 uppercase">{viewingCompany.storage || '0 GB'}</p>
                 </div>
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div className="flex items-center gap-2 mb-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        <Calendar size={14} className="text-blue-500" /> Subscription Dates
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-slate-600 flex justify-between">
+                            <span>Started:</span>
+                            <span className="text-slate-900">{viewingCompany.startDate ? new Date(viewingCompany.startDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'}</span>
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-600 flex justify-between">
+                            <span>Expires:</span>
+                            <span className="text-slate-900">{viewingCompany.expireDate ? new Date(viewingCompany.expireDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-blue-100 bg-blue-50/30 shadow-sm flex flex-col justify-center">
+                    <div className="flex items-center gap-2 mb-1 text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                        <DollarSign size={14} /> Total Revenue
+                    </div>
+                    <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                        ₹{viewingCompany.revenue?.toLocaleString() || '0'}
+                    </p>
+                    <p className="text-[9px] font-bold text-blue-400 uppercase italic mt-1">Platform Contributions</p>
+                </div>
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <button
-                onClick={() => { setIsViewModalOpen(false); handleSuspendClick(viewingCompany.id); }}
-                className="px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg transition border border-orange-200 font-medium"
+                onClick={() => { setIsViewModalOpen(false); handleSuspendClick(viewingCompany._id || viewingCompany.id); }}
+                className="px-6 py-3 text-orange-600 hover:bg-orange-50 rounded-xl transition border border-orange-200 font-bold text-xs uppercase tracking-widest active:scale-95"
               >
                 Suspend Company
               </button>
-              <button onClick={() => setIsViewModalOpen(false)} className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition font-medium">Close</button>
+              <button onClick={() => setIsViewModalOpen(false)} className="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl transition font-bold text-xs uppercase tracking-widest active:scale-95">Close</button>
             </div>
           </div>
         )}
