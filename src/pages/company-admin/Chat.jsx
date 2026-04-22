@@ -20,6 +20,12 @@ const Chat = () => {
     const [uploading, setUploading] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+    const isImage = (url) => {
+        if (!url) return false;
+        const lowerUrl = url.toLowerCase().split('?')[0]; // Remove query params for better detection
+        return /\.(jpeg|jpg|gif|png|webp)$/.test(lowerUrl);
+    };
+
     const commonEmojis = [
         '😊', '😂', '👍', '🙏', '🔥', '❤️', '👏', '🙌', 
         '🏠', '🏗️', '📐', '🔧', '🔨', '⛏️', '🚧', '🚜',
@@ -282,7 +288,9 @@ const Chat = () => {
             });
             const attachment = res.data;
             setMessages(prev => prev.filter(m => m.id !== tempId));
-            const combinedMessage = newMessage.trim() ? `${newMessage}\n(Attached: ${attachment.name})` : `Attached: ${attachment.name}`;
+            
+            // For images, we don't necessarily need the "(Attached: ...)" text if the preview is clear
+            const combinedMessage = newMessage.trim() ? newMessage : ""; 
             await handleSend(combinedMessage, [attachment]);
         } catch (error) {
             alert('Upload failed');
@@ -448,11 +456,57 @@ const Chat = () => {
                                 <div key={msg.id || idx} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                                     <div className="max-w-[70%] group relative">
                                         {!msg.isMe && <div className="flex items-center gap-2 mb-1 px-1"><span className="text-[10px] font-black text-slate-800 uppercase">{msg.sender}</span><span className="px-1 py-0.5 bg-slate-100 text-slate-500 rounded text-[8px] font-black italic">{msg.role}</span></div>}
-                                        <div className={`rounded-xl p-3 shadow-sm border ${msg.isMe ? 'bg-blue-600 text-white border-blue-500 rounded-br-none' : 'bg-white text-slate-700 border-slate-100 rounded-bl-none'}`}>
-                                            {msg.attachments?.map((att, i) => (
-                                                <div key={i} className={`flex items-center gap-3 p-2 mb-2 rounded-lg border ${msg.isMe ? 'bg-blue-500/50 border-blue-400' : 'bg-slate-50 border-slate-100'}`}><Paperclip size={14} /><div className="flex-1 min-w-0 font-bold text-[10px] truncate">{att.name}</div><button onClick={() => downloadFile(att.url, att.name)} className="hover:scale-110"><Download size={14} /></button></div>
-                                            ))}
-                                            <p className="text-sm font-medium">{msg.text}</p><div className="text-[8px] opacity-60 text-right mt-1">{msg.time}</div>
+                                        <div className={`rounded-2xl overflow-hidden shadow-sm border ${msg.isMe ? 'bg-blue-600 text-white border-blue-500 rounded-br-none' : 'bg-white text-slate-700 border-slate-100 rounded-bl-none'} ${msg.attachments?.some(a => isImage(a.url)) && !msg.text ? 'p-1' : 'p-3'}`}>
+                                            {msg.attachments?.map((att, i) => {
+                                                const isImg = isImage(att.url);
+                                                if (isImg) {
+                                                    return (
+                                                        <div key={i} className="mb-2 last:mb-0 relative group/img cursor-pointer" onClick={() => downloadFile(att.url, att.name)}>
+                                                            <img 
+                                                                src={att.url} 
+                                                                alt={att.name} 
+                                                                className="max-w-full rounded-xl object-contain bg-slate-100 max-h-96 w-full"
+                                                                loading="lazy"
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors rounded-xl flex items-center justify-center">
+                                                                <Download className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-md" size={32} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                // Document/File UI (WhatsApp Document Style)
+                                                return (
+                                                    <div 
+                                                        key={i} 
+                                                        onClick={() => downloadFile(att.url, att.name)}
+                                                        className={`flex items-center gap-3 p-3 mb-2 last:mb-0 rounded-xl border cursor-pointer transition-all hover:bg-opacity-80 active:scale-[0.98] ${msg.isMe ? 'bg-blue-700/50 border-blue-400/30' : 'bg-slate-50 border-slate-100'}`}
+                                                    >
+                                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${msg.isMe ? 'bg-blue-500' : 'bg-white shadow-sm border border-slate-200'}`}>
+                                                            <Paperclip size={18} className={msg.isMe ? 'text-white' : 'text-slate-400'} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className={`text-[11px] font-black truncate leading-tight ${msg.isMe ? 'text-white' : 'text-slate-800'}`}>
+                                                                {att.name}
+                                                            </div>
+                                                            <div className={`text-[9px] font-bold uppercase tracking-widest mt-0.5 ${msg.isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                                                                {att.name.split('.').pop() || 'FILE'} • Download
+                                                            </div>
+                                                        </div>
+                                                        <Download size={16} className={msg.isMe ? 'text-blue-200' : 'text-slate-300'} />
+                                                    </div>
+                                                );
+                                            })}
+                                            
+                                            {msg.text && (
+                                                <p className={`text-sm font-semibold leading-relaxed ${msg.attachments?.length > 0 ? 'mt-2 border-t pt-2 ' + (msg.isMe ? 'border-blue-500/30' : 'border-slate-50') : ''}`}>
+                                                    {msg.text}
+                                                </p>
+                                            )}
+                                            
+                                            <div className={`text-[8px] font-black uppercase tracking-widest opacity-60 text-right mt-1 ${msg.attachments?.some(a => isImage(a.url)) && !msg.text ? 'absolute bottom-3 right-3 px-2 py-1 bg-black/30 backdrop-blur-md rounded text-white shadow-sm border border-white/10' : ''}`}>
+                                                {msg.time}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
