@@ -467,6 +467,11 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                         <div>
                             <div className="flex items-center gap-1.5 overflow-hidden">
                                 <p className={`font-black text-slate-900 text-[13px] ${isCompactView ? 'truncate' : 'whitespace-normal'}`} title={task.title}>{task.title}</p>
+                                {task.parentTaskTitle && (
+                                    <span className="text-[8px] font-black bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-tighter shrink-0">
+                                        Child Of: {task.parentTaskTitle}
+                                    </span>
+                                )}
                                 {task.subTaskCount > 0 && (
                                     <span className="text-[8px] font-black bg-slate-100 text-slate-400 px-1 py-0.5 rounded-md">
                                         {task.subTaskCount}
@@ -1808,7 +1813,8 @@ const Tasks = () => {
                 assignedRoleType: filterRole || undefined,
                 category: filterCategory || undefined,
                 dueFrom: filterDueFrom || undefined,
-                dueTo: filterDueTo || undefined
+                dueTo: filterDueTo || undefined,
+                q: searchTerm || undefined
             };
             const tasksRes = await api.get('/tasks', { params });
             setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
@@ -1840,7 +1846,7 @@ const Tasks = () => {
 
     useEffect(() => {
         fetchData();
-    }, [filterStatus, filterProject, filterRole, filterCategory, filterDueFrom, filterDueTo]);
+    }, [filterStatus, filterProject, filterRole, filterCategory, filterDueFrom, filterDueTo, searchTerm]);
 
     useEffect(() => {
         fetchData();
@@ -1884,7 +1890,7 @@ const Tasks = () => {
 
         if (checkMe(task)) return true;
 
-        // Check assigned children if any (helps parent show up in List view if child is assigned)
+        // Check assigned children if any
         const children = task.subTasks || subTasksMap[task._id || task.id] || [];
         if (children.some(checkMe)) return true;
 
@@ -1894,16 +1900,19 @@ const Tasks = () => {
     // Apply all filters to general task list
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
-            const matchSearch = String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            // If backend search is active (searchTerm), trust backend results but allow further frontend refining if needed
+            // Actually, we should allow sub-tasks returned by backend even if their title doesn't match SearchTerm (if we search recursively)
+            const matchSearch = !searchTerm || 
+                String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (task.isSubTask); // Allow subtasks returned by backend search
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
             const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
             const matchCategory = !filterCategory || task.category === filterCategory;
 
-            // New activeTab filter
             const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
 
             let matchDue = true;
@@ -1913,7 +1922,7 @@ const Tasks = () => {
                 if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
             }
 
-            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
+            return matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab && matchSearch;
         });
     }, [tasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
 
@@ -1931,16 +1940,17 @@ const Tasks = () => {
     // Apply all filters to specialized schedule data
     const filteredScheduleTasks = useMemo(() => {
         return scheduleTasks.filter(task => {
-            const matchSearch = String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            const matchSearch = !searchTerm || 
+                String(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 String(task.projectId?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()));
+                task.assignedTo?.some(u => String(u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (task.subTasks && task.subTasks.some(st => String(st.title || '').toLowerCase().includes(searchTerm.toLowerCase())));
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
             const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
             const matchCategory = !filterCategory || task.category === filterCategory;
 
-            // New activeTab filter
             const matchTab = activeTab === 'all_tasks' || isDirectlyAssigned(task);
 
             let matchDue = true;
@@ -1950,7 +1960,7 @@ const Tasks = () => {
                 if (filterDueTo) matchDue = matchDue && due <= new Date(filterDueTo);
             }
 
-            return matchSearch && matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab;
+            return matchStatus && matchRole && matchProject && matchDue && matchCategory && matchTab && matchSearch;
         });
     }, [scheduleTasks, searchTerm, filterStatus, filterRole, filterProject, filterDueFrom, filterDueTo, filterCategory, activeTab, user]);
 
@@ -2056,7 +2066,8 @@ const Tasks = () => {
                 projectId: filterProject || undefined,
                 status: filterStatus || undefined,
                 assignedRoleType: filterRole || undefined,
-                category: filterCategory || undefined
+                category: filterCategory || undefined,
+                q: searchTerm || undefined
             };
             const res = await api.get('/tasks/schedule', { params });
             setScheduleTasks(Array.isArray(res.data) ? res.data : []);
