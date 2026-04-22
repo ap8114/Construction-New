@@ -115,7 +115,7 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
                 <Upload size={20} />
               </div>
               <span className="text-sm font-black text-slate-500">Drop project image here</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">JPG, PNG up to 10MB</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">JPG, PNG up to 25MB</span>
             </div>
           )}
         </div>

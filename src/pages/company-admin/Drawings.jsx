@@ -115,12 +115,12 @@ const Drawings = () => {
         return;
       }
 
-      // Check file size (10MB limit)
-      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+      // Check file size (25MB limit)
+      const MAX_SIZE = 25 * 1024 * 1024; // 25MB
       if (formData.file.size > MAX_SIZE) {
         setWarningMessage({
           title: 'File Too Large!',
-          message: `Your file size is too large (${(formData.file.size / (1024 * 1024)).toFixed(2)} MB). Please upload a file smaller than 10 MB to ensure compatibility.`
+          message: `Your file size is too large (${(formData.file.size / (1024 * 1024)).toFixed(2)} MB). Please upload a file smaller than 25 MB to ensure compatibility.`
         });
         setIsWarningOpen(true);
         return;
