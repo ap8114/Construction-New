@@ -65,7 +65,7 @@ const LandingPage = () => {
         })();
     }, []);
 
-    const navLinks = ['Home', 'Services', 'Pricing', 'Company', 'Projects'];
+    const navLinks = ['Home', 'Services', 'Pricing', 'Company'];
     const services = [
         { icon: Building2, title: 'New Construction', desc: 'Full-cycle construction from groundbreaking to handover, built to last generations.' },
         { icon: HardHat, title: 'Reconstructions', desc: 'Breathing new life into existing structures with minimal disruption and maximum impact.' },
@@ -186,6 +186,23 @@ const LandingPage = () => {
                 .d3 { animation-delay: 0.34s; opacity: 0; }
                 .d4 { animation-delay: 0.48s; opacity: 0; }
 
+                .container-custom {
+                    max-width: 1800px;
+                    margin: 0 auto;
+                    padding-left: 20px;
+                    padding-right: 20px;
+                    width: 100%;
+                }
+                @media (min-width: 768px) {
+                    .container-custom { padding-left: 40px; padding-right: 40px; }
+                }
+                @media (min-width: 1280px) {
+                    .container-custom { padding-left: 60px; padding-right: 60px; }
+                }
+                @media (min-width: 1600px) {
+                    .container-custom { padding-left: 100px; padding-right: 100px; }
+                }
+
                 @media (min-width: 769px) { .mob-only { display: none !important; } }
                 @media (max-width: 768px) {
                     .desk-only { display: none !important; }
@@ -214,7 +231,7 @@ const LandingPage = () => {
                 background: (scrolled || isMenuOpen) ? 'rgba(255,255,255,0.98)' : 'transparent',
                 borderBottom: (scrolled || isMenuOpen) ? '1px solid #e8ecf0' : '1px solid transparent',
             }} className={`${scrolled ? 'nav-scrolled' : ''}`}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
+                <div className="container-custom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
 
                     <div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>
                         <img src={Logo} alt="KAAL" style={{
@@ -280,7 +297,8 @@ const LandingPage = () => {
             </nav>
 
             {/* ══ HERO (dark — stays impactful) ══════════════════════════════ */}
-            <section id="home" style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', background: '#0f172a' }}>
+            <section id="home" style={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', background: '#0f172a', overflow: 'hidden' }}>
+                {/* Background Decorations (Full Width) */}
                 <div style={{
                     position: 'absolute', inset: 0,
                     backgroundImage: 'linear-gradient(rgba(21,93,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(21,93,255,0.06) 1px, transparent 1px)',
@@ -288,58 +306,67 @@ const LandingPage = () => {
                 }} />
                 <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 55% 40%, rgba(21,93,255,0.16) 0%, transparent 70%)' }} />
 
-                <div className="hero-img-panel" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '48%', overflow: 'hidden' }}>
-                    <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }} />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, #0f172a 0%, rgba(15,23,42,0.35) 45%, rgba(15,23,42,0.05) 100%)' }} />
-                </div>
+                <div className="container-custom" style={{ position: 'relative', zIndex: 1, paddingTop: 100 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: isMobile ? 32 : 64, alignItems: 'center' }}>
+                        <div className="hero-block">
+                            <div className="au badge-lbl fb">
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#155dff', display: 'inline-block' }} />
+                                Award-winning since 1992
+                            </div>
 
-                <div className="hero-wrap" style={{ maxWidth: 1280, margin: '0 auto', padding: '120px 24px 80px', position: 'relative', zIndex: 1, width: '100%' }}>
-                    <div className="hero-block" style={{ maxWidth: 640 }}>
-                        <div className="au badge-lbl fb">
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#155dff', display: 'inline-block' }} />
-                            Award-winning since 1992
+                            <h1 className="au d1 fd" style={{ fontSize: 'clamp(48px, 8vw, 100px)', lineHeight: 0.95, marginBottom: 24, color: '#fff' }}>
+                                WE BUILD<br />
+                                <span style={{ color: '#155dff' }}>WHAT</span><br />
+                                MATTERS
+                            </h1>
+
+                            <p className="au d2 fb" style={{ fontSize: 16, lineHeight: 1.8, color: 'rgba(255,255,255,0.6)', maxWidth: 500, marginBottom: 40 }}>
+                                Over 30 years of precision construction — from groundwork to skyline. Trusted by 300+ clients across residential, commercial, and industrial projects.
+                            </p>
+
+                            <div className="au d3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                                <button className="btn-blue fb" onClick={() => navigate('/register?type=quote')}>
+                                    Get a Quote <ArrowRight size={15} />
+                                </button>
+                                <button className="btn-outline-hero fb"
+                                    onClick={() => document.getElementById('company')?.scrollIntoView({ behavior: 'smooth' })}>
+                                    Our Story
+                                </button>
+                            </div>
+
+                            <div className="au d4" style={{ display: 'flex', gap: 48, marginTop: 60, flexWrap: 'wrap', paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                {[['32+', 'Years'], ['379+', 'Projects'], ['100+', 'Workers']].map(([n, l]) => (
+                                    <div key={l}>
+                                        <div className="fd" style={{ fontSize: 40, color: '#fff', lineHeight: 1 }}>{n}</div>
+                                        <div className="fb" style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 6 }}>{l}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
-                        <h1 className="au d1 fd" style={{ fontSize: 'clamp(60px, 9.5vw, 124px)', lineHeight: 0.92, marginBottom: 24, color: '#fff' }}>
-                            WE BUILD<br />
-                            <span style={{ color: '#155dff' }}>WHAT</span><br />
-                            MATTERS
-                        </h1>
-
-                        <p className="au d2 fb" style={{ fontSize: 15.5, lineHeight: 1.75, color: 'rgba(255,255,255,0.55)', maxWidth: 420, marginBottom: 32 }}>
-                            Over 30 years of precision construction — from groundwork to skyline. Trusted by 300+ clients across residential, commercial, and industrial projects.
-                        </p>
-
-                        <div className="au d3" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                            <button className="btn-blue fb" onClick={() => navigate('/register?type=quote')}>
-                                Get a Quote <ArrowRight size={15} />
-                            </button>
-                            <button className="btn-outline-hero fb"
-                                onClick={() => document.getElementById('company')?.scrollIntoView({ behavior: 'smooth' })}>
-                                Our Story
-                            </button>
-                        </div>
-
-                        <div className="au d4" style={{ display: 'flex', gap: 36, marginTop: 48, flexWrap: 'wrap', paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                            {[['32+', 'Years'], ['379+', 'Projects'], ['100+', 'Workers']].map(([n, l]) => (
-                                <div key={l}>
-                                    <div className="fd" style={{ fontSize: 34, color: '#fff', lineHeight: 1 }}>{n}</div>
-                                    <div className="fb" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>{l}</div>
-                                </div>
-                            ))}
+                        <div className="desk-only au d3" style={{ position: 'relative' }}>
+                            <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', boxShadow: '0 32px 64px -16px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop" alt="" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.8), transparent)' }} />
+                            </div>
+                            {/* Floating Card */}
+                            <div style={{ position: 'absolute', bottom: -20, left: -20, background: 'rgba(21,93,255,0.95)', backdropFilter: 'blur(12px)', padding: '20px 24px', borderRadius: 16, color: '#fff', boxShadow: '0 20px 40px rgba(21,93,255,0.3)' }}>
+                                <div className="fb" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.8 }}>Current Status</div>
+                                <div className="fd" style={{ fontSize: 24, marginTop: 4 }}>32 Active Sites</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0.3 }}>
-                    <span className="fb" style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#fff' }}>Scroll</span>
-                    <ChevronDown size={14} color="#fff" />
+                <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: 0.4 }}>
+                    <span className="fb" style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#fff' }}>Scroll</span>
+                    <ChevronDown size={16} color="#fff" />
                 </div>
             </section>
 
             {/* ══ ABOUT (white) ═══════════════════════════════════════════════ */}
-            <section id="company" style={{ padding: '96px 24px', background: '#fff' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            <section id="company" style={{ padding: '96px 0', background: '#fff' }}>
+                <div className="container-custom">
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 64, alignItems: 'center' }}>
                         <div className="img-ov" style={{ height: 460 }}>
                             <img src="https://images.unsplash.com/photo-1503708928676-1cb796a0891e?q=80&w=1974&auto=format&fit=crop" alt="Construction" />
@@ -382,8 +409,8 @@ const LandingPage = () => {
             </section>
 
             {/* ══ SERVICES (light grey) ════════════════════════════════════════ */}
-            <section id="services" style={{ padding: '96px 24px', background: '#f8fafc' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            <section id="services" style={{ padding: '96px 0', background: '#f8fafc' }}>
+                <div className="container-custom">
                     <div style={{ textAlign: 'center', marginBottom: 60 }}>
                         <div className="badge-lbl fb" style={{ justifyContent: 'center' }}>What We Do</div>
                         <div className="blue-bar" style={{ margin: '0 auto 16px' }} />
@@ -395,7 +422,7 @@ const LandingPage = () => {
                         </p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
                         {services.map(({ icon: Icon, title, desc }) => (
                             <div key={title} className="svc-card">
                                 <div className="svc-icon"><Icon size={20} color="#155dff" /></div>
@@ -410,7 +437,7 @@ const LandingPage = () => {
             {/* ══ CTA STRIP (blue) ════════════════════════════════════════════ */}
             {/* ══ CTA SPLIT — image left, text right ══════════════════════════ */}
             <section style={{ background: '#0f172a', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', minHeight: 480 }}>
+                <div className="container-custom" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', minHeight: 480 }}>
 
                     {/* Left — image */}
                     <div style={{ position: 'relative', minHeight: 300, overflow: 'hidden' }}>
@@ -494,8 +521,8 @@ const LandingPage = () => {
             </section>
 
             {/* ══ PRICING (white) ════════════════════════════════════════════ */}
-            <section id="pricing" style={{ padding: '96px 24px', background: '#fff' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            <section id="pricing" style={{ padding: '96px 0', background: '#fff' }}>
+                <div className="container-custom">
                     <div style={{ textAlign: 'center', marginBottom: 52 }}>
                         <div className="badge-lbl fb" style={{ justifyContent: 'center' }}>Plans & Pricing</div>
                         <div className="blue-bar" style={{ margin: '0 auto 14px' }} />
@@ -537,8 +564,8 @@ const LandingPage = () => {
             </section>
 
             {/* ══ PROJECTS (light grey) ══════════════════════════════════════ */}
-            <section id="projects" style={{ padding: '96px 24px', background: '#f8fafc' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            {/* <section id="projects" style={{ padding: '96px 0', background: '#f8fafc' }}>
+                <div className="container-custom">
                     <div style={{ textAlign: 'center', marginBottom: 52 }}>
                         <div className="badge-lbl fb" style={{ justifyContent: 'center' }}>Portfolio</div>
                         <div className="blue-bar" style={{ margin: '0 auto 16px' }} />
@@ -546,9 +573,6 @@ const LandingPage = () => {
                         <p className="fb" style={{ maxWidth: 640, margin: '0 auto 28px', color: '#64748b', fontSize: 16, lineHeight: 1.8 }}>
                             A showcase of our precision, craftsmanship, and commitment to excellence.
                         </p>
-                        <button className="btn-outline fb">
-                            View All Portfolio <ArrowUpRight size={14} />
-                        </button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                         {[
@@ -569,20 +593,20 @@ const LandingPage = () => {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section> */}
 
             {/* ══ FOOTER ══════════════════════════════════════════════════════ */}
-            <footer style={{ background: '#0f172a', borderTop: '1px solid #1e293b', padding: '60px 24px 28px' }}>
-                <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+            <footer style={{ background: '#0f172a', borderTop: '1px solid #1e293b', padding: '60px 0 28px' }}>
+                <div className="container-custom">
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 36, marginBottom: 48 }}>
                         <div>
-                            <img src={Logo} alt="KAAL" style={{ height: 36, filter: 'brightness(0) invert(1)', opacity: 0.8, marginBottom: 14 }} />
+                            <img src={Logo} alt="KAAL" style={{ height: 42, marginBottom: 20 }} />
                             <p className="fb" style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, maxWidth: 210 }}>
                                 Building the future with precision and passion. Your trusted partner in construction excellence.
                             </p>
                         </div>
                         {[
-                            { title: 'Company', links: ['About Us', 'Services', 'Projects', 'Careers'] },
+                            { title: 'Company', links: ['Home', 'Services', 'Pricing', 'Company'] },
                             { title: 'Resources', links: ['Pricing', 'Our Team', 'Blog', 'Case Studies'] },
                         ].map(col => (
                             <div key={col.title}>
