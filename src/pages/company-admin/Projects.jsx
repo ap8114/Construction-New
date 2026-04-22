@@ -11,37 +11,16 @@ import Toast from '../../components/Toast';
 import { playSound } from '../../utils/notificationSound';
 import api from '../../utils/api';
 
-const ProjectCardImage = ({ projectId, projectName }) => {
-    const [image, setImage] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchImage = async () => {
-            try {
-                const res = await api.get(`/projects/${projectId}/image`);
-                setImage(res.data.image);
-            } catch (err) {
-                console.error("Image load failed", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchImage();
-    }, [projectId]);
-
+const ProjectCardImage = ({ projectImage, projectName }) => {
     const fallback = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800';
 
     return (
         <div className="relative w-full h-full overflow-hidden bg-slate-100 flex items-center justify-center">
-            {loading ? (
-                <div className="animate-pulse w-full h-full bg-slate-200" />
-            ) : (
-                <img
-                    src={image || fallback}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    alt={projectName}
-                />
-            )}
+            <img
+                src={projectImage || fallback}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                alt={projectName}
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
         </div>
     );
@@ -740,7 +719,7 @@ const Projects = () => {
               {/* Image */}
               <div className="relative h-44 md:h-56">
                 <ProjectCardImage 
-                    projectId={project._id} 
+                    projectImage={project.image} 
                     projectName={project.name} 
                 />
                 <div className="absolute top-4 left-4">
