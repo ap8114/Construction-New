@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Loader, Download } from 'lucide-react';
+import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Loader, Download, ChevronLeft, Menu } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -400,8 +400,8 @@ const Chat = () => {
     if (loading) return <div className="p-10 text-center uppercase font-black text-slate-300">Loading Frequencies...</div>;
 
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-fade-in shadow-2xl">
-            <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/50">
+        <div className="flex h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-fade-in shadow-2xl">
+            <div className={`w-full md:w-80 border-r border-slate-100 flex flex-col bg-slate-50/50 ${activeRoom ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-slate-100 space-y-3">
                     <div className="flex items-center justify-between">
                         <h2 className="font-black text-slate-800 uppercase tracking-tighter text-lg leading-none">COMMUNICATIONS</h2>
@@ -442,13 +442,29 @@ const Chat = () => {
                     ))}
                 </div>
             </div>
-            <div className="flex-1 flex flex-col bg-white">
+            <div className={`flex-1 flex flex-col bg-white ${activeRoom ? 'flex' : 'hidden md:flex'}`}>
                 {activeRoom ? (
                     <>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-xl ${activeRoom.roomType === 'INTERNAL' ? 'bg-blue-600' : 'bg-slate-900'}`}>{activeRoom.name?.[0] || '?'}</div>
-                                <div><h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">{activeRoom.name}</h3><p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>SECURE CHANNEL</p></div>
+                        <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+                            <div className="flex items-center gap-3 md:gap-4">
+                                <button 
+                                    onClick={() => setActiveRoom(null)} 
+                                    className="md:hidden p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-bold text-white shadow-xl ${activeRoom.roomType === 'INTERNAL' ? 'bg-blue-600' : 'bg-slate-900'}`}>
+                                    {activeRoom.name?.[0] || '?'}
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-slate-800 text-base md:text-lg uppercase tracking-tight truncate max-w-[150px] md:max-w-none">
+                                        {activeRoom.name}
+                                    </h3>
+                                    <p className="text-[9px] md:text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                        SECURE CHANNEL
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/20 custom-scrollbar">
@@ -513,16 +529,16 @@ const Chat = () => {
                             ))}
                             <div ref={messagesEndRef} />
                         </div>
-                        <div className="p-6 bg-white border-t border-slate-100 sticky bottom-0">
-                            <div className="flex gap-3 items-center">
+                        <div className="p-4 md:p-6 bg-white border-t border-slate-100 sticky bottom-0">
+                            <div className="flex gap-2 md:gap-3 items-center">
                                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                                <button onClick={() => fileInputRef.current?.click()} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl border border-slate-100 transition-all"><Paperclip size={20} /></button>
+                                <button onClick={() => fileInputRef.current?.click()} className="p-2.5 md:p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl md:rounded-2xl border border-slate-100 transition-all"><Paperclip size={18} className="md:w-5 md:h-5" /></button>
                                 <div className="flex-1 relative">
-                                    <input type="text" placeholder="Transmission..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSend()} className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-5 pr-12 py-3.5 text-sm font-semibold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner" />
-                                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="absolute right-4 top-4 text-slate-300 hover:text-slate-600 transition-colors"><Smile size={20} /></button>
+                                    <input type="text" placeholder="Transmission..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSend()} className="w-full bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl pl-4 pr-10 md:pl-5 md:pr-12 py-3 md:py-3.5 text-xs md:text-sm font-semibold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-inner" />
+                                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="absolute right-3 top-3 md:right-4 md:top-4 text-slate-300 hover:text-slate-600 transition-colors"><Smile size={18} className="md:w-5 md:h-5" /></button>
                                     {showEmojiPicker && <div className="absolute bottom-full right-0 mb-4 p-3 bg-white rounded-2xl shadow-2xl border border-slate-100 grid grid-cols-6 gap-2 z-[100] scale-up">{commonEmojis.map(e => <button key={e} onClick={() => { setNewMessage(p => p + e); setShowEmojiPicker(false); }} className="text-lg hover:bg-slate-50 p-1 rounded-lg transition-all active:scale-125">{e}</button>)}</div>}
                                 </div>
-                                <button onClick={() => handleSend()} className={`p-3.5 rounded-2xl shadow-xl transition-all ${newMessage.trim() || uploading ? 'bg-blue-600 text-white scale-105 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}><Send size={20} /></button>
+                                <button onClick={() => handleSend()} className={`p-3 md:p-3.5 rounded-xl md:rounded-2xl shadow-xl transition-all ${newMessage.trim() || uploading ? 'bg-blue-600 text-white scale-105 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}><Send size={18} className="md:w-5 md:h-5" /></button>
                             </div>
                         </div>
                     </>
