@@ -38,11 +38,16 @@ const Profile = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const res = await api.patch('/auth/profile', {
-                fullName: profile.fullName,
-                email: profile.email,
-                avatar: profile.avatar,
-                phone: profile.phone
+            const data = new FormData();
+            data.append('fullName', profile.fullName);
+            data.append('email', profile.email);
+            data.append('phone', profile.phone);
+            if (profile.avatarFile) {
+                data.append('avatar', profile.avatarFile);
+            }
+
+            const res = await api.patch('/auth/profile', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             updateUserData(res.data);
             alert("Profile details updated successfully.");
@@ -79,11 +84,7 @@ const Profile = () => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfile({ ...profile, avatar: reader.result });
-            };
-            reader.readAsDataURL(file);
+            setProfile({ ...profile, avatarFile: file, avatarPreview: URL.createObjectURL(file) });
         }
     };
 
@@ -128,8 +129,8 @@ const Profile = () => {
                                     <div className="flex items-center gap-6 mb-6">
                                         <div className="relative group">
                                             <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 overflow-hidden border-4 border-slate-50">
-                                                {profile.avatar ? (
-                                                    <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                                                {profile.avatarPreview || profile.avatar ? (
+                                                    <img src={profile.avatarPreview || profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                                                 ) : (
                                                     (profile.fullName || 'User').split(' ').map(n => n[0]).join('')
                                                 )}

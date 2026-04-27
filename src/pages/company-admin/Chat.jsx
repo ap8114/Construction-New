@@ -27,7 +27,7 @@ const Chat = () => {
     };
 
     const commonEmojis = [
-        '😊', '😂', '👍', '🙏', '🔥', '❤️', '👏', '🙌', 
+        '😊', '😂', '👍', '🙏', '🔥', '❤️', '👏', '🙌',
         '🏠', '🏗️', '📐', '🔧', '🔨', '⛏️', '🚧', '🚜',
         '✅', '❌', '⚠️', '🏢', '📅', '⏰', '💰', '✉️'
     ];
@@ -59,7 +59,7 @@ const Chat = () => {
 
         // Initialize socket only if it doesn't exist
         if (!socketRef.current) {
-            socketRef.current = io(socketUrl, { 
+            socketRef.current = io(socketUrl, {
                 auth: { token },
                 transports: ['websocket', 'polling'], // Fallback mechanism
                 reconnection: true
@@ -92,7 +92,7 @@ const Chat = () => {
                     sender: payload.sender?.fullName || 'Unknown',
                     time: payload.createdAt
                 };
-                
+
                 // Use the ref to check against latest activeRoom
                 const currentActiveRoom = activeRoomRef.current;
                 room.unreadCount = (currentActiveRoom?.id === payloadRoomId) ? 0 : (room.unreadCount || 0) + 1;
@@ -104,11 +104,11 @@ const Chat = () => {
             const isIncoming = payload.sender?._id !== user?._id && payload.sender !== user?._id;
             const currentActiveRoom = activeRoomRef.current;
             const payloadRoomId = typeof payload.roomId === 'object' ? payload.roomId._id : payload.roomId;
-            
+
             if (currentActiveRoom && payloadRoomId === currentActiveRoom.id) {
                 setMessages(prev => {
                     const currentMessages = Array.isArray(prev) ? prev : [];
-                    
+
                     // 1. Exact ID Deduplication (already processed or from server sync)
                     if (currentMessages.some(m => m.id === payload._id)) return currentMessages;
 
@@ -138,7 +138,7 @@ const Chat = () => {
                         isMe: !isIncoming
                     }];
                 });
-                api.put(`/chat/mark-read/${currentActiveRoom.id}`).catch(() => {});
+                api.put(`/chat/mark-read/${currentActiveRoom.id}`).catch(() => { });
                 if (isIncoming) playSound('MESSAGE_RECEIVED');
             } else {
                 if (isIncoming) playSound('MESSAGE_RECEIVED');
@@ -288,9 +288,9 @@ const Chat = () => {
             });
             const attachment = res.data;
             setMessages(prev => prev.filter(m => m.id !== tempId));
-            
+
             // For images, we don't necessarily need the "(Attached: ...)" text if the preview is clear
-            const combinedMessage = newMessage.trim() ? newMessage : ""; 
+            const combinedMessage = newMessage.trim() ? newMessage : "";
             await handleSend(combinedMessage, [attachment]);
         } catch (error) {
             alert('Upload failed');
@@ -447,8 +447,8 @@ const Chat = () => {
                     <>
                         <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
                             <div className="flex items-center gap-3 md:gap-4">
-                                <button 
-                                    onClick={() => setActiveRoom(null)} 
+                                <button
+                                    onClick={() => setActiveRoom(null)}
                                     className="md:hidden p-2 -ml-2 text-slate-400 hover:text-blue-600 transition-colors"
                                 >
                                     <ChevronLeft size={24} />
@@ -478,9 +478,9 @@ const Chat = () => {
                                                 if (isImg) {
                                                     return (
                                                         <div key={i} className="mb-2 last:mb-0 relative group/img cursor-pointer" onClick={() => downloadFile(att.url, att.name)}>
-                                                            <img 
-                                                                src={att.url} 
-                                                                alt={att.name} 
+                                                            <img
+                                                                src={att.url}
+                                                                alt={att.name}
                                                                 className="max-w-full rounded-xl object-contain bg-slate-100 max-h-96 w-full"
                                                                 loading="lazy"
                                                             />
@@ -490,11 +490,11 @@ const Chat = () => {
                                                         </div>
                                                     );
                                                 }
-                                                
+
                                                 // Document/File UI (WhatsApp Document Style)
                                                 return (
-                                                    <div 
-                                                        key={i} 
+                                                    <div
+                                                        key={i}
                                                         onClick={() => downloadFile(att.url, att.name)}
                                                         className={`flex items-center gap-3 p-3 mb-2 last:mb-0 rounded-xl border cursor-pointer transition-all hover:bg-opacity-80 active:scale-[0.98] ${msg.isMe ? 'bg-blue-700/50 border-blue-400/30' : 'bg-slate-50 border-slate-100'}`}
                                                     >
@@ -513,13 +513,13 @@ const Chat = () => {
                                                     </div>
                                                 );
                                             })}
-                                            
+
                                             {msg.text && (
                                                 <p className={`text-sm font-semibold leading-relaxed ${msg.attachments?.length > 0 ? 'mt-2 border-t pt-2 ' + (msg.isMe ? 'border-blue-500/30' : 'border-slate-50') : ''}`}>
                                                     {msg.text}
                                                 </p>
                                             )}
-                                            
+
                                             <div className={`text-[8px] font-black uppercase tracking-widest opacity-60 text-right mt-1 ${msg.attachments?.some(a => isImage(a.url)) && !msg.text ? 'absolute bottom-3 right-3 px-2 py-1 bg-black/30 backdrop-blur-md rounded text-white shadow-sm border border-white/10' : ''}`}>
                                                 {msg.time}
                                             </div>

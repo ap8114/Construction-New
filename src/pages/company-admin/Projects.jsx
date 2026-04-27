@@ -63,9 +63,11 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setData({ ...data, image: reader.result });
-      reader.readAsDataURL(file);
+      // Store the file object for upload
+      setData({ ...data, imageFile: file });
+      // Create a local preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setData(prev => ({ ...prev, imagePreview: previewUrl }));
     }
   };
 
@@ -81,9 +83,9 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
         <div className="border-2 border-dashed border-slate-200 rounded-[24px] p-6 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-all relative group overflow-hidden cursor-pointer">
           <input type="file" accept="image/*" onChange={handleImageUpload}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-          {data.image && !data.image.includes('unsplash') ? (
+          {data.imagePreview || (data.image && !data.image.includes('unsplash')) ? (
             <div className="relative w-full h-36">
-              <img src={data.image} alt="Preview" className="h-full w-full object-cover rounded-xl shadow-md" />
+              <img src={data.imagePreview || data.image} alt="Preview" className="h-full w-full object-cover rounded-xl shadow-md" />
               <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
                 <span className="text-white font-black text-xs uppercase tracking-widest">Change</span>
               </div>
@@ -389,7 +391,19 @@ const Projects = () => {
   const handleCreate = async () => {
     try {
       setSaving(true);
-      await api.post('/projects', { ...formData, companyId: user?.companyId });
+      const data = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'imageFile' && formData[key]) {
+          data.append('image', formData[key]);
+        } else if (key !== 'imagePreview' && key !== 'image') {
+          data.append(key, formData[key]);
+        }
+      });
+      data.append('companyId', user?.companyId);
+
+      await api.post('/projects', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setIsCreateOpen(false);
       setFormData(EMPTY);
       setToast({ message: 'Project created successfully!', type: 'success' });
@@ -416,7 +430,25 @@ const Projects = () => {
   const handleUpdate = async () => {
     try {
       setSaving(true);
-      await api.patch(`/projects/${editingProject._id}`, editingProject);
+      const data = new FormData();
+      Object.keys(editingProject).forEach(key => {
+        if (key === 'imageFile' && editingProject[key]) {
+          data.append('image', editingProject[key]);
+        } else if (key !== 'imagePreview' && key !== 'image') {
+          // If value is null, skip or send as empty string to avoid "null" string
+          if (editingProject[key] === null) {
+              data.append(key, '');
+          } else {
+              // If value is object (like location), stringify it
+              const value = typeof editingProject[key] === 'object' ? JSON.stringify(editingProject[key]) : editingProject[key];
+              data.append(key, value);
+          }
+        }
+      });
+
+      await api.patch(`/projects/${editingProject._id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setIsEditOpen(false);
       fetchAll();
     } catch (err) {

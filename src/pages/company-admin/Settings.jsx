@@ -48,18 +48,21 @@ const Settings = () => {
     e.preventDefault();
     try {
       setIsUpdating(true);
-      const updateData = { 
-        fullName: profile.name, 
-        email: profile.email,
-        avatar: profile.avatar,
-        phone: profile.phone,
-        address: profile.address
-      };
+      const data = new FormData();
+      data.append('fullName', profile.name);
+      data.append('email', profile.email);
+      data.append('phone', profile.phone);
+      data.append('address', profile.address);
+      if (profile.avatarFile) {
+        data.append('avatar', profile.avatarFile);
+      }
       
-      await api.patch('/auth/profile', updateData);
+      const res = await api.patch('/auth/profile', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       
       // Critical: Sync local auth context so Sidebar/Navbar update immediately
-      updateUserData(updateData);
+      updateUserData(res.data);
       
       toast.success("Profile details updated successfully.");
     } catch (error) {
@@ -89,11 +92,7 @@ const Settings = () => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfile({ ...profile, avatar: reader.result });
-      };
-      reader.readAsDataURL(file);
+      setProfile({ ...profile, avatarFile: file, avatarPreview: URL.createObjectURL(file) });
     }
   };
 
@@ -111,8 +110,8 @@ const Settings = () => {
             <div className="flex items-center gap-6 mb-6">
               <div className="relative group">
                 <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-3xl font-bold text-blue-600 overflow-hidden border-4 border-slate-50">
-                  {profile.avatar ? (
-                    <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  {profile.avatarPreview || profile.avatar ? (
+                    <img src={profile.avatarPreview || profile.avatar} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     profile.name.split(' ').map(n => n[0]).join('')
                   )}

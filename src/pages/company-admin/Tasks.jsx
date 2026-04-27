@@ -337,16 +337,18 @@ const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, s
                     >
                         <Edit size={16} />
                     </button>
-                    <button
-                        onClick={() => {
-                            setTemplateToDelete(tmpl);
-                            setIsTemplateDeleteModalOpen(true);
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all"
-                        title="Delete Template"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+                    {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
+                        <button
+                            onClick={() => {
+                                setTemplateToDelete(tmpl);
+                                setIsTemplateDeleteModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition-all"
+                            title="Delete Template"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    )}
                 </div>
 
                 <button
@@ -3404,14 +3406,16 @@ const Tasks = () => {
                                     >
                                         <ArrowRight size={14} /> Use Selected ({selectedTemplates.size})
                                     </button>
-                                    <button
-                                        onClick={handleBulkDeleteTemplates}
-                                        disabled={isSubmitting}
-                                        title={`Delete ${selectedTemplates.size} selected template${selectedTemplates.size > 1 ? 's' : ''}`}
-                                        className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all flex items-center justify-center shadow-sm"
-                                    >
-                                        {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                                    </button>
+                                    {['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
+                                        <button
+                                            onClick={handleBulkDeleteTemplates}
+                                            disabled={isSubmitting}
+                                            title={`Delete ${selectedTemplates.size} selected template${selectedTemplates.size > 1 ? 's' : ''}`}
+                                            className="p-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all flex items-center justify-center shadow-sm"
+                                        >
+                                            {isSubmitting ? <Loader size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                                        </button>
+                                    )}
                                 </>
                             )}
                             <button
