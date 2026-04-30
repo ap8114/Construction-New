@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
     DollarSign, Clock, Download, Send, Search, Filter,
     Eye, Printer, ArrowUpRight, MoreHorizontal, CheckCircle,
     AlertCircle, ChevronRight, Banknote, Wallet, FileText, X,
-    Calendar, Briefcase
+    Calendar, Briefcase, Loader2, ShieldCheck, User
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -60,21 +61,41 @@ const Payroll = () => {
     const getDates = (p) => {
         const now = new Date();
         let start, end;
+        
+        // Use a copy to avoid modifying 'now'
+        const d = new Date(now);
+
         if (p === 'this-week') {
-            start = new Date(now.setDate(now.getDate() - now.getDay()));
-            end = new Date();
+            // Sunday as start of week
+            const day = d.getDay();
+            const diff = d.getDate() - day;
+            start = new Date(d.setDate(diff));
+            start.setHours(0, 0, 0, 0);
+            end = new Date(); // Up to now
         } else if (p === 'last-week') {
-            const first = now.getDate() - now.getDay() - 7;
-            start = new Date(now.setDate(first));
-            end = new Date(now.setDate(first + 6));
+            const day = d.getDay();
+            const diff = d.getDate() - day - 7;
+            start = new Date(d.setDate(diff));
+            start.setHours(0, 0, 0, 0);
+            
+            const e = new Date(start);
+            e.setDate(start.getDate() + 6);
+            e.setHours(23, 59, 59, 999);
+            end = e;
         } else if (p === 'this-month') {
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            start = new Date(d.getFullYear(), d.getMonth(), 1);
             end = new Date();
-        } else {
-            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            end = new Date(now.getFullYear(), now.getMonth(), 0);
+        } else if (p === 'last-month') {
+            start = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+            end = new Date(d.getFullYear(), d.getMonth(), 0);
+            end.setHours(23, 59, 59, 999);
         }
-        return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        
+        return { 
+            start: start.toISOString().split('T')[0], 
+            end: end.toISOString().split('T')[0],
+            display: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+        };
     };
 
     const fetchPayroll = async () => {
@@ -228,9 +249,15 @@ const Payroll = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Payroll</h1>
-                    <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
-                        <Banknote size={14} className="text-blue-600" /> Crew compensation &amp; pay period management
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-slate-500 font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+                            <Banknote size={14} className="text-blue-600" /> Crew compensation
+                        </p>
+                        <span className="text-slate-300">•</span>
+                        <p className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 shadow-sm">
+                            {getDates(period).display}
+                        </p>
+                    </div>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -395,240 +422,281 @@ const Payroll = () => {
             </div>
 
             {/* ─────────────────────────────────────────────────────────────────── */}
-            {/* Detail Modal                                                       */}
+            {/* Detail Modal (Portaled)                                            */}
             {/* ─────────────────────────────────────────────────────────────────── */}
-            {detailModal && detailRecord && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            {detailModal && detailRecord && createPortal(
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[12px] z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[42px] shadow-[0_32px_120px_-12px_rgba(0,0,0,0.5)] w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-10 duration-500 cubic-bezier(0.16, 1, 0.3, 1)">
                         {/* Modal header */}
-                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white flex items-start justify-between">
-                            <div>
-                                <div className="flex items-center gap-3 mb-1">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-xl shadow-lg">
+                        <div className="bg-[#0F172A] p-8 text-white flex items-start justify-between relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-4 mb-2">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-black text-2xl shadow-xl shadow-blue-500/20 border border-white/10">
                                         {(detailRecord.name || '?').charAt(0)}
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-black tracking-tight">{detailRecord.name}</h2>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{detailRecord.role}</span>
+                                        <h2 className="text-2xl font-black tracking-tight leading-tight">{detailRecord.name}</h2>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="px-2 py-0.5 bg-white/10 rounded text-[10px] font-black uppercase tracking-widest text-blue-300 border border-white/5">{detailRecord.role}</span>
+                                            <span className="w-1 h-1 rounded-full bg-slate-500"></span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Employee ID: EMP-{(detailRecord.userId || '').slice(-4)}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="text-slate-400 text-xs font-bold mt-3 uppercase tracking-widest">Time Log Breakdown</p>
                             </div>
-                            <button onClick={() => setDetailModal(false)} className="p-2 hover:bg-slate-700 rounded-xl transition-colors">
-                                <X size={20} />
+                            <button onClick={() => setDetailModal(false)} className="relative z-10 p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 group">
+                                <X size={20} className="text-slate-400 group-hover:text-white transition-colors" />
                             </button>
                         </div>
 
-                        {/* Summary chips */}
-                        <div className="flex gap-3 px-8 pt-6 flex-wrap">
-                            {[
-                                { label: 'Gross Pay', value: `$${(detailRecord.grossPay || 0).toFixed(2)}` },
-                                { label: 'Net Pay', value: `$${(detailRecord.netPay || 0).toFixed(2)}`, green: true },
-                                { label: 'Total Hours', value: `${(detailRecord.totalHours || 0).toFixed(2)}h` },
-                                { label: 'Rate', value: `$${detailRecord.rate}/hr` },
-                            ].map(c => (
-                                <div key={c.label} className={`flex-1 min-w-[100px] rounded-2xl p-4 ${c.green ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50'}`}>
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{c.label}</p>
-                                    <p className={`font-black text-lg ${c.green ? 'text-emerald-600' : 'text-slate-900'}`}>{c.value}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Deductions */}
-                        <div className="px-8 pt-5">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Deductions</p>
-                            <div className="grid grid-cols-4 gap-2">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {/* Summary Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-8 pt-8">
                                 {[
-                                    { label: 'CPP', value: detailRecord.cpp },
-                                    { label: 'EI', value: detailRecord.ei },
-                                    { label: 'Fed Tax', value: detailRecord.federalTax },
-                                    { label: 'WCB*', value: detailRecord.wcb },
-                                ].map(d => (
-                                    <div key={d.label} className="bg-red-50 rounded-2xl p-3 text-center">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-red-400 mb-1">{d.label}</p>
-                                        <p className="font-black text-red-600">-${(d.value || 0).toFixed(2)}</p>
+                                    { label: 'Gross Pay', value: `$${(detailRecord.grossPay || 0).toFixed(2)}`, icon: DollarSign, color: 'text-slate-900', bg: 'bg-slate-50' },
+                                    { label: 'Net Pay', value: `$${(detailRecord.netPay || 0).toFixed(2)}`, icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100/50' },
+                                    { label: 'Total Hours', value: `${(detailRecord.totalHours || 0).toFixed(2)}h`, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100/50' },
+                                    { label: 'Hourly Rate', value: `$${detailRecord.rate}/hr`, icon: Briefcase, color: 'text-indigo-600', bg: 'bg-indigo-50/50', border: 'border-indigo-100/50' },
+                                ].map(c => (
+                                    <div key={c.label} className={`rounded-[24px] p-5 border border-transparent ${c.bg} ${c.border || ''} transition-all hover:shadow-md group`}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <c.icon size={12} className="text-slate-400" />
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{c.label}</p>
+                                        </div>
+                                        <p className={`font-black text-xl tracking-tighter ${c.color}`}>{c.value}</p>
                                     </div>
                                 ))}
                             </div>
-                        </div>
 
-                        {/* Contributing Logs */}
-                        <div className="flex-1 overflow-y-auto px-8 pt-6 pb-8">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Contributing Time Logs</p>
-                            {detailLoading ? (
-                                <div className="space-y-3">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="h-14 bg-slate-100 rounded-2xl animate-pulse" />
-                                    ))}
+                            {/* Deductions Section */}
+                            <div className="px-8 mt-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Statutory Deductions</h3>
+                                    <div className="h-px flex-1 bg-slate-100 ml-4"></div>
                                 </div>
-                            ) : detailLogs.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400">
-                                    <Clock size={32} className="mx-auto mb-3 opacity-30" />
-                                    <p className="font-bold text-sm">No approved time logs found for this period.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {detailLogs.map((log, idx) => (
-                                        <div key={log._id || idx} className="flex items-center justify-between bg-slate-50 rounded-2xl px-5 py-4 border border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-50 rounded-xl"><Calendar size={14} className="text-blue-500" /></div>
-                                                <div>
-                                                    <p className="font-black text-slate-900 text-sm">{new Date(log.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400">
-                                                        {new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 ml-2">
-                                                    <Briefcase size={12} className="text-slate-400" />
-                                                    <span className="text-[11px] font-bold text-slate-500">{log.job}</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-black text-slate-900">{log.hours}h</p>
-                                                <p className="text-[11px] font-bold text-emerald-600">${log.amount.toFixed(2)}</p>
-                                            </div>
+                                <div className="grid grid-cols-4 gap-3">
+                                    {[
+                                        { label: 'CPP', value: detailRecord.cpp, sub: 'Pension Plan' },
+                                        { label: 'EI', value: detailRecord.ei, sub: 'Employment Ins.' },
+                                        { label: 'Fed Tax', value: detailRecord.federalTax, sub: 'Income Tax' },
+                                        { label: 'WCB*', value: detailRecord.wcb, sub: 'Comp. Board', orange: true },
+                                    ].map(d => (
+                                        <div key={d.label} className={`rounded-[24px] p-4 text-center border transition-all hover:scale-[1.02] ${d.orange ? 'bg-orange-50/30 border-orange-100' : 'bg-red-50/30 border-red-100'}`}>
+                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${d.orange ? 'text-orange-400' : 'text-red-400'}`}>{d.label}</p>
+                                            <p className={`font-black text-lg tracking-tighter ${d.orange ? 'text-orange-600' : 'text-red-600'}`}>-${(d.value || 0).toFixed(2)}</p>
+                                            <p className="text-[8px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter">{d.sub}</p>
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                                <p className="text-[9px] font-medium text-slate-400 mt-3 italic">* WCB is employer-paid and not deducted from net pay.</p>
+                            </div>
+
+                            {/* Logs Section */}
+                            <div className="px-8 py-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Timesheet Breakdown</h3>
+                                    <div className="h-px flex-1 bg-slate-100 ml-4"></div>
+                                </div>
+                                
+                                {detailLoading ? (
+                                    <div className="space-y-3">
+                                        {[1, 2, 3].map(i => (
+                                            <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse border border-slate-100" />
+                                        ))}
+                                    </div>
+                                ) : detailLogs.length === 0 ? (
+                                    <div className="text-center py-12 bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm border border-slate-100">
+                                            <Clock size={20} className="text-slate-300" />
+                                        </div>
+                                        <p className="font-bold text-slate-400 text-sm">No contributing logs found</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        {detailLogs.map((log, idx) => (
+                                            <div key={log._id || idx} className="flex items-center justify-between bg-white rounded-[24px] px-6 py-4 border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all group">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                                                        <Calendar size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-sm tracking-tight">{new Date(log.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                            <span>{new Date(log.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="text-slate-300">→</span>
+                                                            <span>{new Date(log.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-right hidden sm:block">
+                                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-0.5">Job / Site</p>
+                                                        <p className="text-[11px] font-bold text-slate-500 flex items-center justify-end gap-1.5 uppercase">
+                                                            <Briefcase size={12} className="text-slate-300" /> {log.job}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right min-w-[70px]">
+                                                        <p className="font-black text-slate-900 text-base tracking-tighter">{log.hours}h</p>
+                                                        <p className="text-[11px] font-bold text-emerald-600 tracking-tight">${log.amount.toFixed(2)}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Footer actions */}
-                        <div className="px-8 pb-8 flex gap-3">
+                        <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex gap-4">
                             <button onClick={() => setDetailModal(false)}
-                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
+                                className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-600 rounded-[20px] font-black text-sm uppercase tracking-widest transition-all border border-slate-200 shadow-sm active:scale-95">
                                 Close
                             </button>
                             <button onClick={() => { setDetailModal(false); handleDownload(detailRecord); }}
-                                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm uppercase tracking-tight transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
-                                <Download size={16} /> Download Slip
+                                className="flex-[1.5] py-4 bg-[#0F172A] hover:bg-slate-800 text-white rounded-[20px] font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200 active:scale-95 group">
+                                <Download size={18} className="group-hover:translate-y-0.5 transition-transform" /> Download Payslip
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* ─────────────────────────────────────────────────────────────────── */}
-            {/* Run Payroll Modal                                                  */}
+            {/* Run Payroll Modal (Portaled)                                       */}
             {/* ─────────────────────────────────────────────────────────────────── */}
-            {modal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden">
-                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg"><Send size={22} /></div>
-                                <div>
-                                    <h2 className="text-xl font-black tracking-tight">Run Payroll</h2>
-                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Step {step} of 3</p>
+            {modal && createPortal(
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[12px] z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[42px] shadow-[0_32px_120px_-12px_rgba(0,0,0,0.5)] w-full max-w-lg overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-500 cubic-bezier(0.16, 1, 0.3, 1)">
+                        <div className="bg-[#0F172A] p-10 text-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-5 mb-6">
+                                    <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-blue-500/20 border border-white/10">
+                                        <Send size={26} className="text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black tracking-tight leading-none mb-1">Run Payroll</h2>
+                                        <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em]">Step {step} of 3 • Configuration</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2.5">
+                                    {[1, 2, 3].map(s => (
+                                        <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${step >= s ? 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-white/10'}`} />
+                                    ))}
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                {[1, 2, 3].map(s => (
-                                    <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${step >= s ? 'bg-blue-500' : 'bg-slate-700'}`} />
-                                ))}
-                            </div>
                         </div>
-                        <div className="p-8 space-y-6">
+
+                        <div className="p-10 space-y-8">
                             {step === 1 && (
-                                <>
-                                    <h3 className="font-black text-slate-900 text-lg">Review Summary</h3>
+                                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                                    <h3 className="font-black text-slate-900 text-xl tracking-tight mb-6">Verify Pay Period Summary</h3>
                                     <div className="space-y-3">
                                         {[
-                                            { l: 'Employees', v: `${selected.length > 0 ? selected.length : rows.length} crew members` },
-                                            { l: 'Total Hours', v: `${totHours.toFixed(1)}h` },
-                                            { l: 'Gross Pay', v: `$${totGross.toLocaleString()}` },
-                                            { l: 'CPP/EI/Tax', v: `-$${(totCPP + totEI + totTax).toLocaleString()}` },
-                                            { l: 'Net Payout', v: `$${totNet.toLocaleString()}`, hi: true },
+                                            { l: 'Selected Crew', v: `${selected.length > 0 ? selected.length : rows.length} Members`, icon: User },
+                                            { l: 'Billable Hours', v: `${totHours.toFixed(1)}h Total`, icon: Clock },
+                                            { l: 'Gross Amount', v: `$${totGross.toLocaleString()}`, icon: DollarSign },
+                                            { l: 'Statutory Taxes', v: `-$${(totCPP + totEI + totTax).toLocaleString()}`, icon: FileText, red: true },
+                                            { l: 'Final Disbursal', v: `$${totNet.toLocaleString()}`, hi: true, icon: Wallet },
                                         ].map(item => (
-                                            <div key={item.l} className={`flex justify-between items-center p-4 rounded-2xl ${item.hi ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50'}`}>
-                                                <span className="text-sm font-bold text-slate-500">{item.l}</span>
-                                                <span className={`font-black ${item.hi ? 'text-emerald-600 text-lg' : 'text-slate-900'}`}>{item.v}</span>
+                                            <div key={item.l} className={`flex justify-between items-center p-5 rounded-[24px] border transition-all ${item.hi ? 'bg-emerald-50/50 border-emerald-100 shadow-sm' : 'bg-slate-50/50 border-slate-100'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-xl ${item.hi ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-slate-400 shadow-sm'}`}>
+                                                        <item.icon size={16} />
+                                                    </div>
+                                                    <span className="text-sm font-bold text-slate-500">{item.l}</span>
+                                                </div>
+                                                <span className={`font-black ${item.hi ? 'text-emerald-600 text-xl tracking-tighter' : item.red ? 'text-red-500' : 'text-slate-900 tracking-tight'}`}>{item.v}</span>
                                             </div>
                                         ))}
                                     </div>
-                                </>
+                                </div>
                             )}
                             {step === 2 && (
-                                <>
-                                    <h3 className="font-black text-slate-900 text-lg">Confirm &amp; Authorize</h3>
-                                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 flex gap-4">
-                                        <AlertCircle size={22} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                                    <h3 className="font-black text-slate-900 text-xl tracking-tight mb-6">Authorize Disbursal</h3>
+                                    <div className="bg-orange-50 border border-orange-100 rounded-[28px] p-6 flex gap-5 mb-6 shadow-sm shadow-orange-100/50">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                                            <AlertCircle size={24} className="text-orange-500" />
+                                        </div>
                                         <div>
-                                            <p className="font-black text-orange-800 text-sm">This action is irreversible</p>
-                                            <p className="text-orange-600 text-xs font-bold mt-1">Funds will be disbursed to {selected.length > 0 ? selected.length : rows.length} employees. Total: <strong>${totNet.toLocaleString()}</strong></p>
+                                            <p className="font-black text-orange-900 text-sm">Security Confirmation Required</p>
+                                            <p className="text-orange-700/70 text-xs font-bold mt-1 leading-relaxed">Funds will be disbursed to {selected.length > 0 ? selected.length : rows.length} crew members. Total Net: <strong className="text-orange-900">${totNet.toLocaleString()}</strong>. This action cannot be reversed.</p>
                                         </div>
                                     </div>
-                                    {/* Employees being paid */}
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                                         {(selected.length > 0 ? rows.filter(r => selected.includes(r.userId)) : rows).map(r => (
-                                            <div key={r.userId} className="flex justify-between items-center bg-slate-50 rounded-2xl px-4 py-3">
+                                            <div key={r.userId} className="flex justify-between items-center bg-slate-50/50 border border-slate-100 rounded-2xl px-5 py-4 hover:border-slate-200 transition-colors">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-black">{(r.name || '?').charAt(0)}</div>
+                                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-900 text-sm font-black shadow-sm">{(r.name || '?').charAt(0)}</div>
                                                     <div>
                                                         <p className="font-black text-slate-900 text-sm">{r.name}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400">{r.role}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{r.role}</p>
                                                     </div>
                                                 </div>
-                                                <span className="font-black text-emerald-600">${(r.netPay || 0).toFixed(2)}</span>
+                                                <span className="font-black text-emerald-600 tracking-tight">${(r.netPay || 0).toFixed(2)}</span>
                                             </div>
                                         ))}
                                     </div>
-                                </>
+                                </div>
                             )}
                             {step === 3 && (
-                                <div className="text-center py-2">
-                                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-emerald-100">
-                                        <CheckCircle size={40} className="text-emerald-500" />
+                                <div className="text-center py-4 animate-in zoom-in-95 duration-500">
+                                    <div className="w-24 h-24 bg-emerald-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 border-2 border-emerald-100 shadow-xl shadow-emerald-100/20 relative">
+                                        <div className="absolute inset-0 bg-emerald-400/20 rounded-[32px] animate-ping opacity-20"></div>
+                                        <CheckCircle size={48} className="text-emerald-500 relative z-10" />
                                     </div>
-                                    <h3 className="font-black text-slate-900 text-xl mb-1">Payroll Submitted!</h3>
-                                    <p className="text-slate-500 font-bold text-sm mb-4">Status updated to <span className="text-emerald-600 font-black">PAID</span> for {selected.length > 0 ? selected.length : rows.length} employees.</p>
-                                    {/* Paid employees list */}
-                                    <div className="space-y-2 max-h-36 overflow-y-auto text-left mb-4">
-                                        {(selected.length > 0 ? rows.filter(r => selected.includes(r.userId)) : rows).map(r => (
-                                            <div key={r.userId} className="flex justify-between items-center bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-2.5">
-                                                <span className="font-black text-slate-900 text-sm">{r.name}</span>
-                                                <span className="flex items-center gap-1.5 text-xs font-black text-emerald-600">
-                                                    <CheckCircle size={12} /> ${(r.netPay || 0).toFixed(2)} Paid
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-bold text-slate-500">Reference ID</span>
+                                    <h3 className="font-black text-slate-900 text-2xl tracking-tight mb-2">Payroll Authorized</h3>
+                                    <p className="text-slate-500 font-bold text-sm mb-8">Funds have been disbursed and records updated to <span className="text-emerald-600 font-black">PAID</span> for {selected.length > 0 ? selected.length : rows.length} members.</p>
+                                    
+                                    <div className="bg-slate-50 rounded-[32px] p-6 text-left space-y-3 border border-slate-100">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-black text-slate-400 uppercase tracking-widest">Transaction ID</span>
                                             <span className="font-black text-slate-900">PAY-{Date.now().toString().slice(-8)}</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-bold text-slate-500">Processed At</span>
+                                        <div className="h-px bg-slate-200/50"></div>
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-black text-slate-400 uppercase tracking-widest">Completion Timestamp</span>
                                             <span className="font-black text-slate-900">{new Date().toLocaleString()}</span>
                                         </div>
                                     </div>
                                 </div>
                             )}
-                            <div className="flex gap-3 pt-2">
+
+                            <div className="flex gap-4 pt-4">
                                 {step < 3 ? (
                                     <>
                                         <button onClick={() => step > 1 ? setStep(s => s - 1) : setModal(false)}
-                                            className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-tight transition-all">
+                                            className="flex-1 px-8 py-4 bg-white hover:bg-slate-50 text-slate-600 rounded-[22px] font-black text-sm uppercase tracking-widest transition-all border border-slate-200 shadow-sm active:scale-95">
                                             {step > 1 ? 'Back' : 'Cancel'}
                                         </button>
                                         <button
                                             onClick={() => step === 1 ? setStep(2) : handleRunPayroll()}
                                             disabled={submitting}
-                                            className="flex-1 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-2">
-                                            {submitting ? 'Processing...' : step === 2 ? <><Send size={16} /> Authorize</> : <><ChevronRight size={16} /> Continue</>}
+                                            className="flex-[1.5] px-8 py-4 bg-[#0F172A] hover:bg-slate-800 text-white rounded-[22px] font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95">
+                                            {submitting ? (
+                                                <Loader2 size={18} className="animate-spin" />
+                                            ) : step === 2 ? (
+                                                <><ShieldCheck size={18} /> Authorize Disbursal</>
+                                            ) : (
+                                                <><ChevronRight size={18} /> Review Next</>
+                                            )}
                                         </button>
                                     </>
                                 ) : (
                                     <button onClick={() => { setModal(false); setStep(1); setSelected([]); }}
-                                        className="w-full px-6 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-lg">
-                                        Done
+                                        className="w-full px-8 py-5 bg-slate-900 hover:bg-slate-800 text-white rounded-[22px] font-black text-sm uppercase tracking-widest transition-all shadow-xl active:scale-95">
+                                        Done &amp; Close Portal
                                     </button>
                                 )}
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
