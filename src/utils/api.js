@@ -2,9 +2,9 @@ import axios from 'axios';
 
 // const API_URL = import.meta.env.VITE_API_URL || 'https://constuctionbackend-production.up.railway.app/api';
 
-// const API_URL = import.meta.env.VITE_API_URL || 'https://construction-production-b18f.up.railway.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://construction-production-b18f.up.railway.app/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 const BASE_URL = API_URL.replace('/api', '');
 

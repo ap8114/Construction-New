@@ -49,6 +49,7 @@ const Payroll = () => {
     const [step, setStep] = useState(1);
     const [selected, setSelected] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
 
     // Detail Modal state
     const [detailModal, setDetailModal] = useState(false);
@@ -221,10 +222,22 @@ const Payroll = () => {
         }
     };
 
-    const filtered = rows.filter(r =>
-        (r.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.role || '').toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = rows.filter(r => {
+        const matchesSearch = (r.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                            (r.role || '').toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || (r.status || 'pending') === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    const toggleRow = uid => setSelected(p => p.includes(uid) ? p.filter(x => x !== uid) : [...p, uid]);
+    const toggleAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(r => r.userId));
+
+    // Calculate totals for the modal based on selection
+    const modalTargetRows = selected.length > 0 ? rows.filter(r => selected.includes(r.userId)) : rows;
+    const mGross = modalTargetRows.reduce((s, r) => s + (r.grossPay || 0), 0);
+    const mNet = modalTargetRows.reduce((s, r) => s + (r.netPay || 0), 0);
+    const mTax = modalTargetRows.reduce((s, r) => s + (r.cpp || 0) + (r.ei || 0) + (r.federalTax || 0), 0);
+    const mHours = modalTargetRows.reduce((s, r) => s + (r.totalHours || 0), 0);
 
     const totGross = rows.reduce((s, r) => s + (r.grossPay || 0), 0);
     const totNet = rows.reduce((s, r) => s + (r.netPay || 0), 0);
@@ -233,9 +246,6 @@ const Payroll = () => {
     const totTax = rows.reduce((s, r) => s + (r.federalTax || 0), 0);
     const totWCB = rows.reduce((s, r) => s + (r.wcb || 0), 0);
     const totHours = rows.reduce((s, r) => s + (r.totalHours || 0), 0);
-
-    const toggleRow = uid => setSelected(p => p.includes(uid) ? p.filter(x => x !== uid) : [...p, uid]);
-    const toggleAll = () => setSelected(selected.length === filtered.length ? [] : filtered.map(r => r.userId));
 
     const periods = [
         { v: 'this-week', l: 'This Week' }, { v: 'last-week', l: 'Last Week' },
@@ -299,6 +309,15 @@ const Payroll = () => {
                         className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400" />
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                    <select 
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="flex-1 md:flex-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 text-sm font-bold text-slate-700 appearance-none cursor-pointer hover:border-slate-300 transition-all"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                    </select>
                     <button className="flex-1 md:flex-none px-5 py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 font-bold text-sm flex items-center justify-center gap-2 transition-all">
                         <Filter size={16} /> Filter
                     </button>
@@ -596,11 +615,11 @@ const Payroll = () => {
                                     <h3 className="font-black text-slate-900 text-xl tracking-tight mb-6">Verify Pay Period Summary</h3>
                                     <div className="space-y-3">
                                         {[
-                                            { l: 'Selected Crew', v: `${selected.length > 0 ? selected.length : rows.length} Members`, icon: User },
-                                            { l: 'Billable Hours', v: `${totHours.toFixed(1)}h Total`, icon: Clock },
-                                            { l: 'Gross Amount', v: `$${totGross.toLocaleString()}`, icon: DollarSign },
-                                            { l: 'Statutory Taxes', v: `-$${(totCPP + totEI + totTax).toLocaleString()}`, icon: FileText, red: true },
-                                            { l: 'Final Disbursal', v: `$${totNet.toLocaleString()}`, hi: true, icon: Wallet },
+                                            { l: 'Selected Crew', v: `${modalTargetRows.length} Members`, icon: User },
+                                            { l: 'Billable Hours', v: `${mHours.toFixed(1)}h Total`, icon: Clock },
+                                            { l: 'Gross Amount', v: `$${mGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: DollarSign },
+                                            { l: 'Statutory Taxes', v: `-$${mTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: FileText, red: true },
+                                            { l: 'Final Disbursal', v: `$${mNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, hi: true, icon: Wallet },
                                         ].map(item => (
                                             <div key={item.l} className={`flex justify-between items-center p-5 rounded-[24px] border transition-all ${item.hi ? 'bg-emerald-50/50 border-emerald-100 shadow-sm' : 'bg-slate-50/50 border-slate-100'}`}>
                                                 <div className="flex items-center gap-3">
@@ -624,7 +643,7 @@ const Payroll = () => {
                                         </div>
                                         <div>
                                             <p className="font-black text-orange-900 text-sm">Security Confirmation Required</p>
-                                            <p className="text-orange-700/70 text-xs font-bold mt-1 leading-relaxed">Funds will be disbursed to {selected.length > 0 ? selected.length : rows.length} crew members. Total Net: <strong className="text-orange-900">${totNet.toLocaleString()}</strong>. This action cannot be reversed.</p>
+                                            <p className="text-orange-700/70 text-xs font-bold mt-1 leading-relaxed">Funds will be disbursed to {modalTargetRows.length} crew members. Total Net: <strong className="text-orange-900">${mNet.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>. This action cannot be reversed.</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
