@@ -53,7 +53,7 @@ const LandingPage = () => {
     useEffect(() => {
         (async () => {
             try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://construction-production-93bf.up.railway.app/api';
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://construction-production-b18f.up.railway.app/api';
                 const res = await fetch(`${apiUrl}/plans`);
                 const data = await res.json();
                 if (data?.length > 0) setPricingPlans(data.map(p => ({
