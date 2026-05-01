@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Loader, Download, ChevronLeft, Menu } from 'lucide-react';
 import { io } from 'socket.io-client';
 import api from '../../utils/api';
+import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { playSound } from '../../utils/notificationSound';
 
@@ -19,6 +20,7 @@ const Chat = () => {
     const [directoryUsers, setDirectoryUsers] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
 
     const isImage = (url) => {
         if (!url) return false;
@@ -412,7 +414,7 @@ const Chat = () => {
                     </div>
                     {['COMPANY_OWNER', 'SUPER_ADMIN', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role) && (
                         <div className="flex p-1 bg-slate-200/50 rounded-2xl gap-1">
-                            {[{ id: 'INTERNAL', label: 'Internal', icon: Shield }, { id: 'CLIENT', label: 'Clients', icon: UserIcon, adminOnly: true }, { id: 'SUB', label: 'Subs', icon: HardHat, adminOnly: true }].filter(tab => !tab.adminOnly || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)).map(tab => (
+                            {[{ id: 'INTERNAL', label: 'Internal', icon: Shield }, { id: 'CLIENT', label: 'Clients', icon: UserIcon, adminOnly: true, pmAllowed: true }, { id: 'SUB', label: 'Subs', icon: HardHat, pmAllowed: true }].filter(tab => !tab.adminOnly || tab.pmAllowed || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)).map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-all relative ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>
                                     <tab.icon size={14} className="mb-0.5" /><span className="text-[9px] font-black uppercase tracking-wider">{tab.label}</span>
                                 </button>
@@ -546,14 +548,69 @@ const Chat = () => {
                     <div className="flex-1 flex flex-col items-center justify-center p-20 opacity-50"><UsersIcon size={48} className="text-slate-200" /><p className="text-slate-500 font-bold uppercase text-xs mt-4">Select a secure frequency to begin coordination.</p></div>
                 )}
             </div>
-            {showDirectory && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 overflow-hidden scale-up">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50"><div><h3 className="font-black text-slate-800 uppercase text-lg leading-none">New Direct Frequency</h3><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Secure Line Initiation</p></div><button onClick={() => setShowDirectory(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button></div>
-                        <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">{directoryUsers.map(u => (<div key={u._id} onClick={() => startDirectChat(u._id)} className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl cursor-pointer border border-transparent hover:border-slate-100 group transition-all"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-sm group-hover:scale-105 transition-all">{u.fullName[0]}</div><div className="flex-1 overflow-hidden"><h4 className="font-bold text-slate-800 text-sm truncate">{u.fullName}</h4><p className="text-[10px] text-slate-400 italic font-medium">{u.role}</p></div></div>))}</div>
+            <Modal 
+                isOpen={showDirectory} 
+                onClose={() => { setShowDirectory(false); setUserSearchTerm(''); }} 
+                title="New Direct Frequency"
+                maxWidth="max-w-md"
+            >
+                <div className="space-y-6">
+                    <div className="px-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                            Secure Line Initiation • Direct Personnel Access
+                        </p>
+                        <div className="relative group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search by name or role..."
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[12px] font-bold uppercase outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/30 transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                        {directoryUsers
+                            .filter(u => 
+                                u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+                                u.role.toLowerCase().includes(userSearchTerm.toLowerCase())
+                            )
+                            .map(u => (
+                                <div 
+                                    key={u._id} 
+                                    onClick={() => { startDirectChat(u._id); setUserSearchTerm(''); }} 
+                                    className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-[24px] cursor-pointer border border-transparent hover:border-slate-100 group transition-all duration-300 active:scale-[0.98]"
+                                >
+                                    <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg group-hover:bg-blue-600 group-hover:rotate-3 transition-all duration-300">
+                                        {u.fullName[0]}
+                                    </div>
+                                    <div className="flex-1 overflow-hidden">
+                                        <h4 className="font-black text-slate-800 text-sm uppercase tracking-tight truncate group-hover:text-blue-600 transition-colors">
+                                            {u.fullName}
+                                        </h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                                            {u.role}
+                                        </p>
+                                    </div>
+                                    <div className="opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all">
+                                        <ChevronLeft size={16} className="text-blue-600 rotate-180" />
+                                    </div>
+                                </div>
+                            ))}
+                        {directoryUsers.filter(u => 
+                                u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+                                u.role.toLowerCase().includes(userSearchTerm.toLowerCase())
+                            ).length === 0 && (
+                            <div className="py-10 text-center opacity-40">
+                                <Search size={32} className="mx-auto mb-2" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No personnel found</p>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };

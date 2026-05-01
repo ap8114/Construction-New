@@ -712,7 +712,7 @@ const JobDetails = () => {
                                 <button className="flex-1 md:flex-none px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                                     Priority: All
                                 </button>
-                                {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                {['COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
                                     <button 
                                         onClick={() => setIsTemplateModalOpen(true)}
                                         className="flex-1 md:flex-none px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-100 transition-all flex items-center justify-center gap-2 shadow-sm"
