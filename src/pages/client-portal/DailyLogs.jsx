@@ -137,10 +137,10 @@ const ClientDailyLogs = () => {
                                                 Daily Summary
                                             </h3>
                                         </div>
-                                        <div className="flex flex-col items-end">
+                                        {/* <div className="flex flex-col items-end">
                                             <WeatherIcon status={log.weather?.status} size={24} />
                                             <span className="text-xs font-black text-slate-800 mt-1">{log.weather?.temperature}°F</span>
-                                        </div>
+                                        </div> */}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 pb-4 border-b border-slate-100">
@@ -220,7 +220,7 @@ const ClientDailyLogs = () => {
                                 <tr className="bg-slate-50 border-b border-slate-200">
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Project</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th>
+                                    {/* <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th> */}
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Team</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
@@ -243,12 +243,12 @@ const ClientDailyLogs = () => {
                                                 <span className="text-sm font-bold text-slate-700">{log.projectId?.name || 'Unassigned'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        {/* <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <WeatherIcon status={log.weather?.status} size={16} />
                                                 <span className="text-xs font-bold text-slate-600">{log.weather?.temperature}°F</span>
                                             </div>
-                                        </td>
+                                        </td> */}
                                         <td className="px-6 py-4">
                                             <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-[300px]">
                                                 {log.workPerformed}

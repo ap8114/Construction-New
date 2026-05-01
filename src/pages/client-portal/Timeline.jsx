@@ -54,9 +54,9 @@ const Timeline = () => {
                 <span className="text-[10px] font-bold px-2 py-1 rounded-full border bg-emerald-50 text-emerald-600 border-emerald-200 uppercase">
                   Log Recorded
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                {/* <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   Weather: {log.weather?.status} ({log.weather?.temperature}°F)
-                </span>
+                </span> */}
               </div>
             </div>
           ))}

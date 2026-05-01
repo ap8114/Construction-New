@@ -629,7 +629,7 @@ const ProjectIntelligence = () => {
                                             <tr className="text-xs font-bold uppercase text-slate-500 border-b border-slate-100">
                                                 <th className="pb-6 pr-6">Date Signature</th>
                                                 <th className="pb-6 px-6"> Foreman ID</th>
-                                                <th className="pb-6 px-6">Condition</th>
+                                                {/* <th className="pb-6 px-6">Condition</th> */}
                                                 <th className="pb-6 px-6 text-center">Staff Count</th>
                                                 <th className="pb-6 pl-6 text-right">Site Observation</th>
                                             </tr>
@@ -645,12 +645,12 @@ const ProjectIntelligence = () => {
                                                         <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">{log.foreman}</p>
                                                         <p className="text-[10px] font-semibold text-slate-500 uppercase leading-none mt-1">Verified Signature</p>
                                                     </td>
-                                                    <td className="py-8 px-6">
+                                                    {/* <td className="py-8 px-6">
                                                         <div className="flex items-center gap-2.5 text-amber-500 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-xl w-fit">
                                                             <Sun size={14} />
                                                             <span className="text-[10px] font-black uppercase">{log.weather}</span>
                                                         </div>
-                                                    </td>
+                                                    </td> */}
                                                     <td className="py-8 px-6 text-center">
                                                         <span className="px-4 py-1.5 bg-slate-100 rounded-xl text-[11px] font-bold text-slate-600 shadow-sm">{log.crewCount} PERSONNEL</span>
                                                     </td>

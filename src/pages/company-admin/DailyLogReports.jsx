@@ -47,8 +47,8 @@ const DailyLogReports = () => {
         try {
             const wsData = reportData.logs.map(log => ({
                 Date: new Date(log.date).toLocaleDateString(),
-                Weather: log.weather?.status || 'N/A',
-                Temperature: log.weather?.temperature || 'N/A',
+                // Weather: log.weather?.status || 'N/A',
+                // Temperature: log.weather?.temperature || 'N/A',
                 'Work Performed': log.workPerformed || '',
                 'Total Workers': log.manpower?.reduce((sum, m) => sum + m.count, 0) || 0,
                 'Total Hours': log.manpower?.reduce((sum, m) => sum + (m.count * m.hours), 0) || 0
@@ -126,14 +126,14 @@ const DailyLogReports = () => {
                 new Date(log.date).toLocaleDateString('en-GB', {
                     day: '2-digit', month: 'short', year: 'numeric'
                 }),
-                `${log.weather?.status || 'N/A'} (${log.weather?.temperature || '--'}F)`,
+                // `${log.weather?.status || 'N/A'} (${log.weather?.temperature || '--'}F)`,
                 log.workPerformed || 'No description provided',
                 log.manpower?.reduce((acc, m) => acc + (m.count || 0), 0) || 0
             ]);
 
             autoTable(doc, {
                 startY: 78,
-                head: [['Date', 'Weather / Temp', 'Work Performed', 'Workers']],
+                head: [['Date', /* 'Weather / Temp', */ 'Work Performed', 'Workers']],
                 body: tableBody,
                 theme: 'striped',
                 headStyles: {
@@ -289,8 +289,8 @@ const DailyLogReports = () => {
                     </div>
                 </div>
 
-                {/* Weather Distribution */}
-                <div className="bg-white p-8 rounded-[40px] border border-slate-200/60 shadow-sm space-y-6 overflow-hidden">
+                {/* Weather Distribution - Commented out as per client request */}
+                {/* <div className="bg-white p-8 rounded-[40px] border border-slate-200/60 shadow-sm space-y-6 overflow-hidden">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-xl font-black text-slate-900 tracking-tight">Weather Distribution</h3>
@@ -311,7 +311,7 @@ const DailyLogReports = () => {
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </div> */}
 
                 {/* Activity Frequency */}
                 <div className="bg-white p-8 rounded-[40px] border border-slate-200/60 shadow-sm space-y-6 overflow-hidden lg:col-span-2">
@@ -399,7 +399,7 @@ const DailyLogReports = () => {
                     <thead>
                         <tr className="bg-slate-50/50">
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th>
+                            {/* <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th> */}
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Work Performed</th>
                             <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Workers</th>
                         </tr>
@@ -447,12 +447,12 @@ const DailyLogReports = () => {
                                             {new Date(log.date).toLocaleDateString(undefined, { weekday: 'short' })}
                                         </p>
                                     </td>
-                                    <td className="px-8 py-5">
+                                    {/* <td className="px-8 py-5">
                                         <div className="flex items-center gap-2">
                                             <WeatherStatus status={log.weather?.status} />
                                             <span className="text-xs font-bold text-slate-600">{log.weather?.temperature}°F</span>
                                         </div>
-                                    </td>
+                                    </td> */}
                                     <td className="px-8 py-5">
                                         <p className="text-xs font-bold text-slate-600 line-clamp-2 leading-relaxed">
                                             {log.workPerformed}

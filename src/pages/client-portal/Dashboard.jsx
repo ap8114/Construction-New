@@ -257,9 +257,9 @@ const ClientPortalDashboard = () => {
                           </span>
                         </div>
                         <p className="text-sm text-slate-500 mt-2 leading-relaxed">{log.workPerformed}</p>
-                        <div className="mt-2 text-[10px] text-blue-600 font-bold uppercase truncate">
+                        {/* <div className="mt-2 text-[10px] text-blue-600 font-bold uppercase truncate">
                           Weather: {log.weather?.status} • {log.weather?.temperature}°F
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   ))

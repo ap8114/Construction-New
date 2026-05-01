@@ -156,10 +156,10 @@ const DailyLogs = () => {
             data.append('date', formData.date);
             data.append('projectId', formData.projectId);
             data.append('workPerformed', formData.workPerformed);
-            data.append('weather', JSON.stringify({
+            /* data.append('weather', JSON.stringify({
                 ...formData.weather,
                 temperature: formData.weather.temperature === '' ? null : Number(formData.weather.temperature)
-            }));
+            })); */
             data.append('manpower', JSON.stringify(formData.manpower.map(m => ({
                 role: m.role,
                 count: parseInt(m.count) || 0,
@@ -380,10 +380,10 @@ const DailyLogs = () => {
                                                     Daily Summary
                                                 </h3>
                                             </div>
-                                            <div className="flex flex-col items-end">
+                                            {/* <div className="flex flex-col items-end">
                                                 <WeatherIcon status={log.weather?.status} size={24} />
                                                 <span className="text-xs font-black text-slate-800 mt-1">{log.weather?.temperature}°F</span>
-                                            </div>
+                                            </div> */}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-3 pb-3.5 border-b border-slate-100">
@@ -469,7 +469,7 @@ const DailyLogs = () => {
                                     <tr className="bg-slate-50 border-b border-slate-200">
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Project</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th>
+                                        {/* <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th> */}
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Team</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
@@ -492,12 +492,12 @@ const DailyLogs = () => {
                                                     <span className="text-sm font-bold text-slate-700">{log.projectId?.name || 'Unassigned'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            {/* <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <WeatherIcon status={log.weather?.status} size={16} />
                                                     <span className="text-xs font-bold text-slate-600">{log.weather?.temperature}°F</span>
                                                 </div>
-                                            </td>
+                                            </td> */}
                                             <td className="px-6 py-4">
                                                 <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-[300px]">
                                                     {log.workPerformed}
@@ -593,8 +593,8 @@ const DailyLogs = () => {
                     </div>
 
                     <div className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 space-y-6">
-                        {/* Site Conditions */}
-                        <div className="space-y-3">
+                        {/* Site Conditions (Commented out as per client request) */}
+                        {/* <div className="space-y-3">
                             <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <CloudSun size={14} className="text-orange-500" /> Site Conditions
                             </label>
@@ -622,7 +622,7 @@ const DailyLogs = () => {
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">°F</span>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
 
                         <div className="h-px bg-slate-200/60"></div>
 
@@ -801,7 +801,7 @@ const DailyLogs = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end">
+                            {/* <div className="flex flex-col items-end">
                                 <div className="flex items-center gap-2 mb-1">
                                     <WeatherIcon status={selectedLog.weather?.status} size={28} />
                                     <span className="text-xl font-black text-slate-800">{selectedLog.weather?.temperature}°F</span>
@@ -809,7 +809,7 @@ const DailyLogs = () => {
                                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none">
                                     {selectedLog.weather?.status || 'Sunny'} Sky Condition
                                 </p>
-                            </div>
+                            </div> */}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
