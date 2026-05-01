@@ -1974,21 +1974,24 @@ const Tasks = () => {
         }
     }, [user?.role]);
 
-    // Filtered team based on selected role type in form
-    const filteredTeamByRole = useMemo(() => {
+    // Team members eligible based on current user's role (RBAC)
+    const availableTeam = useMemo(() => {
         let list = team;
-        if (formData.assignedRoleType) {
-            list = team.filter(u => u.role === formData.assignedRoleType);
-        }
-
         if (user?.role === 'PM') {
             list = list.filter(u => ['PM', 'FOREMAN', 'SUBCONTRACTOR', 'WORKER'].includes(u.role));
         } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
             list = list.filter(u => u.role === 'WORKER');
         }
-
         return list;
-    }, [team, formData.assignedRoleType, user?.role]);
+    }, [team, user?.role]);
+
+    // Team members filtered by the selected role in the Create/Edit Task form
+    const filteredTeamByRole = useMemo(() => {
+        if (formData.assignedRoleType) {
+            return availableTeam.filter(u => u.role === formData.assignedRoleType);
+        }
+        return availableTeam;
+    }, [availableTeam, formData.assignedRoleType]);
 
     // Filtering Logic Helper
     const isDirectlyAssigned = (task) => {
@@ -2912,7 +2915,7 @@ const Tasks = () => {
                                                                                         isSelected={selectedTasks.has(st._id)}
                                                                                         allSubTasks={taskSubTasks}
                                                                                         taskId={task._id}
-                                                                                        team={filteredTeamByRole}
+                                                                                        team={availableTeam}
                                                                                         canManage={canManage}
                                                                                         onSelect={handleSelectTask}
                                                                                         onToggle={(s) => handleSubTaskToggleInList(task._id, s)}
@@ -2937,7 +2940,7 @@ const Tasks = () => {
                                                                                 <QuickAddSubTask
                                                                                     taskId={task._id}
                                                                                     onSave={handleQuickSubTaskSave}
-                                                                                    team={filteredTeamByRole}
+                                                                                    team={availableTeam}
                                                                                     isSubmitting={isSubmittingSubTask}
                                                                                 />
                                                                             )}
@@ -3227,7 +3230,7 @@ const Tasks = () => {
                                             allSubTasks={subTasks}
                                             depth={0}
                                             taskId={selectedTask._id}
-                                            team={filteredTeamByRole}
+                                            team={availableTeam}
                                             canManage={canManage}
                                             onToggle={handleToggleSubTask}
                                             onUpdate={async (st, updates) => {
@@ -3276,7 +3279,7 @@ const Tasks = () => {
                                             <select value={newSubTask.assignedTo} onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
                                                 className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
                                                 <option value="">Assign To</option>
-                                                {team.filter(u => !newSubTask.assignedRoleType || u.role === newSubTask.assignedRoleType).map(u => (
+                                                {availableTeam.filter(u => !newSubTask.assignedRoleType || u.role === newSubTask.assignedRoleType).map(u => (
                                                     <option key={u._id} value={u._id}>{u.fullName}</option>
                                                 ))}
                                             </select>
