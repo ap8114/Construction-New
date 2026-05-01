@@ -565,6 +565,7 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
 
 // ─── Quick Add Sub-task form (Root level) ───────────────────────────────────
 const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
+    const { user } = useAuth();
     const [title, setTitle] = useState('');
     const [assignedRoleType, setAssignedRoleType] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
@@ -610,7 +611,9 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                             <option value="WORKER">Worker</option>
                             <option value="FOREMAN">Foreman</option>
                             <option value="SUBCONTRACTOR">Subcontractor</option>
-                            <option value="PM">Project Manager</option>
+                            {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                <option value="PM">Project Manager</option>
+                            )}
                         </select>
                         <select
                             value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
@@ -673,6 +676,7 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
 
 // ─── SubTaskTableRow: table-compatible recursive subtask row (list view) ──────
 const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage, onToggle, onUpdate, onAddChild, isSubmitting, renderChildren, isLast, levelLines, isCompactView, columnWidths, projectName, isSelected, onSelect, setNodeRef, style, attributes, listeners }) => {
+    const { user } = useAuth();
     const [childrenOpen, setChildrenOpen] = useState(true);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -874,7 +878,9 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 <option value="WORKER">Worker</option>
                                 <option value="FOREMAN">Foreman</option>
                                 <option value="SUBCONTRACTOR">Subcontractor</option>
-                                <option value="PM">Project Manager</option>
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                    <option value="PM">Project Manager</option>
+                                )}
                             </select>
                             <select
                                 value={editFormData.assignedTo}
@@ -1067,7 +1073,9 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                     <option value="WORKER">Worker</option>
                                     <option value="FOREMAN">Foreman</option>
                                     <option value="SUBCONTRACTOR">Subcontractor</option>
-                                    <option value="PM">Project Manager</option>
+                                    {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                        <option value="PM">Project Manager</option>
+                                    )}
                                 </select>
                                 <select
                                     value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
@@ -1125,6 +1133,7 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
 // ─── Recursive SubTask Tree Node (ClickUp Style) ─────────────────────────────
 const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage, onToggle, onAddChild, onUpdate, onDelete }) => {
+    const { user } = useAuth();
     const [collapsed, setCollapsed] = useState(false);
     const [addingHere, setAddingHere] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -1220,7 +1229,9 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                                 <option value="WORKER">Worker</option>
                                 <option value="FOREMAN">Foreman</option>
                                 <option value="SUBCONTRACTOR">Subcontractor</option>
-                                <option value="PM">Project Manager</option>
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                    <option value="PM">Project Manager</option>
+                                )}
                             </select>
                             <select value={editFormData.assignedTo} onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
                                 className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
@@ -1359,7 +1370,9 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                             <option value="WORKER">Worker</option>
                             <option value="FOREMAN">Foreman</option>
                             <option value="SUBCONTRACTOR">Subcontractor</option>
-                            <option value="PM">Project Manager</option>
+                            {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                <option value="PM">Project Manager</option>
+                            )}
                         </select>
                         <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
                             className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
@@ -1969,7 +1982,7 @@ const Tasks = () => {
         }
 
         if (user?.role === 'PM') {
-            list = list.filter(u => ['FOREMAN', 'SUBCONTRACTOR', 'WORKER'].includes(u.role));
+            list = list.filter(u => ['PM', 'FOREMAN', 'SUBCONTRACTOR', 'WORKER'].includes(u.role));
         } else if (['FOREMAN', 'SUBCONTRACTOR'].includes(user?.role)) {
             list = list.filter(u => u.role === 'WORKER');
         }
@@ -3022,7 +3035,7 @@ const Tasks = () => {
                                         <option value="SUBCONTRACTOR">Subcontractor</option>
                                     </>
                                 )}
-                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) && (
+                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
                                     <option value="PM">Project Manager</option>
                                 )}
                             </select>
@@ -3256,7 +3269,9 @@ const Tasks = () => {
                                                 <option value="WORKER">Worker</option>
                                                 <option value="FOREMAN">Foreman</option>
                                                 <option value="SUBCONTRACTOR">Subcontractor</option>
-                                                <option value="PM">Project Manager</option>
+                                                {(!user?.role || ['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
+                                                    <option value="PM">Project Manager</option>
+                                                )}
                                             </select>
                                             <select value={newSubTask.assignedTo} onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
                                                 className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
