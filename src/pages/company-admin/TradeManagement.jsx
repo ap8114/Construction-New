@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
     Users, Plus, Search, Filter, Mail, Phone, MoreVertical,
-    Trash2, Edit2, CheckCircle, XCircle, Loader, Save, X
+    Trash2, Edit2, CheckCircle, XCircle, Loader, Save, X, Eye, 
+    FileText, Paperclip, ExternalLink, Briefcase, ShieldCheck
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import emailjs from '@emailjs/browser';
-import { FileText, Paperclip, ExternalLink } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
@@ -32,9 +32,13 @@ const TradeManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
     const [isDeleteBidModalOpen, setIsDeleteBidModalOpen] = useState(false);
+    const [isDeleteTradeModalOpen, setIsDeleteTradeModalOpen] = useState(false);
     const [bidToDelete, setBidToDelete] = useState(null);
+    const [tradeToDelete, setTradeToDelete] = useState(null);
     const [bids, setBids] = useState([]);
     const [view, setView] = useState('trades'); // 'trades' or 'bids'
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [viewTrade, setViewTrade] = useState(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -143,14 +147,25 @@ const TradeManagement = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this trade?')) {
-            try {
-                await api.delete(`/vendors/${id}`);
-                fetchTrades();
-            } catch (err) {
-                console.error('Error deleting trade:', err);
-            }
+    const handleView = (trade) => {
+        setViewTrade(trade);
+        setIsViewModalOpen(true);
+    };
+
+    const handleDelete = (id) => {
+        setTradeToDelete(id);
+        setIsDeleteTradeModalOpen(true);
+    };
+
+    const confirmDeleteTrade = async () => {
+        try {
+            await api.delete(`/vendors/${tradeToDelete}`);
+            fetchTrades();
+            setIsDeleteTradeModalOpen(false);
+            setTradeToDelete(null);
+        } catch (err) {
+            console.error('Error deleting trade:', err);
+            alert('Error deleting trade.');
         }
     };
 
@@ -164,6 +179,7 @@ const TradeManagement = () => {
             await api.delete(`/vendors/bids/${bidToDelete}`);
             setBids(bids.filter(b => b._id !== bidToDelete));
             setIsDeleteBidModalOpen(false);
+            setBidToDelete(null);
         } catch (err) {
             console.error('Error deleting bid:', err);
             alert('Error deleting bid.');
@@ -335,7 +351,10 @@ const TradeManagement = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        <button onClick={() => handleEdit(trade)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                                                        <button onClick={() => handleView(trade)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="View Details">
+                                                            <Eye size={16} />
+                                                        </button>
+                                                        <button onClick={() => handleEdit(trade)} className="p-2 text-slate-500 hover:bg-blue-50 rounded-lg transition">
                                                             <Edit2 size={16} />
                                                         </button>
                                                         <button onClick={() => handleDelete(trade._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition">
@@ -620,6 +639,126 @@ const TradeManagement = () => {
                             className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-medium shadow-lg shadow-red-200"
                         >
                             Confirm Delete
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+            {/* View Trade Modal */}
+            <Modal
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                title="Trade Partner Details"
+            >
+                {viewTrade && (
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+                            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-100 shrink-0">
+                                <Briefcase size={32} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 leading-tight">{viewTrade.name}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                                        {viewTrade.category}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border
+                                        ${viewTrade.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                                        {viewTrade.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <Users size={12} className="text-blue-500" /> Primary Contact
+                                </p>
+                                <p className="text-sm font-black text-slate-800">{viewTrade.contactPerson || 'No contact person'}</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <Phone size={12} className="text-emerald-500" /> Phone Number
+                                </p>
+                                <p className="text-sm font-black text-slate-800">{viewTrade.phone || 'No phone provided'}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Mail size={12} className="text-blue-500" /> Email Address
+                            </p>
+                            <p className="text-sm font-black text-slate-800">{viewTrade.email || 'No email provided'}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <ShieldCheck size={14} className="text-blue-600" /> Compliance & Documents
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {viewTrade.attachments && viewTrade.attachments.length > 0 ? (
+                                    viewTrade.attachments.map((file, idx) => (
+                                        <a 
+                                            key={idx}
+                                            href={getServerUrl(file.url)} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all group w-full sm:w-auto min-w-[200px]"
+                                        >
+                                            <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                <FileText size={16} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-black text-slate-800 truncate">{file.name}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase">View Document</p>
+                                            </div>
+                                            <ExternalLink size={12} className="text-slate-300 group-hover:text-blue-600" />
+                                        </a>
+                                    ))
+                                ) : (
+                                    <div className="w-full py-8 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 gap-2">
+                                        <ShieldCheck size={24} className="opacity-20" />
+                                        <p className="text-[10px] font-black uppercase tracking-tighter">No compliance documents uploaded</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={() => setIsViewModalOpen(false)}
+                            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
+                        >
+                            Close View
+                        </button>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Delete Trade Confirmation Modal */}
+            <Modal isOpen={isDeleteTradeModalOpen} onClose={() => setIsDeleteTradeModalOpen(false)} title="Delete Trade Partner">
+                <div className="text-center space-y-4">
+                    <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                        <Trash2 className="text-red-600" size={32} />
+                    </div>
+                    <div>
+                        <p className="font-bold text-slate-800 text-lg">Delete this trade partner?</p>
+                        <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                            This will permanently remove the trade partner and all their associated records.
+                            This action cannot be undone.
+                        </p>
+                    </div>
+                    <div className="flex justify-center gap-3 pt-4 border-t border-slate-50 mt-4">
+                        <button 
+                            onClick={() => setIsDeleteTradeModalOpen(false)} 
+                            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-bold uppercase text-[10px] tracking-widest"
+                        >
+                            No, Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDeleteTrade} 
+                            className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition font-bold uppercase text-[10px] tracking-widest shadow-lg shadow-red-100"
+                        >
+                            Yes, Delete
                         </button>
                     </div>
                 </div>

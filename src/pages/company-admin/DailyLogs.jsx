@@ -471,7 +471,7 @@ const DailyLogs = () => {
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Project</th>
                                         {/* <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Weather</th> */}
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Performance</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Team</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Team & Time</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -504,17 +504,19 @@ const DailyLogs = () => {
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex -space-x-2">
-                                                    {[...Array(Math.min(log.manpower?.reduce((acc, m) => acc + m.count, 0) || 0, 3))].map((_, i) => (
-                                                        <div key={i} className="w-7 h-7 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">
-                                                            P
-                                                        </div>
-                                                    ))}
-                                                    {(log.manpower?.reduce((acc, m) => acc + m.count, 0) || 0) > 3 && (
-                                                        <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                                            +{(log.manpower?.reduce((acc, m) => acc + m.count, 0) || 0) - 3}
-                                                        </div>
-                                                    )}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100/50" title="Total Personnel">
+                                                        <Users size={12} className="text-blue-600" />
+                                                        <span className="text-[11px] font-black text-blue-700">
+                                                            {log.manpower?.reduce((acc, m) => acc + (parseInt(m.count) || 0), 0) || 0}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100/50" title="Total Man-hours">
+                                                        <Clock size={12} className="text-emerald-600" />
+                                                        <span className="text-[11px] font-black text-emerald-700">
+                                                            {log.manpower?.reduce((acc, m) => acc + ((parseFloat(m.hours) || 0) * (parseInt(m.count) || 0)), 0) || 0}h
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">

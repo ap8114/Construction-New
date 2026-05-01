@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Plus, Search, Calendar, MapPin, Edit, Trash2,
+  Plus, Search, Calendar, MapPin, Edit, Trash2, Eye,
   CheckCircle, Upload, ChevronRight, LayoutGrid, List, Globe, Filter,
   DollarSign, TrendingUp, Users, X, HardHat, Briefcase, ArrowRight, RefreshCw, FileText, ChevronDown
 } from 'lucide-react';
@@ -35,6 +35,13 @@ const getLocationStr = (loc) => {
 
 const canSeeBudget = (role) =>
   ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'TBD';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'TBD';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
 // ─── Project Form (Create/Edit) ───────────────────────────────────────────────
 const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, saving }) => {
@@ -337,6 +344,8 @@ const Projects = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState(null); // { message, type }
   const [saving, setSaving] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewProject, setViewProject] = useState(null);
 
   const showBudget = canSeeBudget(user?.role);
 
@@ -838,6 +847,17 @@ const Projects = () => {
 
                 {/* Action buttons - Refined and Slim */}
                 <div className="flex items-center gap-1.5 pt-1" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewProject(project);
+                      setIsViewOpen(true);
+                    }}
+                    className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-emerald-600 rounded-lg md:rounded-xl transition-all border border-slate-200/50 flex items-center justify-center shrink-0 shadow-sm"
+                    title="View Details"
+                  >
+                    <Eye size={13} />
+                  </button>
                   {user?.role !== 'CLIENT' && (
                     <button onClick={(e) => openEdit(project, e)}
                       className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-blue-600 rounded-lg md:rounded-xl transition-all border border-slate-200/50 flex items-center justify-center shrink-0 shadow-sm"
@@ -959,7 +979,18 @@ const Projects = () => {
                     {project.endDate ? new Date(project.endDate).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-8 py-5 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewProject(project);
+                          setIsViewOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
+                        title="View Details"
+                      >
+                        <Eye size={18} />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1004,6 +1035,8 @@ const Projects = () => {
         )}
       </Modal>
 
+
+      {/* ── Archive Modal ── */}
       <Modal isOpen={Boolean(deleteTarget)} onClose={cancelDelete} title="Archive Project" maxWidth="max-w-md">
         <div className="space-y-5">
           <p className="text-sm text-slate-600">
@@ -1031,6 +1064,84 @@ const Projects = () => {
             </button>
           </div>
         </div>
+      </Modal>
+      
+      {/* ── View Details Modal ── */}
+      <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Project Details" maxWidth="max-w-2xl">
+        {viewProject && (
+          <div className="space-y-6">
+            <div className="flex items-start gap-6 pb-6 border-b border-slate-100">
+                <div className="w-24 h-24 rounded-3xl overflow-hidden shrink-0 border-4 border-white shadow-xl">
+                    <img src={viewProject.image || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800'} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 pt-2">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${statusColor(viewProject.status)}`}>
+                            {statusLabel(viewProject.status)}
+                        </span>
+                        <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{viewProject.progress || 0}% Complete</span>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">{viewProject.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 text-slate-400 font-bold text-xs uppercase tracking-widest">
+                        <MapPin size={12} className="text-blue-500" />
+                        {getLocationStr(viewProject.location) || 'No location provided'}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned PM</p>
+                        <div className="flex items-center gap-2">
+                            <Users size={14} className="text-blue-500" />
+                            <span className="text-sm font-black text-slate-800">{viewProject.pmId?.fullName || (allUsers?.find(u => u._id === (viewProject.pmId?._id || viewProject.pmId))?.fullName || 'Unassigned')}</span>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Client Contact</p>
+                        <div className="flex items-center gap-2">
+                            <Briefcase size={14} className="text-blue-500" />
+                            <span className="text-sm font-black text-slate-800">{viewProject.clientId?.fullName || 'No Client Assigned'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Project Timeline</p>
+                        <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                                <Calendar size={14} className="text-blue-500" />
+                                <span className="text-xs font-bold text-slate-600">Start: {formatDate(viewProject.startDate)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Calendar size={14} className="text-orange-500" />
+                                <span className="text-xs font-bold text-slate-600">End: {formatDate(viewProject.endDate)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {showBudget && (
+                        <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                            <p className="text-[9px] font-black text-emerald-600/60 uppercase tracking-widest mb-1">Contract Budget</p>
+                            <div className="flex items-center gap-2">
+                                <DollarSign size={14} className="text-emerald-600" />
+                                <span className="text-sm font-black text-emerald-700">${(Number(viewProject.budget) || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+                <button 
+                    onClick={() => setIsViewOpen(false)}
+                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl"
+                >
+                    Close View
+                </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Toast Notification */}

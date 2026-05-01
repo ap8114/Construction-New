@@ -11,6 +11,7 @@ import {
 import api from '../../utils/api';
 
 import DeficiencyModal from '../../components/deficiencies/DeficiencyModal';
+import Modal from '../../components/Modal';
 
 const canSeeBudget = (role) =>
     ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
@@ -76,6 +77,8 @@ const ProjectDetails = () => {
     const [isPostingUpdate, setIsPostingUpdate] = useState(false);
     const [newUpdate, setNewUpdate] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [jobToDelete, setJobToDelete] = useState(null);
     
     // Equipment Assignment states
     const [isAssigningEquipment, setIsAssigningEquipment] = useState(null); // jobID
@@ -224,19 +227,27 @@ const ProjectDetails = () => {
     };
 
     // ── Delete Job ─────────────────────────────────────────────────────────────
-    const handleDeleteJob = async (jobId) => {
-        const jobEquipment = equipment.filter(e => e.assignedJob?._id === jobId || e.assignedJob === jobId);
+    const handleDeleteJob = (job) => {
+        const jobEquipment = equipment.filter(e => e.assignedJob?._id === job._id || e.assignedJob === job._id);
         if (jobEquipment.length > 0) {
             alert(`Cannot delete job. There are ${jobEquipment.length} items of equipment still assigned to it. Please return all equipment first.`);
             return;
         }
-        if (!window.confirm('Delete this job?')) return;
+        setJobToDelete(job);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteJob = async () => {
+        if (!jobToDelete) return;
         try {
-            setDeletingId(jobId);
-            await api.delete(`/jobs/${jobId}`);
-            setJobs(prev => prev.filter(j => j._id !== jobId));
+            setDeletingId(jobToDelete._id);
+            await api.delete(`/jobs/${jobToDelete._id}`);
+            setJobs(prev => prev.filter(j => j._id !== jobToDelete._id));
+            setIsDeleteModalOpen(false);
+            setJobToDelete(null);
         } catch (err) {
             console.error(err);
+            alert('Failed to delete job');
         } finally {
             setDeletingId(null);
         }
@@ -1070,7 +1081,7 @@ const ProjectDetails = () => {
                                                     <span className="text-[10px] font-black uppercase">Punch List</span>
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteJob(job._id)}
+                                                    onClick={() => handleDeleteJob(job)}
                                                     disabled={deletingId === job._id}
                                                     className="ml-auto p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                                                     {deletingId === job._id
@@ -1133,7 +1144,7 @@ const ProjectDetails = () => {
                                                         </td>
                                                     )}
                                                     <td className="px-6 py-4 text-right">
-                                                        <button onClick={() => handleDeleteJob(job._id)}
+                                                        <button onClick={() => handleDeleteJob(job)}
                                                             disabled={deletingId === job._id}
                                                             className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                                                             {deletingId === job._id ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -2238,6 +2249,44 @@ const ProjectDetails = () => {
                 })}
                 isSubmitting={isSubmittingDeficiency}
             />
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    if (deletingId) return;
+                    setIsDeleteModalOpen(false);
+                    setJobToDelete(null);
+                }}
+                title="Delete Job"
+            >
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-[20px] bg-red-50 text-red-500 flex items-center justify-center mb-6 border border-red-100/50">
+                        <AlertTriangle size={28} />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Confirm Deletion</h3>
+                    <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                        Are you sure you want to delete <strong className="text-slate-900">{jobToDelete?.name}</strong>? All associated data will be permanently removed.
+                    </p>
+                    <div className="flex gap-4 w-full">
+                        <button 
+                            onClick={() => {
+                                setIsDeleteModalOpen(false);
+                                setJobToDelete(null);
+                            }}
+                            disabled={deletingId}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDeleteJob}
+                            disabled={deletingId}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {deletingId ? <Loader size={16} className="animate-spin" /> : <><Trash2 size={16} /> Delete</>}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
