@@ -508,11 +508,14 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                     )}
                 </td>
                 <td className="px-4 py-2.5">
-                    {task.assignedRoleType ? (
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border whitespace-nowrap ${ROLE_COLORS[task.assignedRoleType] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
-                            {ROLE_LABELS[task.assignedRoleType] || task.assignedRoleType}
-                        </span>
-                    ) : <span className="text-slate-300 text-[9px] font-bold">—</span>}
+                    {(() => {
+                        const role = task.assignedRoleType || (task.assignedTo && task.assignedTo[0]?.role);
+                        return role ? (
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border whitespace-nowrap ${ROLE_COLORS[role] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                {ROLE_LABELS[role] || role}
+                            </span>
+                        ) : <span className="text-slate-300 text-[9px] font-bold">—</span>;
+                    })()}
                 </td>
                 <td className="px-4 py-2.5">
                     <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-widest whitespace-nowrap
@@ -563,6 +566,7 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
 // ─── Quick Add Sub-task form (Root level) ───────────────────────────────────
 const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     const [title, setTitle] = useState('');
+    const [assignedRoleType, setAssignedRoleType] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [status, setStatus] = useState('todo');
@@ -572,8 +576,8 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!title.trim()) return;
-        onSave(taskId, { title, assignedTo, priority, status, startDate, dueDate });
-        setTitle(''); setAssignedTo(''); setPriority('Medium'); setStatus('todo'); setStartDate(''); setDueDate('');
+        onSave(taskId, { title, assignedTo, assignedRoleType, priority, status, startDate, dueDate });
+        setTitle(''); setAssignedTo(''); setAssignedRoleType(''); setPriority('Medium'); setStatus('todo'); setStartDate(''); setDueDate('');
     };
 
     return (
@@ -597,13 +601,27 @@ const QuickAddSubTask = ({ taskId, onSave, team, isSubmitting }) => {
                         />
                     </div>
 
-                    <select
-                        value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-                        className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[10px] font-bold text-slate-600 outline-none shadow-sm min-w-[100px]"
-                    >
-                        <option value="">Assign To</option>
-                        {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                    </select>
+                    <div className="flex flex-col gap-1 min-w-[120px]">
+                        <select
+                            value={assignedRoleType} onChange={e => { setAssignedRoleType(e.target.value); setAssignedTo(''); }}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-black text-blue-600 outline-none shadow-sm uppercase tracking-tighter"
+                        >
+                            <option value="">Any Role</option>
+                            <option value="WORKER">Worker</option>
+                            <option value="FOREMAN">Foreman</option>
+                            <option value="SUBCONTRACTOR">Subcontractor</option>
+                            <option value="PM">Project Manager</option>
+                        </select>
+                        <select
+                            value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
+                        >
+                            <option value="">Assign To</option>
+                            {team.filter(u => !assignedRoleType || u.role === assignedRoleType).map(u => (
+                                <option key={u._id} value={u._id}>{u.fullName}</option>
+                            ))}
+                        </select>
+                    </div>
 
                     <select
                         value={priority} onChange={e => setPriority(e.target.value)}
@@ -661,12 +679,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
     const [editFormData, setEditFormData] = useState({
         title: subTask.title || '',
         assignedTo: subTask.assignedTo?._id || subTask.assignedTo || '',
+        assignedRoleType: subTask.assignedRoleType || '',
         priority: subTask.priority || 'Medium',
         status: subTask.status || 'todo',
         startDate: subTask.startDate ? subTask.startDate.split('T')[0] : '',
         dueDate: subTask.dueDate ? subTask.dueDate.split('T')[0] : ''
     });
     const [childTitle, setChildTitle] = useState('');
+    const [childRole, setChildRole] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
     const [childStatus, setChildStatus] = useState('todo');
@@ -691,13 +711,14 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
         await onAddChild(taskId, {
             title: childTitle,
             assignedTo: childAssigned || undefined,
+            assignedRoleType: childRole || undefined,
             priority: childPriority,
             status: childStatus,
             startDate: childStartDate || undefined,
             dueDate: childDueDate || undefined,
             parentSubTaskId: subTask._id
         });
-        setChildTitle(''); setChildAssigned(''); setChildPriority('Medium'); setChildStatus('todo'); setChildStartDate(''); setChildDueDate('');
+        setChildTitle(''); setChildRole(''); setChildAssigned(''); setChildPriority('Medium'); setChildStatus('todo'); setChildStartDate(''); setChildDueDate('');
         setAddingHere(false);
         setSavingChild(false);
     };
@@ -843,14 +864,29 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
 
                 <td className="px-4 py-2.5">
                     {isEditing ? (
-                        <select
-                            value={editFormData.assignedTo}
-                            onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold text-slate-700 outline-none"
-                        >
-                            <option value="">Assign To</option>
-                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                        </select>
+                        <div className="space-y-1">
+                            <select
+                                value={editFormData.assignedRoleType}
+                                onChange={e => setEditFormData({ ...editFormData, assignedRoleType: e.target.value, assignedTo: '' })}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[9px] font-black text-blue-600 outline-none uppercase tracking-tighter"
+                            >
+                                <option value="">Any Role</option>
+                                <option value="WORKER">Worker</option>
+                                <option value="FOREMAN">Foreman</option>
+                                <option value="SUBCONTRACTOR">Subcontractor</option>
+                                <option value="PM">Project Manager</option>
+                            </select>
+                            <select
+                                value={editFormData.assignedTo}
+                                onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] font-bold text-slate-700 outline-none"
+                            >
+                                <option value="">Assign To</option>
+                                {team.filter(u => !editFormData.assignedRoleType || u.role === editFormData.assignedRoleType).map(u => (
+                                    <option key={u._id} value={u._id}>{u.fullName}</option>
+                                ))}
+                            </select>
+                        </div>
                     ) : subTask.assignedTo?.fullName ? (
                         <div className="flex items-center gap-1.5 opacity-100">
                             <div className="w-5 h-5 rounded bg-slate-100 text-slate-600 flex items-center justify-center text-[8px] font-black border border-slate-200 shadow-sm">
@@ -865,7 +901,16 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                     )}
                 </td>
 
-                <td className="px-4 py-2.5" />
+                <td className="px-4 py-2.5">
+                    {(() => {
+                        const role = (isEditing ? editFormData.assignedRoleType : subTask.assignedRoleType) || subTask.assignedTo?.role;
+                        return role ? (
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border whitespace-nowrap ${ROLE_COLORS[role] || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                {ROLE_LABELS[role] || role}
+                            </span>
+                        ) : <span className="text-slate-300 text-[9px] font-bold">—</span>;
+                    })()}
+                </td>
 
                 <td className="px-4 py-2.5">
                     {canManage ? (
@@ -1013,11 +1058,27 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
                                 value={childTitle} onChange={e => setChildTitle(e.target.value)}
                                 className="flex-1 bg-white border border-blue-300 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 min-w-[160px] shadow-sm"
                             />
-                            <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm">
-                                <option value="">Assign</option>
-                                {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                            </select>
+                            <div className="flex flex-col gap-1 min-w-[110px]">
+                                <select
+                                    value={childRole} onChange={e => { setChildRole(e.target.value); setChildAssigned(''); }}
+                                    className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-black text-blue-600 outline-none shadow-sm uppercase tracking-tighter"
+                                >
+                                    <option value="">Any Role</option>
+                                    <option value="WORKER">Worker</option>
+                                    <option value="FOREMAN">Foreman</option>
+                                    <option value="SUBCONTRACTOR">Subcontractor</option>
+                                    <option value="PM">Project Manager</option>
+                                </select>
+                                <select
+                                    value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 outline-none shadow-sm"
+                                >
+                                    <option value="">Assign</option>
+                                    {team.filter(u => !childRole || u.role === childRole).map(u => (
+                                        <option key={u._id} value={u._id}>{u.fullName}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <select value={childPriority} onChange={e => setChildPriority(e.target.value)}
                                 className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 outline-none shadow-sm">
                                 <option value="Low">Low</option>
@@ -1070,12 +1131,14 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
     const [editFormData, setEditFormData] = useState({
         title: node.title || '',
         assignedTo: node.assignedTo?._id || node.assignedTo || '',
+        assignedRoleType: node.assignedRoleType || '',
         priority: node.priority || 'Medium',
         status: node.status || 'todo',
         startDate: node.startDate ? node.startDate.split('T')[0] : '',
         dueDate: node.dueDate ? node.dueDate.split('T')[0] : ''
     });
     const [childTitle, setChildTitle] = useState('');
+    const [childRole, setChildRole] = useState('');
     const [childAssigned, setChildAssigned] = useState('');
     const [childPriority, setChildPriority] = useState('Medium');
     const [childStatus, setChildStatus] = useState('todo');
@@ -1092,6 +1155,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
         await onAddChild({
             title: childTitle,
             assignedTo: childAssigned || undefined,
+            assignedRoleType: childRole || undefined,
             priority: childPriority,
             status: childStatus,
             startDate: childStartDate || undefined,
@@ -1099,6 +1163,7 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
             parentSubTaskId: node._id
         });
         setChildTitle('');
+        setChildRole('');
         setChildAssigned('');
         setChildPriority('Medium');
         setChildStatus('todo');
@@ -1145,11 +1210,26 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                             value={editFormData.title}
                             onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
                         />
-                        <select value={editFormData.assignedTo} onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
-                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
-                            <option value="">Assign</option>
-                            {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                        </select>
+                        <div className="flex flex-col gap-1 min-w-[110px]">
+                            <select
+                                value={editFormData.assignedRoleType}
+                                onChange={e => setEditFormData({ ...editFormData, assignedRoleType: e.target.value, assignedTo: '' })}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-black text-blue-600 outline-none uppercase tracking-tighter"
+                            >
+                                <option value="">Any Role</option>
+                                <option value="WORKER">Worker</option>
+                                <option value="FOREMAN">Foreman</option>
+                                <option value="SUBCONTRACTOR">Subcontractor</option>
+                                <option value="PM">Project Manager</option>
+                            </select>
+                            <select value={editFormData.assignedTo} onChange={e => setEditFormData({ ...editFormData, assignedTo: e.target.value })}
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
+                                <option value="">Assign</option>
+                                {team.filter(u => !editFormData.assignedRoleType || u.role === editFormData.assignedRoleType).map(u => (
+                                    <option key={u._id} value={u._id}>{u.fullName}</option>
+                                ))}
+                            </select>
+                        </div>
                         <select value={editFormData.status} onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}
                             className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
                             <option value="todo">Todo</option>
@@ -1184,6 +1264,14 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                                 {node.status.replace('_', ' ')}
                             </span>
                         )}
+                        {(() => {
+                            const role = node.assignedRoleType || node.assignedTo?.role;
+                            return role && (
+                                <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border uppercase ${ROLE_COLORS[role] || 'bg-slate-50 text-slate-400 border-slate-200'}`}>
+                                    {ROLE_LABELS[role] || role}
+                                </span>
+                            );
+                        })()}
                         {node.assignedTo?.fullName ? (
                             <span className="shrink-0 text-[10px] font-bold text-slate-400 flex items-center gap-1">
                                 <UserCheck size={10} className="text-blue-400" />{node.assignedTo.fullName}
@@ -1262,11 +1350,25 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
                         onChange={e => setChildTitle(e.target.value)}
                         className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 min-w-[140px]"
                     />
-                    <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
-                        className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
-                        <option value="">Assign</option>
-                        {team.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                    </select>
+                    <div className="flex flex-col gap-1 min-w-[110px]">
+                        <select
+                            value={childRole} onChange={e => { setChildRole(e.target.value); setChildAssigned(''); }}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-black text-blue-600 outline-none shadow-sm uppercase tracking-tighter"
+                        >
+                            <option value="">Any Role</option>
+                            <option value="WORKER">Worker</option>
+                            <option value="FOREMAN">Foreman</option>
+                            <option value="SUBCONTRACTOR">Subcontractor</option>
+                            <option value="PM">Project Manager</option>
+                        </select>
+                        <select value={childAssigned} onChange={e => setChildAssigned(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
+                            <option value="">Assign</option>
+                            {team.filter(u => !childRole || u.role === childRole).map(u => (
+                                <option key={u._id} value={u._id}>{u.fullName}</option>
+                            ))}
+                        </select>
+                    </div>
                     <select value={childPriority} onChange={e => setChildPriority(e.target.value)}
                         className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-700 outline-none">
                         <option value="Low">Low</option>
@@ -1515,7 +1617,7 @@ const Tasks = () => {
     }, [bulkApplyProject]);
 
     const [newSubTask, setNewSubTask] = useState({
-        title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium'
+        title: '', assignedTo: '', assignedRoleType: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium'
     });
 
     const columns = {
@@ -3144,11 +3246,26 @@ const Tasks = () => {
                                             onChange={e => setNewSubTask({ ...newSubTask, title: e.target.value })}
                                             className="col-span-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
                                         />
-                                        <select value={newSubTask.assignedTo} onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
-                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
-                                            <option value="">Assign To</option>
-                                            {filteredTeamByRole.map(u => <option key={u._id} value={u._id}>{u.fullName}</option>)}
-                                        </select>
+                                        <div className="flex flex-col gap-2">
+                                            <select
+                                                value={newSubTask.assignedRoleType}
+                                                onChange={e => setNewSubTask({ ...newSubTask, assignedRoleType: e.target.value, assignedTo: '' })}
+                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-blue-600 outline-none uppercase tracking-widest"
+                                            >
+                                                <option value="">Any Role</option>
+                                                <option value="WORKER">Worker</option>
+                                                <option value="FOREMAN">Foreman</option>
+                                                <option value="SUBCONTRACTOR">Subcontractor</option>
+                                                <option value="PM">Project Manager</option>
+                                            </select>
+                                            <select value={newSubTask.assignedTo} onChange={e => setNewSubTask({ ...newSubTask, assignedTo: e.target.value })}
+                                                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
+                                                <option value="">Assign To</option>
+                                                {team.filter(u => !newSubTask.assignedRoleType || u.role === newSubTask.assignedRoleType).map(u => (
+                                                    <option key={u._id} value={u._id}>{u.fullName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         <select value={newSubTask.priority || 'Medium'} onChange={e => setNewSubTask({ ...newSubTask, priority: e.target.value })}
                                             className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none">
                                             <option value="Low">Low</option>
