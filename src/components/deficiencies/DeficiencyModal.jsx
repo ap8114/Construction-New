@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, AlertTriangle, Save, Loader, Hammer,
     ShieldAlert, Layers, User, Calendar, Image as ImageIcon,
-    Clock, Search, Filter, Check
+    Clock, Search, Filter, Check, FileText
 } from 'lucide-react';
 import Modal from '../Modal';
 
@@ -200,7 +200,7 @@ const DeficiencyModal = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={initialData ? "Edit Deficiency" : "Add New Deficiency"}
+            title={mode === 'view' ? "Deficiency Details" : (initialData ? "Edit Deficiency" : "Add New Deficiency")}
         >
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -338,41 +338,70 @@ const DeficiencyModal = ({
                     </label>
                     <div className="grid grid-cols-4 lg:grid-cols-5 gap-3">
                         {/* Existing/Selected Images Previews */}
-                        {(formData.images || []).map((img, idx) => (
-                            <div key={`existing-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group">
-                                <img src={img} alt="Preview" className="w-full h-full object-cover" />
-                                {mode !== 'view' && (
+                        {(formData.images || []).map((img, idx) => {
+                            const isPdf = typeof img === 'string' && img.toLowerCase().includes('.pdf');
+                            return (
+                                <div key={`existing-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group bg-slate-50 cursor-pointer" onClick={() => window.open(img, '_blank')}>
+                                    {isPdf ? (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50 hover:bg-red-100 transition-colors">
+                                            <FileText size={24} className="text-red-500" />
+                                            <span className="text-[8px] font-black text-red-500 uppercase">PDF</span>
+                                        </div>
+                                    ) : (
+                                        <img src={img} alt="Preview" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                    )}
+                                    {mode !== 'view' && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFormData({
+                                                    ...formData,
+                                                    images: formData.images.filter((_, i) => i !== idx)
+                                                });
+                                            }}
+                                            className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100 z-10"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
+                                </div>
+                            );
+                        })}
+                        {formData.newImages?.map((file, idx) => {
+                            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            const fileUrl = URL.createObjectURL(file);
+                            return (
+                                <div key={`new-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-blue-200 bg-blue-50 group cursor-pointer" onClick={() => window.open(fileUrl, '_blank')}>
+                                    {isPdf ? (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50/50 hover:bg-red-100 transition-colors">
+                                            <FileText size={24} className="text-red-500" />
+                                            <span className="text-[8px] font-black text-red-500 uppercase">PDF</span>
+                                        </div>
+                                    ) : (
+                                        <img src={fileUrl} alt="Preview" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all group-hover:scale-110 duration-500" />
+                                    )}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <Clock size={16} className="text-blue-600 animate-pulse" />
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({
-                                            ...formData,
-                                            images: formData.images.filter((_, i) => i !== idx)
-                                        })}
-                                        className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFormData({
+                                                ...formData,
+                                                newImages: formData.newImages.filter((_, i) => i !== idx)
+                                            });
+                                        }}
+                                        className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
                                     >
                                         <X size={12} />
                                     </button>
-                                )}
-                            </div>
-                        ))}
-                        {formData.newImages?.map((file, idx) => (
-                            <div key={`new-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-blue-200 bg-blue-50 group">
-                                <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover opacity-60" />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Clock size={16} className="text-blue-600 animate-pulse" />
+                                    <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-colors pointer-events-none" />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({
-                                        ...formData,
-                                        newImages: formData.newImages.filter((_, i) => i !== idx)
-                                    })}
-                                    className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                >
-                                    <X size={12} />
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {/* Add Button */}
                         {mode !== 'view' && (
@@ -380,7 +409,7 @@ const DeficiencyModal = ({
                                 <input
                                     type="file"
                                     multiple
-                                    accept="image/*"
+                                    accept="image/*,application/pdf"
                                     onChange={(e) => {
                                         if (e.target.files) {
                                             const files = Array.from(e.target.files);

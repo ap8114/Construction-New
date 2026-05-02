@@ -1941,8 +1941,12 @@ const ProjectDetails = () => {
                                                     <td className="px-6 py-5">
                                                         <div className="flex items-center gap-4">
                                                             {d.images && d.images.length > 0 ? (
-                                                                <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50">
-                                                                    <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                                <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center">
+                                                                    {d.images[0].toLowerCase().includes('.pdf') ? (
+                                                                        <FileText size={20} className="text-red-500" />
+                                                                    ) : (
+                                                                        <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                                    )}
                                                                 </div>
                                                             ) : (
                                                                 <div className="w-10 h-10 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center text-slate-300">

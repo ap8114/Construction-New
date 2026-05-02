@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   AlertCircle, CheckCircle, Clock, Filter, Plus, X, Save, Search,
   Trash2, Edit, AlertTriangle, Loader, Hash, MapPin, Users,
-  ChevronRight, Info, ShieldAlert, Target, Check, Trash, LayoutGrid, List
+  ChevronRight, Info, ShieldAlert, Target, Check, Trash, LayoutGrid, List,
+  Image as ImageIcon, FileText
 } from 'lucide-react';
 import api from '../../utils/api';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
@@ -48,13 +49,24 @@ const DraggableIssue = ({ issue, onClick }) => {
         <span className="text-[10px] font-black text-slate-300">#{issue._id.slice(-4).toUpperCase()}</span>
       </div>
 
-      <div className="space-y-1">
-        <h4 className="font-black text-slate-900 leading-tight tracking-tight group-hover:text-red-600 transition-colors uppercase">{issue.title}</h4>
-        <div className="flex items-center gap-1.5">
-          <MapPin size={10} className="text-slate-400" />
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">
-            {issue.projectId?.name || 'Site Unknown'}
-          </span>
+      <div className="flex gap-4">
+        {issue.images && issue.images.length > 0 && (
+          <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-100 flex-shrink-0 bg-slate-50 flex items-center justify-center">
+            {issue.images[0].toLowerCase().includes('.pdf') ? (
+              <FileText size={20} className="text-red-500" />
+            ) : (
+              <img src={issue.images[0]} alt="Thumbnail" className="w-full h-full object-cover" />
+            )}
+          </div>
+        )}
+        <div className="space-y-1 flex-1 min-w-0">
+          <h4 className="font-black text-slate-900 leading-tight tracking-tight group-hover:text-red-600 transition-colors uppercase truncate">{issue.title}</h4>
+          <div className="flex items-center gap-1.5">
+            <MapPin size={10} className="text-slate-400" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">
+              {issue.projectId?.name || 'Site Unknown'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -316,6 +328,74 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, proj
       />
     </div>
 
+    <div className="space-y-4">
+      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Photos & Attachments</label>
+      <div className="grid grid-cols-4 md:grid-cols-6 gap-4">
+        {(data.images || []).map((img, idx) => (
+          <div key={`existing-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 group">
+            {img.toLowerCase().includes('.pdf') ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50">
+                <FileText size={24} className="text-red-500" />
+                <span className="text-[8px] font-black text-red-500 uppercase">PDF</span>
+              </div>
+            ) : (
+              <img src={img} alt="Preview" className="w-full h-full object-cover" />
+            )}
+            <button
+              type="button"
+              onClick={() => setData({ ...data, images: data.images.filter((_, i) => i !== idx) })}
+              className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all border border-slate-100"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+
+        {(data.newImages || []).map((file, idx) => {
+          const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+          return (
+            <div key={`new-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden border border-blue-200 bg-blue-50 group">
+              {isPdf ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50/50">
+                  <FileText size={24} className="text-red-500" />
+                  <span className="text-[8px] font-black text-red-500 uppercase">PDF</span>
+                </div>
+              ) : (
+                <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover opacity-60" />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <Clock size={16} className="text-blue-600 animate-pulse" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setData({ ...data, newImages: data.newImages.filter((_, i) => i !== idx) })}
+                className="absolute top-1 right-1 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          );
+        })}
+
+        <label className="relative aspect-square rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group">
+          <input
+            type="file"
+            multiple
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files);
+              setData({ ...data, newImages: [...(data.newImages || []), ...files] });
+            }}
+          />
+          <div className="p-2 bg-slate-50 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <Plus size={16} className="text-slate-400 group-hover:text-blue-600" />
+          </div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Add File</span>
+        </label>
+      </div>
+    </div>
+
     <button
       onClick={onSubmit}
       disabled={isSubmitting}
@@ -340,7 +420,8 @@ const Issues = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [formData, setFormData] = useState({
-    title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general'
+    title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general',
+    images: [], newImages: []
   });
   const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
   const [searchTerm, setSearchTerm] = useState('');
@@ -402,7 +483,18 @@ const Issues = () => {
   const handleSaveReport = async () => {
     try {
       setIsSubmitting(true);
-      await api.post('/issues', formData);
+      const data = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'newImages') {
+          formData.newImages.forEach(file => data.append('images', file));
+        } else if (key !== 'images') {
+          data.append(key, formData[key]);
+        }
+      });
+
+      await api.post('/issues', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       fetchData();
       setIsReportOpen(false);
     } catch (error) {
@@ -415,7 +507,20 @@ const Issues = () => {
   const handleSaveEdit = async () => {
     try {
       setIsSubmitting(true);
-      await api.patch(`/issues/${selectedIssue._id}`, formData);
+      const data = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'newImages') {
+          formData.newImages.forEach(file => data.append('images', file));
+        } else if (key === 'images') {
+          data.append('images', JSON.stringify(formData.images));
+        } else {
+          data.append(key, formData[key]);
+        }
+      });
+
+      await api.patch(`/issues/${selectedIssue._id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       fetchData();
       setIsEditOpen(false);
     } catch (error) {
@@ -511,7 +616,7 @@ const Issues = () => {
               </button>
             </div>
             <button
-              onClick={() => { setFormData({ title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general' }); setIsReportOpen(true); }}
+              onClick={() => { setFormData({ title: '', projectId: '', priority: 'medium', status: 'open', assignedTo: '', dueDate: '', description: '', category: 'general', images: [], newImages: [] }); setIsReportOpen(true); }}
               className="bg-red-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 hover:bg-red-700 transition shadow-xl shadow-red-200 font-black text-sm uppercase tracking-tight"
             >
               <Plus size={18} /> Log Critical Snag
@@ -555,9 +660,17 @@ const Issues = () => {
                     <tr key={issue._id} className="group hover:bg-slate-50/80 transition-all active:bg-slate-100 cursor-pointer" onClick={() => { setSelectedIssue(issue); setIsViewOpen(true); }}>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm overflow-hidden border border-slate-200 bg-slate-50
                             ${issue.priority === 'critical' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                            <AlertTriangle size={18} />
+                            {issue.images && issue.images.length > 0 ? (
+                              issue.images[0].toLowerCase().includes('.pdf') ? (
+                                <FileText size={18} className="text-red-500" />
+                              ) : (
+                                <img src={issue.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                              )
+                            ) : (
+                              <AlertTriangle size={18} />
+                            )}
                           </div>
                           <div>
                             <p className="font-black text-slate-900 text-sm uppercase leading-tight tracking-tight">{issue.title}</p>
@@ -716,12 +829,50 @@ const Issues = () => {
               </div>
             </div>
 
+            {selectedIssue.images && selectedIssue.images.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 flex items-center gap-2">
+                  <ImageIcon size={12} /> Photos & Attachments
+                </p>
+                <div className="grid grid-cols-4 gap-4 px-2">
+                  {selectedIssue.images.map((img, idx) => (
+                    <div 
+                      key={idx} 
+                      className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 cursor-pointer group"
+                      onClick={() => window.open(img, '_blank')}
+                    >
+                      {img.toLowerCase().includes('.pdf') ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50 hover:bg-red-100 transition-colors">
+                          <FileText size={24} className="text-red-500" />
+                          <span className="text-[8px] font-black text-red-500 uppercase">PDF</span>
+                        </div>
+                      ) : (
+                        <img src={img} alt="Attachment" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 mt-4 border-t border-slate-100">
               <button onClick={() => setIsViewOpen(false)} className="w-full sm:w-auto px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all">
                 Return to Boards
               </button>
               <div className="flex gap-3 w-full sm:w-auto">
-                <button onClick={() => { setIsEditOpen(true); setIsViewOpen(false); setFormData({ ...selectedIssue, projectId: selectedIssue.projectId?._id, assignedTo: selectedIssue.assignedTo?._id, dueDate: selectedIssue.dueDate ? new Date(selectedIssue.dueDate).toISOString().split('T')[0] : '' }); }}
+                <button onClick={() => { 
+                  setIsEditOpen(true); 
+                  setIsViewOpen(false); 
+                  setFormData({ 
+                    ...selectedIssue, 
+                    projectId: selectedIssue.projectId?._id, 
+                    assignedTo: selectedIssue.assignedTo?._id, 
+                    dueDate: selectedIssue.dueDate ? new Date(selectedIssue.dueDate).toISOString().split('T')[0] : '',
+                    images: selectedIssue.images || [],
+                    newImages: []
+                  }); 
+                }}
                   className="flex-1 sm:flex-none px-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center gap-2">
                   <Edit size={16} /> Re-Evaluate
                 </button>

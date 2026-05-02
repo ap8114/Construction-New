@@ -4,7 +4,7 @@ import {
     AlertCircle, CheckCircle2, Clock, Filter, Plus, Search,
     MoreHorizontal, Edit, Trash2, ShieldAlert, Hammer,
     Layers, AlertTriangle, User, ArrowLeft, ChevronRight,
-    Info, Check, Calendar, Image as ImageIcon, Eye, X
+    Info, Check, Calendar, Image as ImageIcon, Eye, X, FileText
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -274,8 +274,12 @@ const Deficiencies = () => {
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
                                                     {d.images && d.images.length > 0 ? (
-                                                        <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50">
-                                                            <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                        <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center">
+                                                            {d.images[0].toLowerCase().includes('.pdf') ? (
+                                                                <FileText size={24} className="text-red-500" />
+                                                            ) : (
+                                                                <img src={d.images[0]} alt="Issue" className="w-full h-full object-cover" />
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <div className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden flex-shrink-0 bg-slate-50 flex items-center justify-center text-slate-300">
