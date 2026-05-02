@@ -81,19 +81,17 @@ const ClientPortalLayout = () => {
           playSound('NOTIFICATION');
           fetchNotifications();
         }
-        playSound('NOTIFICATION');
-        fetchNotifications();
       });
 
       socketRef.current.on('new_message', (payload) => {
         const senderId = payload.sender?._id || payload.sender;
         const currentUserId = user?._id || user?.id;
-        const isNotMe = senderId !== currentUserId;
         
-        if (isNotMe) {
+        if (senderId && String(senderId) !== String(currentUserId)) {
           fetchUnreadCount();
           if (!location.pathname.includes('/messages')) {
             playSound('MESSAGE_RECEIVED');
+            toast.success(`New message from ${payload.sender?.fullName || 'someone'}`);
           }
         }
       });

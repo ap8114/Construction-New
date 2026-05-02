@@ -81,8 +81,6 @@ const ProjectTeamLayout = () => {
           playSound('NOTIFICATION');
           fetchNotifications();
         }
-        playSound('NOTIFICATION');
-        fetchNotifications();
       });
 
       socketRef.current.on('new_message', (payload) => {
@@ -90,11 +88,10 @@ const ProjectTeamLayout = () => {
         const currentUserId = user?._id || user?.id;
         if (!senderId || String(senderId) === String(currentUserId)) return;
 
-        if (isNotMe) {
-          fetchUnreadCount();
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-          }
+        fetchUnreadCount();
+        if (!location.pathname.includes('/chat')) {
+          playSound('MESSAGE_RECEIVED');
+          toast.success(`New message from ${payload.sender?.fullName || 'someone'}`);
         }
       });
 

@@ -116,14 +116,13 @@ const CompanyAdminLayout = () => {
         const currentUserId = user?._id || user?.id;
         if (!senderId || String(senderId) === String(currentUserId)) return;
 
-        if (isNotMe) {
-          // Always refresh unread count for sidebar/navbar badge from server for accuracy
-          fetchSidebarMetrics();
-          
-          // Play sound if NOT on the chat page
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-          }
+        // Always refresh unread count for sidebar/navbar badge from server for accuracy
+        fetchSidebarMetrics();
+        
+        // Play sound if NOT on the chat page
+        if (!location.pathname.includes('/chat')) {
+          playSound('MESSAGE_RECEIVED');
+          toast.success(`New message from ${payload.sender?.fullName || 'someone'}`);
         }
       });
 
