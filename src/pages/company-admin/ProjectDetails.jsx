@@ -106,6 +106,7 @@ const ProjectDetails = () => {
     const [isSubmittingDeficiency, setIsSubmittingDeficiency] = useState(false);
     const [deficiencySearch, setDeficiencySearch] = useState('');
     const [deficiencyFilterStatus, setDeficiencyFilterStatus] = useState('all');
+    const [deficiencyToDelete, setDeficiencyToDelete] = useState(null);
     
     // Selection states
     const [activeDropdown, setActiveDropdown] = useState(null); // 'pm' or 'phase'
@@ -152,7 +153,7 @@ const ProjectDetails = () => {
     const ensureUsersLoaded = async () => {
         if (users.length > 0) return;
         try {
-            const res = await api.get('/auth/users?role=PM&role=FOREMAN&role=WORKER');
+            const res = await api.get('/auth/users?role=COMPANY_OWNER&role=PM&role=FOREMAN&role=WORKER&role=SUBCONTRACTOR');
             setUsers(res.data || []);
         } catch (err) {
             console.error('Failed to load users:', err);
@@ -307,13 +308,19 @@ const ProjectDetails = () => {
         }
     };
 
-    const handleDeleteDeficiency = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this issue?')) return;
+    const handleDeleteDeficiency = (id) => {
+        setDeficiencyToDelete(id);
+    };
+
+    const confirmDeleteDeficiency = async () => {
+        if (!deficiencyToDelete) return;
         try {
-            await api.delete(`/issues/${id}`);
-            setProjectDeficiencies(prev => prev.filter(d => d._id !== id));
+            await api.delete(`/issues/${deficiencyToDelete}`);
+            setProjectDeficiencies(prev => prev.filter(d => d._id !== deficiencyToDelete));
+            setDeficiencyToDelete(null);
         } catch (err) {
             console.error('Error deleting issue:', err);
+            alert('Failed to delete issue');
         }
     };
 
@@ -1828,7 +1835,12 @@ const ProjectDetails = () => {
                         </div>
                         {['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role) && (
                             <button
-                                onClick={() => { setDeficiencyModalMode('add'); setSelectedDeficiency(null); setIsDeficiencyModalOpen(true); }}
+                                onClick={async () => { 
+                                    await ensureUsersLoaded();
+                                    setDeficiencyModalMode('add'); 
+                                    setSelectedDeficiency(null); 
+                                    setIsDeficiencyModalOpen(true); 
+                                }}
                                 className="bg-slate-900 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-slate-800 transition shadow-xl font-black text-xs uppercase tracking-tight"
                             >
                                 <Plus size={16} /> Add Deficiency
@@ -1968,7 +1980,12 @@ const ProjectDetails = () => {
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <button
-                                                                onClick={() => { setDeficiencyModalMode('view'); setSelectedDeficiency(d); setIsDeficiencyModalOpen(true); }}
+                                                                onClick={async () => { 
+                                                                    await ensureUsersLoaded();
+                                                                    setDeficiencyModalMode('view'); 
+                                                                    setSelectedDeficiency(d); 
+                                                                    setIsDeficiencyModalOpen(true); 
+                                                                }}
                                                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                                             >
                                                                 <Eye size={16} />
@@ -1984,7 +2001,12 @@ const ProjectDetails = () => {
                                                             {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
                                                                 <>
                                                                     <button
-                                                                        onClick={() => { setDeficiencyModalMode('edit'); setSelectedDeficiency(d); setIsDeficiencyModalOpen(true); }}
+                                                                        onClick={async () => { 
+                                                                            await ensureUsersLoaded();
+                                                                            setDeficiencyModalMode('edit'); 
+                                                                            setSelectedDeficiency(d); 
+                                                                            setIsDeficiencyModalOpen(true); 
+                                                                        }}
                                                                         className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
                                                                     >
                                                                         <Edit size={16} />
@@ -2239,6 +2261,9 @@ const ProjectDetails = () => {
                 initialData={selectedDeficiency}
                 mode={deficiencyModalMode}
                 users={users.filter(u => {
+                    // Admin/PM/SuperAdmin can see all fetched users
+                    if (['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) return true;
+
                     const pmId = project?.pmId?._id || project?.pmId;
                     if (u._id === pmId) return true;
                     return jobs.some(j => {
@@ -2283,6 +2308,38 @@ const ProjectDetails = () => {
                             className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {deletingId ? <Loader size={16} className="animate-spin" /> : <><Trash2 size={16} /> Delete</>}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal
+                isOpen={deficiencyToDelete !== null}
+                onClose={() => setDeficiencyToDelete(null)}
+                title="Delete Deficiency"
+            >
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 mb-6 border border-red-100">
+                        <Trash2 size={32} />
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-900 mb-2">Delete Issue?</h3>
+                    <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8 max-w-[280px]">
+                        Are you sure you want to remove this deficiency? This action cannot be undone.
+                    </p>
+
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeficiencyToDelete(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDeleteDeficiency}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Trash2 size={16} /> Delete
                         </button>
                     </div>
                 </div>

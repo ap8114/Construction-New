@@ -4,11 +4,12 @@ import {
     AlertCircle, CheckCircle2, Clock, Filter, Plus, Search,
     MoreHorizontal, Edit, Trash2, ShieldAlert, Hammer,
     Layers, AlertTriangle, User, ArrowLeft, ChevronRight,
-    Info, Check, Calendar, Image as ImageIcon, Eye
+    Info, Check, Calendar, Image as ImageIcon, Eye, X
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import DeficiencyModal from '../../components/deficiencies/DeficiencyModal';
+import Modal from '../../components/Modal';
 import '../../styles/Deficiencies.css';
 
 const statusConfig = {
@@ -48,6 +49,7 @@ const Deficiencies = () => {
     const [modalMode, setModalMode] = useState('add'); // 'add', 'edit', 'view'
     const [selectedDeficiency, setSelectedDeficiency] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deficiencyToDelete, setDeficiencyToDelete] = useState(null);
 
     const canManage = ['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
     const canUpdate = ['COMPANY_OWNER', 'PM', 'FOREMAN', 'WORKER'].includes(user?.role);
@@ -60,7 +62,7 @@ const Deficiencies = () => {
                     console.error('Deficiencies fetch failed:', err);
                     return { data: [] };
                 }),
-                api.get('/auth/users').catch(err => {
+                api.get('/auth/users?role=COMPANY_OWNER&role=PM&role=FOREMAN&role=WORKER&role=SUBCONTRACTOR').catch(err => {
                     console.log('Auth users restricted for this role');
                     return { data: [] };
                 }),
@@ -128,13 +130,19 @@ const Deficiencies = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this issue?')) return;
+    const handleDelete = (id) => {
+        setDeficiencyToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deficiencyToDelete) return;
         try {
-            await api.delete(`/issues/${id}`);
-            setDeficiencies(prev => prev.filter(d => d._id !== id));
+            await api.delete(`/issues/${deficiencyToDelete}`);
+            setDeficiencies(prev => prev.filter(d => d._id !== deficiencyToDelete));
+            setDeficiencyToDelete(null);
         } catch (err) {
             console.error('Error deleting issue:', err);
+            alert('Failed to delete issue');
         }
     };
 
@@ -366,6 +374,9 @@ const Deficiencies = () => {
                 initialData={selectedDeficiency}
                 mode={modalMode}
                 users={(() => {
+                    // Admin/PM can see all fetched users
+                    if (['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) return users;
+
                     const matchIds = new Set();
                     
                     // Add Project PM
@@ -386,6 +397,38 @@ const Deficiencies = () => {
                 })()}
                 isSubmitting={isSubmitting}
             />
+
+            <Modal
+                isOpen={deficiencyToDelete !== null}
+                onClose={() => setDeficiencyToDelete(null)}
+                title="Delete Deficiency"
+            >
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 mb-6 border border-red-100">
+                        <Trash2 size={32} />
+                    </div>
+
+                    <h3 className="text-xl font-black text-slate-900 mb-2">Delete Issue?</h3>
+                    <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8 max-w-[280px]">
+                        Are you sure you want to remove this deficiency? This action cannot be undone.
+                    </p>
+
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeficiencyToDelete(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Trash2 size={16} /> Delete
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

@@ -2,9 +2,84 @@ import React, { useState, useEffect } from 'react';
 import {
     X, AlertTriangle, Save, Loader, Hammer,
     ShieldAlert, Layers, User, Calendar, Image as ImageIcon,
-    Clock
+    Clock, Search, Filter, Check
 } from 'lucide-react';
 import Modal from '../Modal';
+
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const selectedOption = options.find(opt => opt.value === value);
+    const filteredOptions = options.filter(opt => 
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (mode === 'view') {
+        return (
+            <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 text-sm opacity-75">
+                {selectedOption ? selectedOption.label : placeholder}
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <div 
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                className={`w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}`}
+            >
+                <span className={!selectedOption ? 'text-slate-400' : ''}>
+                    {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <Filter size={14} className="text-slate-400" />
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-[110] w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+                    <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <input
+                                type="text"
+                                autoFocus
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto py-2 custom-scrollbar">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                        onChange(opt.value);
+                                        setIsOpen(false);
+                                        setSearchTerm('');
+                                    }}
+                                    className={`px-4 py-3 text-xs font-bold uppercase tracking-tight cursor-pointer transition-colors flex items-center justify-between
+                                        ${value === opt.value ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-600'}`}
+                                >
+                                    {opt.label}
+                                    {value === opt.value && <Check size={14} />}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-4 py-6 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                                No Results Found
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            {isOpen && <div className="fixed inset-0 z-[105]" onClick={() => setIsOpen(false)} />}
+        </div>
+    );
+};
 
 const DeficiencyModal = ({
     isOpen,
@@ -25,6 +100,8 @@ const DeficiencyModal = ({
         dueDate: ''
     });
 
+    const [selectedRole, setSelectedRole] = useState('all');
+
     useEffect(() => {
         if (initialData) {
             setFormData({
@@ -38,6 +115,11 @@ const DeficiencyModal = ({
                 images: initialData.images || [],
                 newImages: []
             });
+            // Set role filter to match assigned user
+            const assignedUser = users.find(u => u._id === (initialData.assignedTo?._id || initialData.assignedTo));
+            if (assignedUser) {
+                setSelectedRole(assignedUser.role);
+            }
         } else {
             setFormData({
                 title: '',
@@ -51,7 +133,7 @@ const DeficiencyModal = ({
                 newImages: []
             });
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, users]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -71,6 +153,18 @@ const DeficiencyModal = ({
         { value: 'high', label: 'High', color: 'bg-orange-50 text-orange-600' },
         { value: 'critical', label: 'Critical', color: 'bg-red-600 text-white' }
     ];
+
+    const availableRoles = [
+        { value: 'all', label: 'All Roles' },
+        { value: 'PM', label: 'Project Manager' },
+        { value: 'FOREMAN', label: 'Foreman' },
+        { value: 'WORKER', label: 'Worker' },
+        { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
+    ];
+
+    const filteredUsers = selectedRole === 'all' 
+        ? users 
+        : users.filter(u => u.role === selectedRole);
 
     return (
         <Modal
@@ -134,21 +228,36 @@ const DeficiencyModal = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                            Assign To
+                            Select Role
                         </label>
                         <select
-                            value={formData.assignedTo}
+                            value={selectedRole}
                             disabled={mode === 'view'}
-                            onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
+                            onChange={e => setSelectedRole(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none custom-select-appearance disabled:opacity-75"
                         >
-                            <option value="">Select Worker</option>
-                            {users.map(u => (
-                                <option key={u._id} value={u._id}>{u.fullName}</option>
+                            {availableRoles.map(r => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                         </select>
                     </div>
 
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            Assign To
+                        </label>
+                        <SearchableSelect
+                            options={filteredUsers.map(u => ({ value: u._id, label: `${u.fullName} (${u.role})` }))}
+                            value={formData.assignedTo}
+                            disabled={mode === 'view'}
+                            onChange={val => setFormData({ ...formData, assignedTo: val })}
+                            placeholder="Select Assignee"
+                            mode={mode}
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             Status
@@ -165,19 +274,19 @@ const DeficiencyModal = ({
                             <option value="closed">Closed</option>
                         </select>
                     </div>
-                </div>
 
-                <div className="space-y-2">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        Resolution Deadline
-                    </label>
-                    <input
-                        type="date"
-                        disabled={mode === 'view'}
-                        value={formData.dueDate}
-                        onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm disabled:opacity-75"
-                    />
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            Resolution Deadline
+                        </label>
+                        <input
+                            type="date"
+                            disabled={mode === 'view'}
+                            value={formData.dueDate}
+                            onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm disabled:opacity-75"
+                        />
+                    </div>
                 </div>
 
                 <div className="space-y-2">

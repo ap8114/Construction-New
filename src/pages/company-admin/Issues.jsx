@@ -111,6 +111,73 @@ const DroppableColumn = ({ status, statusLabel, colorClass, dotClass, issues, on
   );
 };
 
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const selectedOption = options.find(opt => opt.value === value);
+  const filteredOptions = options.filter(opt => 
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <div 
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}`}
+      >
+        <span className={!selectedOption ? 'text-slate-400' : ''}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <Filter size={14} className="text-slate-400" />
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-[110] w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-blue-500 transition-all"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+          <div className="max-h-[250px] overflow-y-auto py-2 custom-scrollbar">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className={`px-4 py-3 text-xs font-bold uppercase tracking-tight cursor-pointer transition-colors flex items-center justify-between
+                    ${value === opt.value ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-600'}`}
+                >
+                  {opt.label}
+                  {value === opt.value && <Check size={14} />}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-6 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                No Results Found
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {isOpen && <div className="fixed inset-0 z-[105]" onClick={() => setIsOpen(false)} />}
+    </div>
+  );
+};
+
 const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSubmitting }) => (
   <div className="space-y-6">
     <div className="space-y-2">
@@ -144,16 +211,13 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSu
       </div>
       <div className="space-y-2">
         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Personnel Responsible</label>
-        <select
+        <SearchableSelect
+          options={users.map(u => ({ value: u._id, label: u.fullName }))}
           value={data.assignedTo}
-          onChange={e => setData({ ...data, assignedTo: e.target.value })}
-          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none"
-        >
-          <option value="">Unassigned</option>
-          {users.map(u => (
-            <option key={u._id} value={u._id}>{u.fullName}</option>
-          ))}
-        </select>
+          onChange={val => setData({ ...data, assignedTo: val })}
+          placeholder="Unassigned"
+          disabled={isSubmitting}
+        />
       </div>
     </div>
     <div className="space-y-2">
@@ -242,7 +306,7 @@ const Issues = () => {
       const [issueRes, projRes, userRes] = await Promise.all([
         api.get('/issues'),
         api.get('/projects'),
-        api.get('/auth/users')
+        api.get('/auth/users?role=COMPANY_OWNER&role=PM&role=FOREMAN&role=WORKER&role=SUBCONTRACTOR')
       ]);
       setIssues(issueRes.data);
       setProjects(projRes.data);
