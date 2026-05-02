@@ -107,6 +107,7 @@ const ProjectDetails = () => {
     const [deficiencySearch, setDeficiencySearch] = useState('');
     const [deficiencyFilterStatus, setDeficiencyFilterStatus] = useState('all');
     const [deficiencyToDelete, setDeficiencyToDelete] = useState(null);
+    const [projectMembers, setProjectMembers] = useState([]);
     
     // Selection states
     const [activeDropdown, setActiveDropdown] = useState(null); // 'pm' or 'phase'
@@ -141,6 +142,7 @@ const ProjectDetails = () => {
             api.get(`/projects/${projectId}/financial-summary`).then(res => setFinancials(res.data)).catch(console.error);
             api.get(`/projects/${projectId}/client-updates`).then(res => setUpdates(res.data || [])).catch(console.error);
             api.get(`/purchase-orders?projectId=${projectId}`).then(res => setProjectPOs(res.data || [])).catch(console.error);
+            api.get(`/projects/${projectId}/members`).then(res => setProjectMembers(res.data || [])).catch(console.error);
             
             // Note: Users and Equipment will be fetched on demand when specific actions are taken
         } catch (err) {
@@ -2260,18 +2262,9 @@ const ProjectDetails = () => {
                 onSave={handleSaveDeficiency}
                 initialData={selectedDeficiency}
                 mode={deficiencyModalMode}
-                users={users.filter(u => {
-                    // Admin/PM/SuperAdmin can see all fetched users
-                    if (['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) return true;
-
-                    const pmId = project?.pmId?._id || project?.pmId;
-                    if (u._id === pmId) return true;
-                    return jobs.some(j => {
-                        const foremanId = j.foremanId?._id || j.foremanId;
-                        const workerIds = (j.assignedWorkers || []).map(w => w?._id || w);
-                        return u._id === foremanId || workerIds.includes(u._id);
-                    });
-                })}
+                users={users}
+                projectMembers={projectMembers}
+                currentUser={user}
                 isSubmitting={isSubmittingDeficiency}
             />
             <Modal

@@ -9,6 +9,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Modal from '../../components/Modal';
+import { useAuth } from '../../context/AuthContext';
 
 const DraggableIssue = ({ issue, onClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: issue._id });
@@ -39,9 +40,9 @@ const DraggableIssue = ({ issue, onClick }) => {
           </span>
           <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm
                       ${issue.status === 'open' ? 'bg-red-50 text-red-600 border-red-100' :
-              issue.status === 'in_review' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+              issue.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-            {issue.status === 'open' ? 'Active' : issue.status === 'in_review' ? 'In Correction' : 'Fixed'}
+            {issue.status === 'open' ? 'Active' : issue.status === 'in_progress' ? 'In Correction' : 'Fixed'}
           </span>
         </div>
         <span className="text-[10px] font-black text-slate-300">#{issue._id.slice(-4).toUpperCase()}</span>
@@ -111,7 +112,7 @@ const DroppableColumn = ({ status, statusLabel, colorClass, dotClass, issues, on
   );
 };
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -178,7 +179,37 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled }) =
   );
 };
 
-const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSubmitting }) => (
+const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, projectMembers, currentUser, isSubmitting, selectedRole, setSelectedRole }) => {
+  const availableRoles = [
+    { value: 'all', label: 'All Roles' },
+    { value: 'PM', label: 'Project Manager' },
+    { value: 'FOREMAN', label: 'Foreman' },
+    { value: 'WORKER', label: 'Worker' },
+    { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
+  ];
+
+  const filteredUsers = (() => {
+    const isRestrictedRole = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(selectedRole);
+    const isGlobalPMAccess = selectedRole === 'PM' && ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(currentUser?.role);
+
+    if (selectedRole === 'all') {
+        const pMembers = projectMembers.length > 0 ? projectMembers : users;
+        const pmGlobal = ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(currentUser?.role) 
+            ? users.filter(u => u.role === 'PM') 
+            : [];
+        const combined = [...pMembers];
+        pmGlobal.forEach(pm => {
+            if (!combined.find(u => u._id === pm._id)) combined.push(pm);
+        });
+        return combined;
+    }
+
+    if (isGlobalPMAccess) return users.filter(u => u.role === 'PM');
+    if (isRestrictedRole) return projectMembers.filter(u => u.role === selectedRole);
+    return users.filter(u => u.role === selectedRole);
+  })();
+
+  return (
   <div className="space-y-6">
     <div className="space-y-2">
       <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -199,7 +230,9 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSu
         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Project Site</label>
         <select
           value={data.projectId}
-          onChange={e => setData({ ...data, projectId: e.target.value })}
+          onChange={e => {
+            setData({ ...data, projectId: e.target.value, assignedTo: '' });
+          }}
           className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none"
           required
         >
@@ -210,15 +243,27 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSu
         </select>
       </div>
       <div className="space-y-2">
-        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Personnel Responsible</label>
-        <SearchableSelect
-          options={users.map(u => ({ value: u._id, label: u.fullName }))}
-          value={data.assignedTo}
-          onChange={val => setData({ ...data, assignedTo: val })}
-          placeholder="Unassigned"
-          disabled={isSubmitting}
-        />
+        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Personnel Role</label>
+        <select
+          value={selectedRole}
+          onChange={e => setSelectedRole(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none"
+        >
+          {availableRoles.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
       </div>
+    </div>
+    <div className="space-y-2">
+      <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Assign To</label>
+      <SearchableSelect
+        options={filteredUsers.map(u => ({ value: u._id, label: `${u.fullName} (${u.role})` }))}
+        value={data.assignedTo}
+        onChange={val => setData({ ...data, assignedTo: val })}
+        placeholder={data.projectId ? "Select Assignee" : "Select Project First"}
+        disabled={isSubmitting || !data.projectId}
+      />
     </div>
     <div className="space-y-2">
       <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">Issue Category</label>
@@ -280,7 +325,8 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, isSu
       {submitLabel}
     </button>
   </div>
-);
+  );
+};
 
 const Issues = () => {
   const [issues, setIssues] = useState([]);
@@ -299,6 +345,19 @@ const Issues = () => {
   const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [selectedRole, setSelectedRole] = useState('all');
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (formData.projectId) {
+      api.get(`/projects/${formData.projectId}/members`)
+        .then(res => setProjectMembers(res.data || []))
+        .catch(console.error);
+    } else {
+      setProjectMembers([]);
+    }
+  }, [formData.projectId]);
 
   const fetchData = async () => {
     try {
@@ -330,7 +389,7 @@ const Issues = () => {
     const issueId = active.id;
     const newStatus = over.id;
     const issue = issues.find(i => i._id === issueId);
-    if (!issue || issue.status === newStatus || !['open', 'in_review', 'resolved'].includes(newStatus)) return;
+    if (!issue || issue.status === newStatus || !['open', 'in_progress', 'fixed'].includes(newStatus)) return;
 
     setIssues(prev => prev.map(i => i._id === issueId ? { ...i, status: newStatus } : i));
     try {
@@ -378,8 +437,8 @@ const Issues = () => {
 
   const statusConfig = {
     'open': { label: 'Active Snags', dot: 'bg-red-500 shadow-red-200' },
-    'in_review': { label: 'In Correction', dot: 'bg-orange-500 shadow-orange-200' },
-    'resolved': { label: 'Verified Fixed', dot: 'bg-emerald-500 shadow-emerald-200' }
+    'in_progress': { label: 'In Correction', dot: 'bg-orange-500 shadow-orange-200' },
+    'fixed': { label: 'Verified Fixed', dot: 'bg-emerald-500 shadow-emerald-200' }
   };
 
   const updateStatus = async (issueId, newStatus) => {
@@ -431,8 +490,8 @@ const Issues = () => {
           >
             <option value="all">All Status</option>
             <option value="open">Active</option>
-            <option value="in_review">In Correction</option>
-            <option value="resolved">Fixed</option>
+            <option value="in_progress">In Correction</option>
+            <option value="fixed">Fixed</option>
           </select>
           <div className="flex items-center gap-4 shrink-0">
             <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
@@ -535,12 +594,12 @@ const Issues = () => {
                           onChange={(e) => updateStatus(issue._id, e.target.value)}
                           className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl border shadow-sm outline-none cursor-pointer transition-all
                             ${issue.status === 'open' ? 'bg-red-50 text-red-600 border-red-200 focus:ring-4 focus:ring-red-100' :
-                              issue.status === 'in_review' ? 'bg-orange-50 text-orange-600 border-orange-200 focus:ring-4 focus:ring-orange-100' :
+                              issue.status === 'in_progress' ? 'bg-orange-50 text-orange-600 border-orange-200 focus:ring-4 focus:ring-orange-100' :
                               'bg-emerald-50 text-emerald-600 border-emerald-200 focus:ring-4 focus:ring-emerald-100'}`}
                         >
                           <option value="open">Active</option>
-                          <option value="in_review">In Correction</option>
-                          <option value="resolved">Fixed</option>
+                          <option value="in_progress">In Correction</option>
+                          <option value="fixed">Fixed</option>
                         </select>
                       </td>
                       <td className="px-8 py-5 text-right">
@@ -573,11 +632,35 @@ const Issues = () => {
 
       {/* Modals */}
       <Modal isOpen={isReportOpen} onClose={() => setIsReportOpen(false)} title="Report Site Defect">
-        <IssueForm data={formData} setData={setFormData} onSubmit={handleSaveReport} submitLabel="Commit to Snag List" projects={projects} users={users} isSubmitting={isSubmitting} />
+          <IssueForm
+            data={formData}
+            setData={setFormData}
+            onSubmit={handleSaveReport}
+            submitLabel={isSubmitting ? 'Submitting...' : 'Commit to Log'}
+            projects={projects}
+            users={users}
+            projectMembers={projectMembers}
+            currentUser={user}
+            isSubmitting={isSubmitting}
+            selectedRole={selectedRole}
+            setSelectedRole={setSelectedRole}
+          />
       </Modal>
 
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Modify Snag Parameters">
-        <IssueForm data={formData} setData={setFormData} onSubmit={handleSaveEdit} submitLabel="Secure Updates" projects={projects} users={users} isSubmitting={isSubmitting} />
+        <IssueForm 
+          data={formData} 
+          setData={setFormData} 
+          onSubmit={handleSaveEdit} 
+          submitLabel="Secure Updates" 
+          projects={projects} 
+          users={users} 
+          projectMembers={projectMembers}
+          currentUser={user}
+          isSubmitting={isSubmitting}
+          selectedRole={selectedRole}
+          setSelectedRole={setSelectedRole}
+        />
       </Modal>
 
       <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Incident Snapshot">

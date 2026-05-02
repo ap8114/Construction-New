@@ -87,6 +87,8 @@ const DeficiencyModal = ({
     onSave,
     initialData = null,
     users = [],
+    projectMembers = [],
+    currentUser = null,
     isSubmitting = false,
     mode = 'edit' // 'add', 'edit', or 'view'
 }) => {
@@ -162,9 +164,37 @@ const DeficiencyModal = ({
         { value: 'SUBCONTRACTOR', label: 'Subcontractor' },
     ];
 
-    const filteredUsers = selectedRole === 'all' 
-        ? users 
-        : users.filter(u => u.role === selectedRole);
+    const filteredUsers = (() => {
+        // Core Logic: Worker, Foreman, Subcontractor are ALWAYS project-scoped
+        const isRestrictedRole = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(selectedRole);
+        const isGlobalPMAccess = selectedRole === 'PM' && ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(currentUser?.role);
+
+        if (selectedRole === 'all') {
+            // Mix of project members + global PMs if admin
+            const pMembers = projectMembers.length > 0 ? projectMembers : users; // Fallback if projectMembers not provided
+            const pmGlobal = ['COMPANY_OWNER', 'SUPER_ADMIN'].includes(currentUser?.role) 
+                ? users.filter(u => u.role === 'PM') 
+                : [];
+            
+            // Unique set of users
+            const combined = [...pMembers];
+            pmGlobal.forEach(pm => {
+                if (!combined.find(u => u._id === pm._id)) combined.push(pm);
+            });
+            return combined;
+        }
+
+        if (isGlobalPMAccess) {
+            return users.filter(u => u.role === 'PM');
+        }
+
+        if (isRestrictedRole) {
+            return projectMembers.filter(u => u.role === selectedRole);
+        }
+
+        // Default role filtering
+        return users.filter(u => u.role === selectedRole);
+    })();
 
     return (
         <Modal

@@ -40,6 +40,7 @@ const Deficiencies = () => {
 
     const [deficiencies, setDeficiencies] = useState([]);
     const [users, setUsers] = useState([]);
+    const [projectMembers, setProjectMembers] = useState([]);
     const [project, setProject] = useState(null);
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ const Deficiencies = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [defRes, userRes, projRes, jobRes] = await Promise.all([
+            const [defRes, userRes, projRes, jobRes, membersRes] = await Promise.all([
                 api.get(`/issues?jobId=${jobId}`).catch(err => {
                     console.error('Deficiencies fetch failed:', err);
                     return { data: [] };
@@ -73,12 +74,17 @@ const Deficiencies = () => {
                 api.get(`/jobs/${jobId}`).catch(err => {
                     console.error('Job fetch failed:', err);
                     return { data: null };
+                }),
+                api.get(`/projects/${projectId}/members`).catch(err => {
+                    console.error('Members fetch failed:', err);
+                    return { data: [] };
                 })
             ]);
             setDeficiencies(defRes.data || []);
             setUsers(userRes.data || []);
             setProject(projRes.data);
             setJob(jobRes.data);
+            setProjectMembers(membersRes.data || []);
         } catch (err) {
             console.error('Error fetching data:', err);
         } finally {
@@ -373,28 +379,9 @@ const Deficiencies = () => {
                 onSave={handleSave}
                 initialData={selectedDeficiency}
                 mode={modalMode}
-                users={(() => {
-                    // Admin/PM can see all fetched users
-                    if (['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) return users;
-
-                    const matchIds = new Set();
-                    
-                    // Add Project PM
-                    const pmId = project?.pmId?._id || project?.pmId;
-                    if (pmId) matchIds.add(String(pmId));
-                    
-                    // Add Job Foreman
-                    const foremanId = job?.foremanId?._id || job?.foremanId;
-                    if (foremanId) matchIds.add(String(foremanId));
-                    
-                    // Add Job Workers
-                    (job?.assignedWorkers || []).forEach(w => {
-                        const id = w?._id || w;
-                        if (id) matchIds.add(String(id));
-                    });
-
-                    return users.filter(u => matchIds.has(String(u._id)));
-                })()}
+                users={users}
+                projectMembers={projectMembers}
+                currentUser={user}
                 isSubmitting={isSubmitting}
             />
 
