@@ -10,6 +10,7 @@ import {
 import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
+import toast from 'react-hot-toast';
 
 const ProjectTeamLayout = () => {
   const { logout, user } = useAuth();
@@ -23,6 +24,10 @@ const ProjectTeamLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const socketRef = useRef();
+  const pathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   const fetchNotifications = async () => {
     try {
@@ -76,12 +81,14 @@ const ProjectTeamLayout = () => {
           playSound('NOTIFICATION');
           fetchNotifications();
         }
+        playSound('NOTIFICATION');
+        fetchNotifications();
       });
 
       socketRef.current.on('new_message', (payload) => {
         const senderId = payload.sender?._id || payload.sender;
         const currentUserId = user?._id || user?.id;
-        const isNotMe = senderId !== currentUserId;
+        if (!senderId || String(senderId) === String(currentUserId)) return;
 
         if (isNotMe) {
           fetchUnreadCount();

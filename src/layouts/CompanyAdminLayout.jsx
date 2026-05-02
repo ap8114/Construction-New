@@ -11,6 +11,7 @@ import {
 import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
+import toast from 'react-hot-toast';
 
 const CompanyAdminLayout = () => {
   const { user, logout, updateUserData } = useAuth();
@@ -30,6 +31,10 @@ const CompanyAdminLayout = () => {
   const [taskCount, setTaskCount] = useState(0);
   const [issueCount, setIssueCount] = useState(0);
   const socketRef = useRef();
+  const pathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   // Determine current project for dynamic header label
   const currentProjectId = location.pathname.split('/projects/')[1]?.split('/')[0];
@@ -91,7 +96,6 @@ const CompanyAdminLayout = () => {
       });
 
       socketRef.current.on('new_notification', (payload) => {
-        // Handle chat notifications specifically for badge and sound
         if (payload.type === 'chat') {
           fetchSidebarMetrics();
           if (!location.pathname.includes('/chat')) {
@@ -103,13 +107,14 @@ const CompanyAdminLayout = () => {
           fetchNotifications();
           fetchSidebarMetrics(); // Refresh counts like task/issue counts
         }
+        playSound('NOTIFICATION');
+        fetchNotifications();
       });
 
       socketRef.current.on('new_message', (payload) => {
-        // Robust check for sender to avoid playing sound for own messages
         const senderId = payload.sender?._id || payload.sender;
         const currentUserId = user?._id || user?.id;
-        const isNotMe = senderId !== currentUserId;
+        if (!senderId || String(senderId) === String(currentUserId)) return;
 
         if (isNotMe) {
           // Always refresh unread count for sidebar/navbar badge from server for accuracy

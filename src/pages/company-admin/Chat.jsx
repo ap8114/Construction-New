@@ -5,6 +5,7 @@ import api, { BASE_URL } from '../../utils/api';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { playSound } from '../../utils/notificationSound';
+import toast from 'react-hot-toast';
 
 const Chat = () => {
     const { user } = useAuth();
@@ -80,13 +81,20 @@ const Chat = () => {
         };
 
         const handleNewMessage = (payload) => {
+            const payloadRoomId = String(
+                typeof payload.roomId === 'object' && payload.roomId !== null
+                    ? payload.roomId._id
+                    : payload.roomId || ''
+            );
+
             // Update rooms preview list regardless of active room
             setRooms(prev => {
                 const currentRooms = Array.isArray(prev) ? prev : [];
-                // Handle different roomId formats (string vs object)
-                const payloadRoomId = typeof payload.roomId === 'object' ? payload.roomId._id : payload.roomId;
-                const roomIndex = currentRooms.findIndex(r => r.id === payloadRoomId);
-                if (roomIndex === -1) return currentRooms;
+                const roomIndex = currentRooms.findIndex((r) => String(r.id || r._id) === payloadRoomId);
+                if (roomIndex === -1) {
+                    fetchRooms().catch(() => {});
+                    return currentRooms;
+                }
 
                 const room = { ...currentRooms[roomIndex] };
                 room.lastMessage = {
@@ -95,26 +103,26 @@ const Chat = () => {
                     time: payload.createdAt
                 };
 
-                // Use the ref to check against latest activeRoom
                 const currentActiveRoom = activeRoomRef.current;
-                room.unreadCount = (currentActiveRoom?.id === payloadRoomId) ? 0 : (room.unreadCount || 0) + 1;
+                const activeId = currentActiveRoom ? String(currentActiveRoom.id || currentActiveRoom._id) : '';
+                room.unreadCount = activeId === payloadRoomId ? 0 : (room.unreadCount || 0) + 1;
 
-                const otherRooms = currentRooms.filter(r => r.id !== payloadRoomId);
+                const otherRooms = currentRooms.filter((r) => String(r.id || r._id) !== payloadRoomId);
                 return [room, ...otherRooms];
             });
 
-            const isIncoming = payload.sender?._id !== user?._id && payload.sender !== user?._id;
-            const currentActiveRoom = activeRoomRef.current;
-            const payloadRoomId = typeof payload.roomId === 'object' ? payload.roomId._id : payload.roomId;
+            const senderRaw = payload.sender?._id || payload.sender;
+            const isIncoming = String(senderRaw) !== String(user?._id);
 
-            if (currentActiveRoom && payloadRoomId === currentActiveRoom.id) {
+            const currentActiveRoom = activeRoomRef.current;
+            const activeId = currentActiveRoom ? String(currentActiveRoom.id || currentActiveRoom._id) : '';
+
+            if (currentActiveRoom && payloadRoomId === activeId) {
                 setMessages(prev => {
                     const currentMessages = Array.isArray(prev) ? prev : [];
 
-                    // 1. Exact ID Deduplication (already processed or from server sync)
                     if (currentMessages.some(m => m.id === payload._id)) return currentMessages;
 
-                    // 2. Optimistic Deduplication (If I sent this and it's already in list as 'pending')
                     if (!isIncoming) {
                         const pendingIndex = currentMessages.findIndex(m => m.pending && m.text === payload.message);
                         if (pendingIndex !== -1) {
@@ -129,7 +137,6 @@ const Chat = () => {
                         }
                     }
 
-                    // 3. New message (Incoming or just not found in local state)
                     return [...currentMessages, {
                         id: payload._id,
                         sender: payload.sender?.fullName || 'Unknown',
@@ -142,29 +149,18 @@ const Chat = () => {
                 });
                 api.put(`/chat/mark-read/${currentActiveRoom.id}`).catch(() => { });
                 if (isIncoming) playSound('MESSAGE_RECEIVED');
-            } else {
-                if (isIncoming) playSound('MESSAGE_RECEIVED');
+            } else if (isIncoming) {
+                playSound('MESSAGE_RECEIVED');
+                const name = payload.sender?.fullName || 'Someone';
+                const snippet = (payload.message || '').trim().slice(0, 90) || 'New message';
+                toast(`${name}: ${snippet}`, { icon: '💬', duration: 5000 });
             }
         };
 
         const handleNotification = (notif) => {
             if (notif.type === 'chat') {
-                const currentActiveRoom = activeRoomRef.current;
-                if (!currentActiveRoom || notif.roomId !== currentActiveRoom.id) {
-                    setRooms(prev => {
-                        const currentRooms = Array.isArray(prev) ? prev : [];
-                        const roomIndex = currentRooms.findIndex(r => r.id === notif.roomId);
-                        if (roomIndex !== -1) {
-                            const room = { ...currentRooms[roomIndex], unreadCount: (currentRooms[roomIndex].unreadCount || 0) + 1 };
-                            const otherRooms = currentRooms.filter(r => r.id !== notif.roomId);
-                            return [room, ...otherRooms];
-                        } else {
-                            fetchRooms();
-                            return currentRooms;
-                        }
-                    });
-                    playSound('NOTIFICATION');
-                }
+                // Unread + sound are handled by `new_message` when socket rooms are wired correctly.
+                fetchRooms().catch(() => {});
             }
         };
 
