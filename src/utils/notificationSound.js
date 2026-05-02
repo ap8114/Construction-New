@@ -7,7 +7,8 @@ const SOUNDS = {
     // Elegant chime for incoming messages and alerts
     NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
     // Stronger tone for direct chat messages
-    MESSAGE_RECEIVED: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
+    // Short incoming-message ping (distinct from generic notification chime)
+    MESSAGE_RECEIVED: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
     // Subtle bubble pop for sent messages
     MESSAGE_SENT: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3',
 };

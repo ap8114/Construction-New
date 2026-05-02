@@ -10,6 +10,7 @@ import {
 import api from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
+import toast from 'react-hot-toast';
 
 const ProjectTeamLayout = () => {
   const { logout, user } = useAuth();
@@ -23,6 +24,10 @@ const ProjectTeamLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const socketRef = useRef();
+  const pathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   const fetchNotifications = async () => {
     try {
@@ -62,26 +67,48 @@ const ProjectTeamLayout = () => {
 
       socketRef.current.on('new_notification', (payload) => {
         if (payload.type === 'chat') {
-          setChatUnreadCount(prev => prev + 1);
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-          }
-        } else {
-          playSound('NOTIFICATION');
-          fetchNotifications();
+          fetchUnreadCount().catch(() => {});
+          return;
         }
+        playSound('NOTIFICATION');
+        fetchNotifications();
       });
 
       socketRef.current.on('new_message', (payload) => {
         const senderId = payload.sender?._id || payload.sender;
         const currentUserId = user?._id || user?.id;
-        const isNotMe = senderId !== currentUserId;
+        if (!senderId || String(senderId) === String(currentUserId)) return;
 
-        if (isNotMe) {
-          if (!location.pathname.includes('/chat')) {
-            playSound('MESSAGE_RECEIVED');
-            setChatUnreadCount(prev => prev + 1);
-          }
+        const onChat = pathnameRef.current.includes('/chat');
+        const name = payload.sender?.fullName || 'New message';
+        const snippet = (payload.message || '').trim().slice(0, 100) || '';
+
+        if (!onChat) {
+          playSound('MESSAGE_RECEIVED');
+          void fetchUnreadCount();
+          toast.custom(
+            (t) => (
+              <button
+                type="button"
+                className={`pointer-events-auto flex max-w-sm cursor-pointer gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl ${t.visible ? 'opacity-100' : 'opacity-0'}`}
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  navigate('/project-team/chat');
+                }}
+              >
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600 text-lg text-white">💬</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-black uppercase tracking-widest text-emerald-700">Chat</span>
+                  <span className="mt-0.5 block truncate text-sm font-black text-slate-900">{name}</span>
+                  {snippet ? <span className="mt-1 line-clamp-2 text-xs font-semibold text-slate-600">{snippet}</span> : null}
+                  <span className="mt-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Tap to open</span>
+                </span>
+              </button>
+            ),
+            { duration: 6500, position: 'top-right' }
+          );
+        } else {
+          void fetchUnreadCount();
         }
       });
 
