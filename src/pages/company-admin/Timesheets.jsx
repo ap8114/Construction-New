@@ -26,7 +26,8 @@ const Timesheets = () => {
     const [showStatusFilter, setShowStatusFilter] = useState(false);
     const socketRef = useRef();
     const { user } = useAuth();
-    const isWorker = user?.role === 'WORKER' || user?.role === 'SUBCONTRACTOR';
+    const isRestrictedRole = user?.role === 'WORKER' || user?.role === 'SUBCONTRACTOR' || user?.role === 'FOREMAN';
+    const isAdminOrPM = user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_OWNER' || user?.role === 'PM';
 
     const [activeTab, setActiveTab] = useState('logs');
     const [corrections, setCorrections] = useState([]);
@@ -38,11 +39,11 @@ const Timesheets = () => {
         try {
             setLoading(true);
             const response = await api.get('/timelogs');
-            const data = isWorker ? response.data.filter(e => e.userId?._id === user._id) : response.data;
+            const data = !isAdminOrPM ? response.data.filter(e => e.userId?._id === user._id) : response.data;
             setEntries(data);
 
             // If admin/pm, also fetch correction requests
-            if (!isWorker) {
+            if (isAdminOrPM) {
                 fetchCorrections();
             }
 
@@ -323,6 +324,9 @@ const Timesheets = () => {
         }
     };
 
+    const [correctionSearch, setCorrectionSearch] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     const [isLogDeleteModalOpen, setIsLogDeleteModalOpen] = useState(false);
     const [logToDelete, setLogToDelete] = useState(null);
 
@@ -387,10 +391,10 @@ const Timesheets = () => {
         <div className="space-y-8 animate-fade-in pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{isWorker ? 'My Hours' : 'Timesheets'}</h1>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{!isAdminOrPM ? 'My Hours' : 'Timesheets'}</h1>
                     <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest flex items-center gap-2">
                         <Clock size={14} className="text-blue-600" />
-                        {isWorker ? 'Track your site hours and attendance history' : 'Verify and approve site manpower hours'}
+                        {!isAdminOrPM ? 'Track your site hours and attendance history' : 'Verify and approve site manpower hours'}
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -408,7 +412,7 @@ const Timesheets = () => {
                     >
                         <FileText size={20} />
                     </button>
-                    {!isWorker ? (
+                    {isAdminOrPM ? (
                         <button
                             onClick={handleApproveAll}
                             className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-black text-sm uppercase tracking-tight"
@@ -428,21 +432,21 @@ const Timesheets = () => {
 
             {/* Premium Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <StatCard title={isWorker ? "My Total Hours" : "Total Hours"} value={`${stats.totalHours}h`} subtext="this period" icon={TrendingUp} color="blue" />
-                <StatCard title={isWorker ? "Pending Approval" : "Pending Review"} value={stats.pending} subtext="requires action" icon={FileText} color="orange" />
+                <StatCard title={!isAdminOrPM ? "My Total Hours" : "Total Hours"} value={`${stats.totalHours}h`} subtext="this period" icon={TrendingUp} color="blue" />
+                <StatCard title={!isAdminOrPM ? "Pending Approval" : "Pending Review"} value={stats.pending} subtext="requires action" icon={FileText} color="orange" />
                 <StatCard title="Approved" value={stats.approved} subtext="finalized logs" icon={CheckCircle} color="emerald" />
                 <StatCard
-                    title={isWorker ? "On-Clock Status" : "GPS Tracked"}
-                    value={isWorker ? (entries.some(e => !e.clockOut) ? 'Active' : 'Offline') : stats.gpsTracked}
-                    subtext={isWorker ? "Current shift" : `of ${entries.length} entries`}
-                    icon={isWorker ? Clock : MapPin}
-                    color={isWorker ? "emerald" : "blue"}
+                    title={!isAdminOrPM ? "On-Clock Status" : "GPS Tracked"}
+                    value={!isAdminOrPM ? (entries.some(e => !e.clockOut) ? 'Active' : 'Offline') : stats.gpsTracked}
+                    subtext={!isAdminOrPM ? "Current shift" : `of ${entries.length} entries`}
+                    icon={!isAdminOrPM ? Clock : MapPin}
+                    color={!isAdminOrPM ? "emerald" : "blue"}
                 />
             </div>
 
             {/* Dashboard Sub-Header / Tabs */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                {!isWorker && (
+                {isAdminOrPM && (
                     <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full md:w-auto">
                         <button
                             onClick={() => setActiveTab('logs')}
@@ -666,7 +670,7 @@ const Timesheets = () => {
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        {!isWorker && (
+                                                        {isAdminOrPM && (
                                                             <>
                                                                 <button
                                                                     onClick={() => openEditModal(entry)}
@@ -963,7 +967,7 @@ const Timesheets = () => {
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 {selectedEntry.status === 'pending' && selectedEntry.clockOut && (
                                     <>
-                                        {!isWorker ? (
+                                        {isAdminOrPM ? (
                                             <>
                                                 <button
                                                     onClick={() => handleReject(selectedEntry._id)}
@@ -1019,29 +1023,82 @@ const Timesheets = () => {
             >
                 <form onSubmit={handleCorrectionSubmit} className="space-y-6">
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Timesheet Record</label>
-                            <select
-                                required
-                                value={correctionData.timeLogId}
-                                onChange={(e) => {
-                                    const log = entries.find(item => item._id === e.target.value);
-                                    setCorrectionData({
-                                        ...correctionData,
-                                        timeLogId: e.target.value,
-                                        clockIn: log?.clockIn ? new Date(log.clockIn).toISOString().slice(0, 16) : '',
-                                        clockOut: log?.clockOut ? new Date(log.clockOut).toISOString().slice(0, 16) : ''
-                                    });
-                                }}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                        <div className="relative">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block px-1">Select Timesheet Record</label>
+                            <div 
+                                className="relative group"
+                                onMouseLeave={() => setIsDropdownOpen(false)}
                             >
-                                <option value="">-- Choose a record to correct --</option>
-                                {entries.filter(e => e.status !== 'approved').map(log => (
-                                    <option key={log._id} value={log._id}>
-                                        {new Date(log.clockIn).toLocaleDateString()} - {log.projectId?.name || 'Manual Log'}
-                                    </option>
-                                ))}
-                            </select>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                        <Search size={16} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by date or project..."
+                                        value={correctionSearch || (correctionData.timeLogId ? `${new Date(entries.find(e => e._id === correctionData.timeLogId)?.clockIn).toLocaleDateString()} - ${entries.find(e => e._id === correctionData.timeLogId)?.projectId?.name || 'Manual Log'}` : '')}
+                                        onChange={(e) => {
+                                            setCorrectionSearch(e.target.value);
+                                            setIsDropdownOpen(true);
+                                        }}
+                                        onFocus={() => setIsDropdownOpen(true)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all"
+                                    />
+                                </div>
+
+                                {isDropdownOpen && (
+                                    <div className="absolute z-50 w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-200/50 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {entries
+                                            .filter(e => {
+                                                const dateStr = new Date(e.clockIn).toLocaleDateString();
+                                                const projectStr = e.projectId?.name || 'Manual Log';
+                                                const searchStr = `${dateStr} ${projectStr}`.toLowerCase();
+                                                return searchStr.includes(correctionSearch.toLowerCase());
+                                            })
+                                            .length > 0 ? (
+                                                entries
+                                                    .filter(e => {
+                                                        const dateStr = new Date(e.clockIn).toLocaleDateString();
+                                                        const projectStr = e.projectId?.name || 'Manual Log';
+                                                        const searchStr = `${dateStr} ${projectStr}`.toLowerCase();
+                                                        return searchStr.includes(correctionSearch.toLowerCase());
+                                                    })
+                                                    .map(log => (
+                                                        <button
+                                                            key={log._id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setCorrectionData({
+                                                                    ...correctionData,
+                                                                    timeLogId: log._id,
+                                                                    clockIn: log?.clockIn ? new Date(log.clockIn).toISOString().slice(0, 16) : '',
+                                                                    clockOut: log?.clockOut ? new Date(log.clockOut).toISOString().slice(0, 16) : ''
+                                                                });
+                                                                setCorrectionSearch('');
+                                                                setIsDropdownOpen(false);
+                                                            }}
+                                                            className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center justify-between border-b border-slate-50 last:border-0"
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-black text-slate-900">{new Date(log.clockIn).toLocaleDateString()}</span>
+                                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{log.projectId?.name || 'Manual Log'}</span>
+                                                            </div>
+                                                            <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter ${
+                                                                log.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                                                                log.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                                                            }`}>
+                                                                {log.status}
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                            ) : (
+                                                <div className="px-4 py-8 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
+                                                    No matching records found
+                                                </div>
+                                            )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
