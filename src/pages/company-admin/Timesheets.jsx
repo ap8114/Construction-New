@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import {
     Clock, MapPin, CheckCircle, XCircle, Search, Filter,
     Download, FileText, User, Calendar, Loader, MoreHorizontal,
-    ChevronRight, ExternalLink, Hash, Check, Trash2, ShieldCheck, AlertCircle, TrendingUp, RefreshCw
+    ChevronRight, ExternalLink, Hash, Check, Trash2, ShieldCheck, AlertCircle, TrendingUp, RefreshCw, Edit2
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
@@ -323,6 +323,66 @@ const Timesheets = () => {
         }
     };
 
+    const [isLogDeleteModalOpen, setIsLogDeleteModalOpen] = useState(false);
+    const [logToDelete, setLogToDelete] = useState(null);
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
+    const [editData, setEditData] = useState({ clockIn: '', clockOut: '' });
+
+    const openEditModal = (entry) => {
+        setEditingEntry(entry);
+        
+        const toLocalISO = (dateStr) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().slice(0, 16);
+        };
+
+        setEditData({
+            clockIn: toLocalISO(entry.clockIn),
+            clockOut: toLocalISO(entry.clockOut)
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await api.patch(`/timelogs/${editingEntry._id}`, {
+                clockIn: editData.clockIn,
+                clockOut: editData.clockOut
+            });
+            toast.success('Timesheet updated successfully');
+            setIsEditModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error updating timesheet:', error);
+            toast.error('Failed to update timesheet');
+        }
+    };
+
+    const handleDeleteEntry = (id) => {
+        setLogToDelete(id);
+        setIsLogDeleteModalOpen(true);
+    };
+
+    const confirmDeleteEntry = async () => {
+        if (!logToDelete) return;
+        try {
+            await api.delete(`/timelogs/${logToDelete}`);
+            toast.success('Time log deleted successfully');
+            setIsLogDeleteModalOpen(false);
+            setLogToDelete(null);
+            fetchData();
+        } catch (error) {
+            console.error('Error deleting time log:', error);
+            toast.error('Failed to delete time log');
+        }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -605,12 +665,32 @@ const Timesheets = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
-                                                    <button
-                                                        onClick={() => openDetails(entry)}
-                                                        className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
-                                                    >
-                                                        <ChevronRight size={20} />
-                                                    </button>
+                                                    <div className="flex justify-end gap-2">
+                                                        {!isWorker && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => openEditModal(entry)}
+                                                                    className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
+                                                                    title="Edit Log"
+                                                                >
+                                                                    <Edit2 size={18} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteEntry(entry._id)}
+                                                                    className="p-2 bg-slate-50 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
+                                                                    title="Delete Log"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        <button
+                                                            onClick={() => openDetails(entry)}
+                                                            className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-white hover:shadow-md rounded-xl transition-all border border-transparent hover:border-slate-100"
+                                                        >
+                                                            <ChevronRight size={20} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -1054,6 +1134,95 @@ const Timesheets = () => {
                             className="flex-1 bg-red-600 text-white px-6 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-200"
                         >
                             Confirm Delete
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Edit Timesheet Modal */}
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="Edit Timesheet Entry"
+                maxWidth="max-w-md"
+            >
+                <form onSubmit={handleEditSubmit} className="space-y-6">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Employee</p>
+                        <p className="text-sm font-black text-slate-900">{editingEntry?.userId?.fullName}</p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Clock In Time</label>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={editData.clockIn}
+                                onChange={(e) => setEditData({ ...editData, clockIn: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Clock Out Time (Optional)</label>
+                            <input
+                                type="datetime-local"
+                                value={editData.clockOut}
+                                onChange={(e) => setEditData({ ...editData, clockOut: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-500 transition-all font-bold text-slate-800"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isLogDeleteModalOpen}
+                onClose={() => setIsLogDeleteModalOpen(false)}
+                title="Confirm Deletion"
+                maxWidth="max-w-md"
+            >
+                <div className="space-y-6">
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                            <AlertCircle size={32} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">Delete Time Log?</h3>
+                            <p className="text-slate-500 font-bold text-sm mt-1">
+                                Are you sure you want to permanently remove this record? This action cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsLogDeleteModalOpen(false)}
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+                        >
+                            No, Keep Log
+                        </button>
+                        <button
+                            onClick={confirmDeleteEntry}
+                            className="flex-1 px-6 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                        >
+                            Yes, Delete Permanently
                         </button>
                     </div>
                 </div>
