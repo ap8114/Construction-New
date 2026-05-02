@@ -6,7 +6,7 @@ import {
     RefreshCw, Calendar, Check
 } from 'lucide-react';
 import { io } from 'socket.io-client';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 
@@ -92,7 +92,7 @@ const CrewClock = () => {
         fetchData();
 
         // Connect socket
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = BASE_URL;
         socketRef.current = io(socketUrl);
         socketRef.current.emit('register_user', user);
 

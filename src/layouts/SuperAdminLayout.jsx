@@ -7,7 +7,7 @@ import {
   CreditCard, Settings, Ticket, LogOut, Menu, X,
   Bell, Search, TrendingUp, Bookmark, FileText, ChevronDown, MessageSquare
 } from 'lucide-react';
-import api from '../utils/api';
+import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import sidebarlogo from '../assets/images/sidebarlogo.png';
 import { playSound } from '../utils/notificationSound';
@@ -39,10 +39,12 @@ const SuperAdminLayout = () => {
       fetchNotifications();
 
       const token = localStorage.getItem('token');
-      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+      const socketUrl = BASE_URL;
 
       socketRef.current = io(socketUrl, {
-        auth: { token }
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true
       });
 
       socketRef.current.on('connect', () => {

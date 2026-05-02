@@ -7,7 +7,7 @@ import {
   MessageCircle, LogOut, Menu, X, Bell, User,
   Building2, LayoutDashboard, FileText, ClipboardList, Briefcase, MessageSquare
 } from 'lucide-react';
-import api from '../utils/api';
+import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
 
@@ -48,10 +48,12 @@ const ClientPortalLayout = () => {
       fetchUnreadCount();
 
       const token = localStorage.getItem('token');
-      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+      const socketUrl = BASE_URL;
 
       socketRef.current = io(socketUrl, {
-        auth: { token }
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true
       });
 
       socketRef.current.on('connect', () => {
@@ -60,9 +62,13 @@ const ClientPortalLayout = () => {
         }
       });
 
+      socketRef.current.on('unread_count_updated', () => {
+        fetchUnreadCount();
+      });
+
       socketRef.current.on('new_notification', (payload) => {
         if (payload.type === 'chat') {
-          setChatUnreadCount(prev => prev + 1);
+          fetchUnreadCount();
           if (!location.pathname.includes('/messages')) {
             playSound('MESSAGE_RECEIVED');
           }
@@ -78,9 +84,9 @@ const ClientPortalLayout = () => {
         const isNotMe = senderId !== currentUserId;
         
         if (isNotMe) {
+          fetchUnreadCount();
           if (!location.pathname.includes('/messages')) {
             playSound('MESSAGE_RECEIVED');
-            setChatUnreadCount(prev => prev + 1);
           }
         }
       });

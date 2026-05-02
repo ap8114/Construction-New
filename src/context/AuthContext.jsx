@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api from '../utils/api';
+import api, { BASE_URL } from '../utils/api';
 import locationTracker from '../utils/LocationTracker';
 import { io } from 'socket.io-client';
 
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Socket for real-time permission updates
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+    const socketUrl = BASE_URL;
     socketRef.current = io(socketUrl);
 
     socketRef.current.on('permissions_updated', (data) => {

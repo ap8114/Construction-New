@@ -13,7 +13,7 @@ import {
   ResponsiveContainer, AreaChart, Area, LineChart, Line
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import CancellationModal from '../../components/jobs/CancellationModal';
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true, extraValue }) => (
@@ -636,7 +636,7 @@ const CompanyAdminDashboard = () => {
     fetchDashboardData();
 
     // Connect socket
-    const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080';
+    const socketUrl = BASE_URL;
     socketRef.current = io(socketUrl);
     socketRef.current.emit('register_user', user);
 

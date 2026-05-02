@@ -9,7 +9,7 @@ import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Modal from '../../components/Modal';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const Timesheets = () => {
@@ -148,7 +148,7 @@ const Timesheets = () => {
         fetchData();
 
         // Connect socket
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = BASE_URL;
         socketRef.current = io(socketUrl);
         socketRef.current.emit('register_user', user);
 

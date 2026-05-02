@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Clock, MapPin, CheckCircle, Camera, RefreshCw, AlertCircle, Play, Square, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const WorkerPunch = () => {
@@ -80,7 +80,7 @@ const WorkerPunch = () => {
         fetchData();
 
         // Connect socket for status broadcasting
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = BASE_URL;
         socketRef.current = io(socketUrl);
         socketRef.current.emit('register_user', user);
 

@@ -8,7 +8,7 @@ import {
   Users, Settings, LogOut, Menu, X, Bell, MessageSquare,
   Search, ChevronDown, RefreshCw, MapPin, Building2, PenTool, Camera, FileQuestion, AlertCircle, Activity
 } from 'lucide-react';
-import api from '../utils/api';
+import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
 
@@ -72,10 +72,12 @@ const CompanyAdminLayout = () => {
       fetchNotifications();
 
       const token = localStorage.getItem('token');
-      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+      const socketUrl = BASE_URL;
 
       socketRef.current = io(socketUrl, {
-        auth: { token }
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true
       });
 
       socketRef.current.on('connect', () => {
@@ -84,12 +86,14 @@ const CompanyAdminLayout = () => {
         }
       });
 
+      socketRef.current.on('unread_count_updated', () => {
+        fetchSidebarMetrics();
+      });
+
       socketRef.current.on('new_notification', (payload) => {
         // Handle chat notifications specifically for badge and sound
         if (payload.type === 'chat') {
-          setChatUnreadCount(prev => prev + 1);
-          // Always play sound for incoming chat notification if not already handled by new_message
-          // and if we're not explicitly viewing the chat page
+          fetchSidebarMetrics();
           if (!location.pathname.includes('/chat')) {
              playSound('MESSAGE_RECEIVED');
           }
@@ -97,6 +101,7 @@ const CompanyAdminLayout = () => {
           // System notifications
           playSound('NOTIFICATION');
           fetchNotifications();
+          fetchSidebarMetrics(); // Refresh counts like task/issue counts
         }
       });
 
@@ -107,9 +112,11 @@ const CompanyAdminLayout = () => {
         const isNotMe = senderId !== currentUserId;
 
         if (isNotMe) {
-          // Increment badge if we're not on the chat page
+          // Always refresh unread count for sidebar/navbar badge from server for accuracy
+          fetchSidebarMetrics();
+          
+          // Play sound if NOT on the chat page
           if (!location.pathname.includes('/chat')) {
-            setChatUnreadCount(prev => prev + 1);
             playSound('MESSAGE_RECEIVED');
           }
         }

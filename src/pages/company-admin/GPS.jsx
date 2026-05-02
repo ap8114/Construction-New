@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, User, Search, Crosshair, Phone, Loader, Activity, ShieldCheck } from 'lucide-react';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -88,7 +88,7 @@ const GPS = () => {
         fetchData();
 
         // Socket setup
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = BASE_URL;
         socketRef.current = io(socketUrl);
 
         socketRef.current.on('connect', () => {

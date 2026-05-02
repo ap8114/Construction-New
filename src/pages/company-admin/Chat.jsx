@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Search, Paperclip, Smile, MessageSquare, Users as UsersIcon, Circle, Shield, User as UserIcon, HardHat, X, Loader, Download, ChevronLeft, Menu } from 'lucide-react';
 import { io } from 'socket.io-client';
-import api from '../../utils/api';
+import api, { BASE_URL } from '../../utils/api';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { playSound } from '../../utils/notificationSound';
@@ -57,7 +57,7 @@ const Chat = () => {
         if (!user) return;
 
         const token = localStorage.getItem('token');
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = BASE_URL;
 
         // Initialize socket only if it doesn't exist
         if (!socketRef.current) {
