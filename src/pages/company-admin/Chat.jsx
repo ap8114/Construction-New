@@ -37,6 +37,7 @@ const Chat = () => {
     const fileInputRef = useRef(null);
     const socketRef = useRef();
     const messagesEndRef = useRef(null);
+    const roomsRef = useRef([]);
 
     // Handled globally in App.jsx
 
@@ -53,6 +54,10 @@ const Chat = () => {
     useEffect(() => {
         activeRoomRef.current = activeRoom;
     }, [activeRoom]);
+
+    useEffect(() => {
+        roomsRef.current = Array.isArray(rooms) ? rooms : [];
+    }, [rooms]);
 
     useEffect(() => {
         if (!user) return;
@@ -75,8 +80,9 @@ const Chat = () => {
             console.log('Real-time channel established');
             socket.emit('register_user', user);
             // Re-join known rooms if we reconnect
-            rooms.forEach(room => {
-                socket.emit('join_room', room.id || room._id);
+            (roomsRef.current || []).forEach(room => {
+                const rid = room.id || room._id;
+                if (rid) socket.emit('join_room', rid);
             });
         };
 
@@ -221,7 +227,8 @@ const Chat = () => {
             setRooms(res.data || []);
             if (socketRef.current?.connected) {
                 res.data.forEach(room => {
-                    socketRef.current.emit('join_room', room.id);
+                    const rid = room?.id || room?._id;
+                    if (rid) socketRef.current.emit('join_room', rid);
                 });
             }
             if (!activeRoom && res.data.length > 0) {
@@ -262,7 +269,17 @@ const Chat = () => {
             }
         };
         fetchMessages();
+        const interval = setInterval(fetchMessages, 5000);
+        return () => clearInterval(interval);
     }, [activeRoom?.id]);
+
+    useEffect(() => {
+        if (!socketRef.current?.connected) return;
+        (rooms || []).forEach((room) => {
+            const rid = room?.id || room?._id;
+            if (rid) socketRef.current.emit('join_room', rid);
+        });
+    }, [rooms]);
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
