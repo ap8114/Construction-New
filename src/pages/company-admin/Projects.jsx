@@ -50,11 +50,9 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
   const [userSearch, setUserSearch] = useState('');
   const userDropdownRef = useRef(null);
 
-  // Filter users based on selected role and search term
   const filteredUsers = allUsers.filter(u => {
-    const matchRole = !selectedRole || u.role === selectedRole;
     const matchSearch = u.fullName?.toLowerCase().includes(userSearch.toLowerCase());
-    return matchRole && matchSearch;
+    return matchSearch;
   });
 
   // Click outside to close user dropdown
@@ -176,85 +174,89 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
       </div>
 
       {/* Project Lead Assignment */}
-      <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100/50 space-y-5">
+      <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100/50 space-y-4">
         <label className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-          <Users size={14} /> Project Lead / Assigned To
+          <Users size={14} /> Project Manager(s) Assignment
         </label>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Step 1: Filter by Role */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Select Role</label>
-            <div className="relative">
-              <select
-                value={selectedRole}
-                onChange={e => {
-                  setSelectedRole(e.target.value);
-                  setData({ ...data, pmId: '' }); // Reset user selection when role changes
-                }}
-                className={inputCls + ' appearance-none pl-4 pr-10 hover:border-blue-500/50 cursor-pointer'}
-              >
-                <option value="PM">Project Manager</option>
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronDown size={14} />
-              </div>
-            </div>
-          </div>
-
-          {/* Step 2: Searchable User Selection */}
-          <div className="space-y-2 relative" ref={userDropdownRef}>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Select Identity</label>
+        <div className="space-y-4">
+          <div className="relative" ref={userDropdownRef}>
             <div
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              className={inputCls + ' cursor-pointer flex items-center justify-between group-hover:border-blue-500/30'}
+              className={inputCls + ' cursor-pointer flex items-center justify-between min-h-[56px]'}
             >
-              <span className="truncate">
-                {allUsers.find(u => u._id === data.pmId)?.fullName || (selectedRole ? `Select ${selectedRole}` : 'Select User')}
-              </span>
-              <ChevronDown size={14} className={`text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+              <div className="flex flex-wrap gap-2 items-center">
+                {data.pmIds && data.pmIds.length > 0 ? (
+                  data.pmIds.map(id => {
+                    const u = allUsers.find(user => (user._id === id || user._id === id?._id));
+                    return u ? (
+                      <span key={u._id} className="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-2 shadow-sm">
+                        {u.fullName}
+                        <X size={12} className="cursor-pointer hover:text-blue-200" onClick={(e) => {
+                          e.stopPropagation();
+                          setData({ ...data, pmIds: data.pmIds.filter(pid => (pid?._id || pid) !== u._id) });
+                        }} />
+                      </span>
+                    ) : null;
+                  })
+                ) : (
+                  <span className="text-slate-400 font-bold text-xs">Select Project Managers...</span>
+                )}
+              </div>
+              <ChevronDown size={16} className={`text-slate-400 transition-transform ${isUserDropdownOpen ? 'rotate-180' : ''} shrink-0`} />
             </div>
 
             {isUserDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="p-3 border-b border-slate-100 bg-slate-50/50">
+              <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-slate-200 rounded-[28px] shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                     <input
                       type="text"
-                      placeholder="Type name to filter..."
+                      placeholder="Search Project Managers..."
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-blue-500 transition-all font-sans"
+                      className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-bold uppercase outline-none focus:border-blue-500 transition-all"
                       onClick={(e) => e.stopPropagation()}
                       autoFocus
                     />
                   </div>
                 </div>
-                <div className="max-h-[220px] overflow-y-auto">
+                <div className="max-h-[280px] overflow-y-auto p-2 space-y-1">
                   {filteredUsers.length > 0 ? (
-                    filteredUsers.map(u => (
-                      <div
-                        key={u._id}
-                        onClick={() => {
-                          setData({ ...data, pmId: u._id });
-                          setIsUserDropdownOpen(false);
-                          setUserSearch('');
-                        }}
-                        className={`px-4 py-3 text-[10px] font-bold uppercase cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-all flex items-center justify-between border-l-4 ${data.pmId === u._id ? 'bg-blue-50 text-blue-600 border-blue-600' : 'text-slate-600 border-transparent'}`}
-                      >
-                        <div className="flex flex-col">
-                          <span>{u.fullName}</span>
-                          <span className="text-[8px] opacity-60 font-medium">Internal ID: {u._id.slice(-6)}</span>
+                    filteredUsers.map(u => {
+                      const isSelected = data.pmIds?.some(id => (id?._id || id) === u._id);
+                      return (
+                        <div
+                          key={u._id}
+                          onClick={() => {
+                            const currentIds = data.pmIds || [];
+                            if (isSelected) {
+                              setData({ ...data, pmIds: currentIds.filter(id => (id?._id || id) !== u._id) });
+                            } else {
+                              setData({ ...data, pmIds: [...currentIds, u._id] });
+                            }
+                          }}
+                          className={`px-4 py-3.5 rounded-2xl text-[11px] font-bold uppercase cursor-pointer transition-all flex items-center justify-between
+                            ${isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] ${isSelected ? 'bg-white/20' : 'bg-blue-100 text-blue-600'}`}>
+                              {u.fullName?.charAt(0)}
+                            </div>
+                            <div className="flex flex-col">
+                              <span>{u.fullName}</span>
+                              <span className={`text-[8px] font-medium ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>{u.email}</span>
+                            </div>
+                          </div>
+                          {isSelected && <CheckCircle size={16} />}
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[8px] ${u.role === 'PM' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-                          {u.role}
-                        </span>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase italic">
-                      No matching personnel
+                    <div className="py-12 text-center">
+                      <Users size={32} className="mx-auto text-slate-200 mb-2" />
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">No Project Managers Found</p>
                     </div>
                   )}
                 </div>
@@ -262,7 +264,9 @@ const ProjectForm = ({ data, setData, onSubmit, submitLabel, clients, allUsers, 
             )}
           </div>
         </div>
-        <p className="text-[9px] font-bold text-blue-400 uppercase italic px-1">Selected user will have administrative sight over this project unit.</p>
+        <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider bg-blue-100/30 p-3 rounded-xl border border-blue-200/20">
+          Only users with the <span className="font-black text-blue-600">Project Manager</span> role can be assigned to oversee project units.
+        </p>
       </div>
 
       {/* Manual Progress Control */}
@@ -350,7 +354,7 @@ const Projects = () => {
   const showBudget = canSeeBudget(user?.role);
 
   const EMPTY = {
-    name: '', clientId: '', startDate: '', endDate: '', budget: '', pmId: '',
+    name: '', clientId: '', startDate: '', endDate: '', budget: '', pmIds: [],
     status: 'active', progress: 0, location: '', image: '', companyId: user?.companyId,
     siteLatitude: '', siteLongitude: '', allowedRadiusMeters: 100, strictGeofence: false
   };
@@ -378,8 +382,8 @@ const Projects = () => {
     }
   };
 
-  const ensureAdminDataLoaded = async () => {
-    if (clients.length > 0 && allUsers.length > 0) return;
+  const ensureAdminDataLoaded = async (force = false) => {
+    if (!force && clients.length > 0 && allUsers.length > 0) return;
     try {
       const [clientRes, pmRes] = await Promise.all([
         api.get('/auth/users?role=CLIENT').catch(() => ({ data: [] })),
@@ -401,13 +405,15 @@ const Projects = () => {
     try {
       setSaving(true);
       const data = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (key === 'imageFile' && formData[key]) {
-          data.append('image', formData[key]);
-        } else if (key !== 'imagePreview' && key !== 'image') {
-          data.append(key, formData[key]);
-        }
-      });
+        Object.keys(formData).forEach(key => {
+          if (key === 'imageFile' && formData[key]) {
+            data.append('image', formData[key]);
+          } else if (key === 'pmIds') {
+            data.append('pmIds', JSON.stringify(formData[key]));
+          } else if (key !== 'imagePreview' && key !== 'image') {
+            data.append(key, formData[key]);
+          }
+        });
       data.append('companyId', user?.companyId);
 
       await api.post('/projects', data, {
@@ -447,6 +453,8 @@ const Projects = () => {
           // If value is null, skip or send as empty string to avoid "null" string
           if (editingProject[key] === null) {
               data.append(key, '');
+          } else if (key === 'pmIds') {
+              data.append('pmIds', JSON.stringify(editingProject[key]));
           } else {
               // If value is object (like location), stringify it
               const value = typeof editingProject[key] === 'object' ? JSON.stringify(editingProject[key]) : editingProject[key];
@@ -505,12 +513,12 @@ const Projects = () => {
 
   const openEdit = async (project, e) => {
     e.stopPropagation();
-    await ensureAdminDataLoaded();
+    await ensureAdminDataLoaded(true);
     setEditingProject({
       ...project,
       location: getLocationStr(project.location),
       clientId: typeof project.clientId === 'object' ? (project.clientId?._id || '') : (project.clientId || ''),
-      pmId: typeof project.pmId === 'object' ? (project.pmId?._id || '') : (project.pmId || ''),
+      pmIds: project.pmIds ? project.pmIds.map(p => typeof p === 'object' ? p._id : p) : (project.pmId ? [typeof project.pmId === 'object' ? project.pmId._id : project.pmId] : []),
       startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
       endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
       siteLatitude: project.siteLatitude || '',
@@ -624,7 +632,7 @@ const Projects = () => {
               </div>
               {user?.role === 'COMPANY_OWNER' && (
                 <button onClick={async () => { 
-                  await ensureAdminDataLoaded();
+                  await ensureAdminDataLoaded(true);
                   setFormData(EMPTY); 
                   setIsCreateOpen(true); 
                 }}
@@ -786,7 +794,9 @@ const Projects = () => {
                   <div className="flex items-center gap-2 text-white/60 mt-0.5">
                     <Users size={11} className="text-blue-400" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate">
-                      PM: {project.pmId?.fullName || (allUsers?.find(u => u._id === (project.pmId?._id || project.pmId))?.fullName || 'Unassigned')}
+                      PM: {project.pmIds && project.pmIds.length > 0 
+                        ? project.pmIds.map(p => p.fullName || allUsers?.find(u => u._id === (p?._id || p))?.fullName).join(', ') 
+                        : (project.pmId?.fullName || (allUsers?.find(u => u._id === (project.pmId?._id || project.pmId))?.fullName || 'Unassigned'))}
                     </span>
                   </div>
                 </div>
@@ -1092,10 +1102,14 @@ const Projects = () => {
             <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned PM</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned PM(s)</p>
                         <div className="flex items-center gap-2">
                             <Users size={14} className="text-blue-500" />
-                            <span className="text-sm font-black text-slate-800">{viewProject.pmId?.fullName || (allUsers?.find(u => u._id === (viewProject.pmId?._id || viewProject.pmId))?.fullName || 'Unassigned')}</span>
+                            <span className="text-sm font-black text-slate-800">
+                                {viewProject.pmIds && viewProject.pmIds.length > 0 
+                                    ? viewProject.pmIds.map(p => p.fullName || allUsers?.find(u => u._id === (p?._id || p))?.fullName).filter(Boolean).join(', ')
+                                    : (viewProject.pmId?.fullName || allUsers?.find(u => u._id === (viewProject.pmId?._id || viewProject.pmId))?.fullName || 'Unassigned')}
+                            </span>
                         </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">

@@ -179,9 +179,17 @@ const ProjectDetails = () => {
 
     const handleAssignPM = async (pmId) => {
         try {
-            const res = await api.post(`/projects/${projectId}/assign-pm`, { pmId });
+            const currentPmIds = project.pmIds ? project.pmIds.map(p => typeof p === 'object' ? p._id : p) : [];
+            let newPmIds;
+            if (currentPmIds.includes(pmId)) {
+                newPmIds = currentPmIds.filter(id => id !== pmId);
+            } else {
+                newPmIds = [...currentPmIds, pmId];
+            }
+            
+            const res = await api.patch(`/projects/${projectId}`, { pmIds: newPmIds });
             setProject(res.data);
-            setIsAssigningPM(false);
+            // Don't close dropdown yet to allow selecting multiple
         } catch (err) {
             console.error(err);
         }
@@ -554,7 +562,9 @@ const ProjectDetails = () => {
                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] leading-none mb-1">Project Manager</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-bold text-white leading-none">
-                                                    {project?.pmId?.fullName || users.find(u => u._id === (project?.pmId?._id || project?.pmId))?.fullName || 'Unassigned'}
+                                                    {project?.pmIds && project?.pmIds.length > 0 
+                                                        ? project.pmIds.map(p => p.fullName || users.find(u => u._id === (p?._id || p))?.fullName).join(', ')
+                                                        : (project?.pmId?.fullName || users.find(u => u._id === (project?.pmId?._id || project?.pmId))?.fullName || 'Unassigned')}
                                                 </span>
                                                 {user?.role === 'COMPANY_OWNER' && (
                                                     <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -581,7 +591,7 @@ const ProjectDetails = () => {
                                                                             ${(project?.pmId?._id || project?.pmId) === u._id ? 'bg-blue-600/20' : ''}`}
                                                                     >
                                                                         {u.fullName}
-                                                                        {(project?.pmId?._id || project?.pmId) === u._id && <CheckCircle size={10} className="text-blue-400" />}
+                                                                        {(project?.pmIds?.some(p => (p?._id || p) === u._id) || (project?.pmId?._id || project?.pmId) === u._id) && <CheckCircle size={10} className="text-blue-400" />}
                                                                     </button>
                                                                 ))}
                                                                 {users.filter(u => u.role === 'PM').length === 0 && (

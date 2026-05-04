@@ -41,9 +41,12 @@ const Chat = () => {
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-backend-production-b192.up.railway.app';
+        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://construction-production-b18f.up.railway.app';
 
-        socketRef.current = io(socketUrl, { auth: { token } });
+        socketRef.current = io(socketUrl, { 
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
 
         socketRef.current.on('connect', () => {
             socketRef.current.emit('register_user', user);

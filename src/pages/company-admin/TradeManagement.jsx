@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
     Users, Plus, Search, Filter, Mail, Phone, MoreVertical,
-    Trash2, Edit2, CheckCircle, XCircle, Loader, Save, X, Eye, 
+    Trash2, Edit2, CheckCircle, XCircle, Loader, Save, X, Eye,
     FileText, Paperclip, ExternalLink, Briefcase, ShieldCheck
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
@@ -27,6 +28,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 };
 
 const TradeManagement = () => {
+    const { user } = useAuth();
     const [trades, setTrades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +94,7 @@ const TradeManagement = () => {
         try {
             setLoading(true);
             const data = new FormData();
-            
+
             // Map form data to FormData
             Object.keys(formData).forEach(key => {
                 if (key === 'category' && formData.category === 'Other' && formData.customCategory) {
@@ -194,8 +196,8 @@ const TradeManagement = () => {
             // EmailJS Notification
             if (bidToUpdate && bidToUpdate.vendorId?.email) {
                 const fetchedCompany = bidToUpdate?.companyId || user?.companyId;
-                const publicLogoUrl = (typeof fetchedCompany === 'object' && fetchedCompany?.logo) 
-                    ? getServerUrl(fetchedCompany.logo) 
+                const publicLogoUrl = (typeof fetchedCompany === 'object' && fetchedCompany?.logo)
+                    ? getServerUrl(fetchedCompany.logo)
                     : "https://img.icons8.com/color/96/ring.png";
 
                 const templateParams = {
@@ -252,23 +254,29 @@ const TradeManagement = () => {
                     <p className="text-slate-500 text-sm">Manage subcontractors and specialized trades.</p>
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={() => setView(view === 'trades' ? 'bids' : 'trades')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 border shadow-sm
-              ${view === 'bids' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    >
-                        {view === 'trades' ? 'View Bids Received' : 'View Trade List'}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setEditingId(null);
-                            setFormData({ name: '', category: 'Flooring', customCategory: '', contactPerson: '', email: '', phone: '', status: 'active' });
-                            setIsModalOpen(true);
-                        }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 flex items-center gap-2 transition"
-                    >
-                        <Plus size={18} /> Add Trade
-                    </button>
+                    {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                        <>
+                            {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                <button
+                                    onClick={() => setView(view === 'trades' ? 'bids' : 'trades')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 border shadow-sm
+                        ${view === 'bids' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    {view === 'trades' ? 'View Bids Received' : 'View Trade List'}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ name: '', category: 'Flooring', customCategory: '', contactPerson: '', email: '', phone: '', status: 'active' });
+                                    setIsModalOpen(true);
+                                }}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-200 flex items-center gap-2 transition"
+                            >
+                                <Plus size={18} /> Add Trade
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -349,17 +357,21 @@ const TradeManagement = () => {
                                                         {trade.status}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
+                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <button onClick={() => handleView(trade)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="View Details">
                                                             <Eye size={16} />
                                                         </button>
-                                                        <button onClick={() => handleEdit(trade)} className="p-2 text-slate-500 hover:bg-blue-50 rounded-lg transition">
-                                                            <Edit2 size={16} />
-                                                        </button>
-                                                        <button onClick={() => handleDelete(trade._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition">
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                                            <>
+                                                                <button onClick={() => handleEdit(trade)} className="p-2 text-slate-500 hover:bg-blue-50 rounded-lg transition">
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                                <button onClick={() => handleDelete(trade._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition">
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -404,10 +416,10 @@ const TradeManagement = () => {
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-1">
                                                     {bid.attachments && bid.attachments.map((file, idx) => (
-                                                        <a 
+                                                        <a
                                                             key={idx}
-                                                            href={getServerUrl(file.url)} 
-                                                            target="_blank" 
+                                                            href={getServerUrl(file.url)}
+                                                            target="_blank"
                                                             rel="noreferrer"
                                                             className="p-1 px-2 bg-blue-50 text-blue-600 rounded border border-blue-100 flex items-center gap-1 text-[10px] font-bold hover:bg-blue-100 transition"
                                                             title={file.name}
@@ -444,7 +456,7 @@ const TradeManagement = () => {
                                                     )}
                                                     <button
                                                         onClick={() => handleDeleteBid(bid._id)}
-                                                        className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition" 
+                                                        className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition"
                                                         title="Delete Bid"
                                                     >
                                                         <Trash2 size={18} />
@@ -570,7 +582,7 @@ const TradeManagement = () => {
                                     </a>
                                 </div>
                             ))}
-                            
+
                             {/* Pending uploads */}
                             {taskAttachments.map((file, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 text-xs">
@@ -583,11 +595,11 @@ const TradeManagement = () => {
                             ))}
 
                             <label className="cursor-pointer">
-                                <input 
-                                    type="file" 
-                                    multiple 
-                                    className="hidden" 
-                                    onChange={(e) => setTaskAttachments([...taskAttachments, ...Array.from(e.target.files)])} 
+                                <input
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => setTaskAttachments([...taskAttachments, ...Array.from(e.target.files)])}
                                 />
                                 <div className="p-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center gap-2 text-xs font-bold">
                                     <Plus size={14} /> Add Files
@@ -628,14 +640,14 @@ const TradeManagement = () => {
                         </p>
                     </div>
                     <div className="flex justify-center gap-3 pt-2">
-                        <button 
-                            onClick={() => setIsDeleteBidModalOpen(false)} 
+                        <button
+                            onClick={() => setIsDeleteBidModalOpen(false)}
                             className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-medium"
                         >
                             Cancel
                         </button>
-                        <button 
-                            onClick={confirmDeleteBid} 
+                        <button
+                            onClick={confirmDeleteBid}
                             className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-medium shadow-lg shadow-red-200"
                         >
                             Confirm Delete
@@ -698,10 +710,10 @@ const TradeManagement = () => {
                             <div className="flex flex-wrap gap-2">
                                 {viewTrade.attachments && viewTrade.attachments.length > 0 ? (
                                     viewTrade.attachments.map((file, idx) => (
-                                        <a 
+                                        <a
                                             key={idx}
-                                            href={getServerUrl(file.url)} 
-                                            target="_blank" 
+                                            href={getServerUrl(file.url)}
+                                            target="_blank"
                                             rel="noreferrer"
                                             className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all group w-full sm:w-auto min-w-[200px]"
                                         >
@@ -724,7 +736,7 @@ const TradeManagement = () => {
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => setIsViewModalOpen(false)}
                             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
                         >
@@ -748,14 +760,14 @@ const TradeManagement = () => {
                         </p>
                     </div>
                     <div className="flex justify-center gap-3 pt-4 border-t border-slate-50 mt-4">
-                        <button 
-                            onClick={() => setIsDeleteTradeModalOpen(false)} 
+                        <button
+                            onClick={() => setIsDeleteTradeModalOpen(false)}
                             className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition font-bold uppercase text-[10px] tracking-widest"
                         >
                             No, Cancel
                         </button>
-                        <button 
-                            onClick={confirmDeleteTrade} 
+                        <button
+                            onClick={confirmDeleteTrade}
                             className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition font-bold uppercase text-[10px] tracking-widest shadow-lg shadow-red-100"
                         >
                             Yes, Delete

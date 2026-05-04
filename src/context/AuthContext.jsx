@@ -28,9 +28,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     // Socket for real-time permission updates
     const socketUrl = BASE_URL;
-    socketRef.current = io(socketUrl);
+    socketRef.current = io(socketUrl, {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
 
     socketRef.current.on('permissions_updated', (data) => {
       // Use functional state update to get most recent user
@@ -45,7 +51,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
-  }, []);
+  }, [user?._id]);
 
   useEffect(() => {
     // Check for stored token/user on load

@@ -93,7 +93,11 @@ const CrewClock = () => {
 
         // Connect socket
         const socketUrl = BASE_URL;
-        socketRef.current = io(socketUrl);
+        const token = localStorage.getItem('token');
+        socketRef.current = io(socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
         socketRef.current.emit('register_user', user);
 
         socketRef.current.on('attendance_update', (data) => {

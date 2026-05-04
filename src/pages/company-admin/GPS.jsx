@@ -89,7 +89,11 @@ const GPS = () => {
 
         // Socket setup
         const socketUrl = BASE_URL;
-        socketRef.current = io(socketUrl);
+        const token = localStorage.getItem('token');
+        socketRef.current = io(socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
 
         socketRef.current.on('connect', () => {
             socketRef.current.emit('register_user', user);

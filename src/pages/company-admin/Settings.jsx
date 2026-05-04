@@ -624,7 +624,9 @@ const ProjectArchive = () => {
                   <div className="flex items-center gap-2 text-white/60 mt-0.5">
                     <Users size={11} className="text-blue-400" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate">
-                      PM: {project.pmId?.fullName || 'Unassigned'}
+                      PM: {project.pmIds && project.pmIds.length > 0 
+                        ? project.pmIds.map(p => p.fullName).join(', ') 
+                        : (project.pmId?.fullName || 'Unassigned')}
                     </span>
                   </div>
                 </div>
@@ -708,7 +710,11 @@ const ProjectArchive = () => {
                 <div className="min-w-0">
                   <h4 className="font-black text-slate-900 text-sm tracking-tight uppercase truncate">{project.name}</h4>
                   <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{project.pmId?.fullName || 'N/A'}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      {project.pmIds && project.pmIds.length > 0 
+                        ? project.pmIds.map(p => p.fullName).join(', ') 
+                        : (project.pmId?.fullName || 'N/A')}
+                    </span>
                     <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">${(project.budget || 0).toLocaleString()}</span>
                   </div>
                 </div>
@@ -825,10 +831,14 @@ const ProjectArchive = () => {
             <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Project Manager</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Project Manager(s)</p>
                         <div className="flex items-center gap-2">
                             <Users size={14} className="text-blue-500" />
-                            <span className="text-sm font-black text-slate-800">{viewProject.pmId?.fullName || 'N/A'}</span>
+                            <span className="text-sm font-black text-slate-800">
+                                {viewProject.pmIds && viewProject.pmIds.length > 0 
+                                    ? viewProject.pmIds.map(p => p.fullName).join(', ') 
+                                    : (viewProject.pmId?.fullName || 'N/A')}
+                            </span>
                         </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
