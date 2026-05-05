@@ -158,6 +158,7 @@ function App() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetails />} />
         <Route path="projects/:projectId/jobs/new" element={<CreateJob />} />
+        <Route path="projects/:projectId/jobs/:jobId/edit" element={<CreateJob />} />
         <Route path="projects/:projectId/jobs/:jobId/deficiencies" element={<Deficiencies />} />
         <Route path="projects/:projectId/jobs/:jobId" element={<JobDetails />} />
         <Route path="team" element={<Team />} />

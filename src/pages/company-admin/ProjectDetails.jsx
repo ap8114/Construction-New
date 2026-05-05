@@ -6,7 +6,7 @@ import {
     ArrowLeft, Plus, Briefcase, MapPin, Calendar, HardHat,
     DollarSign, Edit, Trash2, Clock, CheckCircle2, AlertCircle,
     Loader, ChevronRight, LayoutGrid, List, Search, Filter, AlertTriangle, Users, FileText, TrendingUp, ChevronDown, MessageSquare, ShoppingCart,
-    CheckCircle, Flag, UserCheck, ClipboardList, Image as ImageIcon, X, Phone, Mail, Eye, Check
+    CheckCircle, Flag, UserCheck, User, ClipboardList, Image as ImageIcon, X, Phone, Mail, Eye, Check
 } from 'lucide-react';
 import api from '../../utils/api';
 
@@ -85,6 +85,7 @@ const ProjectDetails = () => {
     const [newUpdate, setNewUpdate] = useState({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
     const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedJobForDetails, setSelectedJobForDetails] = useState(null);
     const [jobToDelete, setJobToDelete] = useState(null);
     
     // Equipment Assignment states
@@ -92,6 +93,10 @@ const ProjectDetails = () => {
     const [selectedEquipmentIds, setSelectedEquipmentIds] = useState([]);
     const [isAssigningEquipLoading, setIsAssigningEquipLoading] = useState(false);
     const [equipSearch, setEquipSearch] = useState('');
+    const [workerSearch, setWorkerSearch] = useState('');
+    const [isAssigningLead, setIsAssigningLead] = useState(null); // jobID
+    const [leadSearch, setLeadSearch] = useState('');
+
 
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -150,8 +155,9 @@ const ProjectDetails = () => {
             api.get(`/projects/${projectId}/client-updates`).then(res => setUpdates(res.data || [])).catch(console.error);
             api.get(`/purchase-orders?projectId=${projectId}`).then(res => setProjectPOs(res.data || [])).catch(console.error);
             api.get(`/projects/${projectId}/members`).then(res => setProjectMembers(res.data || [])).catch(console.error);
+            api.get('/equipment').then(res => setEquipment(res.data || [])).catch(console.error);
             
-            // Note: Users and Equipment will be fetched on demand when specific actions are taken
+            // Note: Users will be fetched on demand when specific actions are taken
         } catch (err) {
             console.error(err);
             setLoading(false);
@@ -238,7 +244,6 @@ const ProjectDetails = () => {
         try {
             await api.post(`/jobs/${jobId}/assign-workers`, { assignedWorkers: workerIds });
             setJobs(prev => prev.map(j => j._id === jobId ? { ...j, assignedWorkers: workerIds } : j));
-            setIsAssigningWorkers(null);
         } catch (err) {
             console.error(err);
         }
@@ -944,21 +949,13 @@ const ProjectDetails = () => {
                                                             </span>
                                                         </div>
                                                         {(['COMPANY_OWNER', 'SUPER_ADMIN', 'PM'].includes(user?.role)) && (
-                                                            <select
+                                                            <div 
                                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                                                                value={job.foremanId?._id || (typeof job.foremanId === 'string' ? job.foremanId : '')}
-                                                                onMouseDown={ensureUsersLoaded}
-                                                                onChange={(e) => handleAssignForeman(job._id, e.target.value)}
-                                                            >
-                                                                <option value="">Assign {user?.role === 'PM' ? 'Foreman/Sub' : 'Project Manager'}</option>
-                                                                {users.filter(u => {
-                                                                    if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) return u.role === 'PM';
-                                                                    if (user?.role === 'PM') return ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
-                                                                    return false;
-                                                                }).map(u => (
-                                                                    <option key={u._id} value={u._id}>{u.fullName} ({u.role})</option>
-                                                                ))}
-                                                            </select>
+                                                                onClick={async () => {
+                                                                    await ensureUsersLoaded();
+                                                                    setIsAssigningLead(job._id);
+                                                                }}
+                                                            ></div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -992,34 +989,8 @@ const ProjectDetails = () => {
                                                     )}
                                                 </div>
 
-                                                {/* Multi-select for workers (simple dropdown for now) */}
-                                                {isAssigningWorkers === job._id && (
-                                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                                                        <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-                                                            <h3 className="text-lg font-black mb-4">Assign Crew Members</h3>
-                                                            <div className="max-h-60 overflow-y-auto space-y-2 mb-6">
-                                                                {users.filter(u => u.role === 'WORKER').map(u => (
-                                                                    <label key={u._id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={job.assignedWorkers?.some(w => (w && typeof w === 'object' ? w._id === u._id : w === u._id))}
-                                                                            onChange={(e) => {
-                                                                                const currentIds = (job.assignedWorkers || []).map(w => (w && typeof w === 'object') ? w._id : w);
-                                                                                const next = e.target.checked
-                                                                                    ? [...currentIds, u._id]
-                                                                                    : currentIds.filter(id => id !== u._id);
-                                                                                handleAssignWorkers(job._id, next);
-                                                                            }}
-                                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                                                        />
-                                                                        <span className="text-sm font-bold text-slate-700">{u.fullName}</span>
-                                                                    </label>
-                                                                ))}
-                                                            </div>
-                                                            <button onClick={() => setIsAssigningWorkers(null)} className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-sm uppercase tracking-widest">Close</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                {/* Multi-select for workers moved outside the loop */}
+
 
                                                 {(job.startDate || job.endDate) && (
                                                     <div className="flex items-center gap-2 text-slate-500">
@@ -1088,32 +1059,53 @@ const ProjectDetails = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Actions */}
-                                            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                                                <button
-                                                    onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}`)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1.5"
-                                                    title="View Job Details"
-                                                >
-                                                    <LayoutGrid size={16} />
-                                                    <span className="text-[10px] font-black uppercase">Dashboard</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/deficiencies`)}
-                                                    className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all flex items-center gap-1.5"
-                                                    title="Deficiencies List"
-                                                >
-                                                    <AlertTriangle size={16} />
-                                                    <span className="text-[10px] font-black uppercase">Punch List</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteJob(job)}
-                                                    disabled={deletingId === job._id}
-                                                    className="ml-auto p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                                                    {deletingId === job._id
-                                                        ? <Loader size={16} className="animate-spin" />
-                                                        : <Trash2 size={16} />}
-                                                </button>
+                                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}`)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-1.5"
+                                                        title="View Job Details"
+                                                    >
+                                                        <LayoutGrid size={16} />
+                                                        <span className="text-[10px] font-black uppercase">Dashboard</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/deficiencies`)}
+                                                        className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all flex items-center gap-1.5"
+                                                        title="Deficiencies List"
+                                                    >
+                                                        <AlertTriangle size={16} />
+                                                        <span className="text-[10px] font-black uppercase">Punch List</span>
+                                                    </button>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => setSelectedJobForDetails(job)}
+                                                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) && (
+                                                        <button
+                                                            onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/edit`)}
+                                                            className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                            title="Edit Job"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDeleteJob(job)}
+                                                        disabled={deletingId === job._id}
+                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                        title="Delete Job"
+                                                    >
+                                                        {deletingId === job._id
+                                                            ? <Loader size={16} className="animate-spin" />
+                                                            : <Trash2 size={16} />}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -1169,10 +1161,28 @@ const ProjectDetails = () => {
                                                             {job.budget > 0 ? `$${Number(job.budget).toLocaleString()}` : '—'}
                                                         </td>
                                                     )}
-                                                    <td className="px-6 py-4 text-right">
+                                                    <td className="px-6 py-4 text-right flex items-center justify-end gap-1">
+                                                        <button
+                                                            onClick={() => setSelectedJobForDetails(job)}
+                                                            className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                        {['COMPANY_OWNER', 'PM', 'SUPER_ADMIN'].includes(user?.role) && (
+                                                            <button
+                                                                onClick={() => navigate(`/company-admin/projects/${projectId}/jobs/${job._id}/edit`)}
+                                                                className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                                title="Edit Job"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        )}
                                                         <button onClick={() => handleDeleteJob(job)}
                                                             disabled={deletingId === job._id}
-                                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                            title="Delete Job"
+                                                        >
                                                             {deletingId === job._id ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                                         </button>
                                                     </td>
@@ -1183,134 +1193,482 @@ const ProjectDetails = () => {
                                 </div>
                             )}
 
-                    {/* Assign Equipment Modal */}
-                    {isAssigningEquipment && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                                <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                    <div>
-                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Assign Equipment</h3>
-                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
-                                            Select available items for {jobs.find(j => j._id === isAssigningEquipment)?.name}
-                                        </p>
-                                    </div>
-                                    <button onClick={() => setIsAssigningEquipment(null)} className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-slate-200">
-                                        <X size={20} className="text-slate-400" />
-                                    </button>
-                                </div>
+                    <Modal
+                        isOpen={!!isAssigningEquipment}
+                        onClose={() => setIsAssigningEquipment(null)}
+                        title="Assign Equipment"
+                        maxWidth="max-w-xl"
+                    >
+                        <div className="space-y-6">
+                            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest -mt-2">
+                                Select available items for <span className="text-blue-600">{jobs.find(j => j._id === isAssigningEquipment)?.name || 'this job'}</span>
+                            </p>
 
-                                <div className="p-4 border-b border-slate-50">
-                                    <div className="relative">
-                                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search inventory..."
-                                            value={equipSearch}
-                                            onChange={(e) => setEquipSearch(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-9 pr-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-blue-500/50 transition-all"
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
+                            <div className="relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search inventory..."
+                                    value={equipSearch}
+                                    onChange={(e) => setEquipSearch(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all"
+                                />
+                            </div>
 
-                                <div className="max-h-[400px] overflow-y-auto p-4 space-y-2 custom-scrollbar min-h-[200px]">
-                                    {equipment
-                                        .filter(e => {
-                                            const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
-                                            return !isAssigned || e.status === 'idle';
-                                        })
-                                        .filter(e =>
-                                            (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
-                                            (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
-                                            (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
-                                        )
-                                        .map(item => (
-                                            <div
-                                                key={item._id}
-                                                onClick={() => {
-                                                    if (selectedEquipmentIds.includes(item._id)) {
-                                                        setSelectedEquipmentIds(selectedEquipmentIds.filter(id => id !== item._id));
-                                                    } else {
-                                                        setSelectedEquipmentIds([...selectedEquipmentIds, item._id]);
-                                                    }
-                                                }}
-                                                className={`flex items-center gap-4 p-4 rounded-3xl cursor-pointer transition-all border-2
-                                                    ${selectedEquipmentIds.includes(item._id)
-                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm shadow-blue-100'
-                                                        : 'hover:bg-slate-50 border-transparent text-slate-700'}`}
-                                            >
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm
-                                                    ${item.category === 'Small Tools' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                    <Briefcase size={22} />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-[15px] font-black text-slate-900 leading-tight">{item.name}</p>
-                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-500 uppercase">
-                                                            {item.category === 'Small Tools' ? 'Tool' : 'Heavy'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                        {item.type} <span className="mx-1 text-slate-200">|</span>
-                                                        SN: <span className="text-blue-600/70">#{item.serialNumber || 'NA'}</span>
-                                                    </p>
-                                                </div>
-                                                {selectedEquipmentIds.includes(item._id) && (
-                                                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
-                                                        <CheckCircle size={14} className="text-white" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-
-                                    {equipment.filter(e => {
+                            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                {equipment
+                                    .filter(e => {
                                         const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
                                         return !isAssigned || e.status === 'idle';
-                                    }).length === 0 && (
-                                        <div className="py-20 text-center bg-slate-50 rounded-3xl">
-                                            <Briefcase size={40} className="mx-auto text-slate-200 mb-3" />
-                                            <p className="text-sm font-bold text-slate-400">No equipment currently available.</p>
+                                    })
+                                    .filter(e =>
+                                        (e.name || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                        (e.type || '').toLowerCase().includes(equipSearch.toLowerCase()) ||
+                                        (e.serialNumber || '').toLowerCase().includes(equipSearch.toLowerCase())
+                                    )
+                                    .map(item => (
+                                        <div
+                                            key={item._id}
+                                            onClick={() => {
+                                                if (selectedEquipmentIds.includes(item._id)) {
+                                                    setSelectedEquipmentIds(selectedEquipmentIds.filter(id => id !== item._id));
+                                                } else {
+                                                    setSelectedEquipmentIds([...selectedEquipmentIds, item._id]);
+                                                }
+                                            }}
+                                            className={`flex items-center gap-4 p-4 rounded-3xl cursor-pointer transition-all border-2
+                                                ${selectedEquipmentIds.includes(item._id)
+                                                    ? 'bg-blue-50/50 border-blue-600/30 shadow-sm'
+                                                    : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                                        >
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm font-black text-lg
+                                                ${item.category === 'Small Tools' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                <Briefcase size={22} />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[15px] font-black text-slate-900 leading-tight">{item.name}</p>
+                                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-500 uppercase">
+                                                        {item.category === 'Small Tools' ? 'Tool' : 'Heavy'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                    {item.type} <span className="mx-1 text-slate-200">|</span>
+                                                    SN: <span className="text-blue-600/70">#{item.serialNumber || 'NA'}</span>
+                                                </p>
+                                            </div>
+                                            {selectedEquipmentIds.includes(item._id) && (
+                                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                                                    <Check size={14} className="text-white" />
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    ))}
 
-                                <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-col gap-4">
-                                    <div className="flex justify-between items-center px-2">
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Selection</p>
-                                            <p className="text-sm font-black text-slate-900">{selectedEquipmentIds.length} item(s) to assign</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</p>
-                                            <p className={`text-sm font-black ${selectedEquipmentIds.length > 0 ? 'text-blue-600' : 'text-slate-300'}`}>Ready to assign</p>
-                                        </div>
+                                {equipment.filter(e => {
+                                    const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
+                                    return !isAssigned || e.status === 'idle';
+                                }).length === 0 && (
+                                    <div className="py-20 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
+                                        <Briefcase size={40} className="mx-auto text-slate-200 mb-3" />
+                                        <p className="text-sm font-bold text-slate-400">No equipment currently available.</p>
                                     </div>
-                                    
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => setIsAssigningEquipment(null)}
-                                            className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-500 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleAssignEquipment}
-                                            disabled={selectedEquipmentIds.length === 0 || isAssigningEquipLoading}
-                                            className={`flex-[2] py-4 text-white text-sm font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2
-                                                ${selectedEquipmentIds.length === 0 || isAssigningEquipLoading
-                                                    ? 'bg-slate-200 cursor-not-allowed shadow-none'
-                                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}
-                                        >
-                                            {isAssigningEquipLoading ? <Loader size={18} className="animate-spin" /> : <Plus size={18} />}
-                                            Assign to Job
-                                        </button>
+                                )}
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 flex flex-col gap-4 bg-slate-50/50 -mx-6 -mb-6 p-8">
+                                <div className="flex justify-between items-center px-2">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Selection</p>
+                                        <p className="text-sm font-black text-slate-900">{selectedEquipmentIds.length} item(s) to assign</p>
                                     </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</p>
+                                        <p className={`text-sm font-black ${selectedEquipmentIds.length > 0 ? 'text-blue-600' : 'text-slate-300'}`}>Ready to assign</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setIsAssigningEquipment(null)}
+                                        className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-500 text-sm font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleAssignEquipment}
+                                        disabled={selectedEquipmentIds.length === 0 || isAssigningEquipLoading}
+                                        className={`flex-[2] py-4 text-white text-sm font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2
+                                            ${selectedEquipmentIds.length === 0 || isAssigningEquipLoading
+                                                ? 'bg-slate-200 cursor-not-allowed shadow-none'
+                                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'}`}
+                                    >
+                                        {isAssigningEquipLoading ? <Loader size={18} className="animate-spin" /> : <Plus size={18} />}
+                                        Assign to Job
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    )}
+                    </Modal>
+
+                    <Modal
+                        isOpen={!!isAssigningWorkers}
+                        onClose={() => {
+                            setIsAssigningWorkers(null);
+                            setWorkerSearch('');
+                        }}
+                        title="Assign Crew Members"
+                        maxWidth="max-w-2xl"
+                    >
+                        <div className="space-y-6">
+                            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest -mt-2">
+                                Select personnel for <span className="text-blue-600">{jobs.find(j => j._id === isAssigningWorkers)?.name || 'this job'}</span>
+                            </p>
+
+                            <div className="relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or role..."
+                                    value={workerSearch}
+                                    onChange={(e) => setWorkerSearch(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="max-h-[450px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                {users
+                                    .filter(u => ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role))
+                                    .filter(u => u.fullName.toLowerCase().includes(workerSearch.toLowerCase()))
+                                    .map(u => {
+                                        const currentJob = jobs.find(j => j._id === isAssigningWorkers);
+                                        const isSelected = currentJob?.assignedWorkers?.some(w => (w && typeof w === 'object' ? w._id === u._id : w === u._id));
+                                        
+                                        return (
+                                            <div
+                                                key={u._id}
+                                                onClick={() => {
+                                                    const currentIds = (currentJob?.assignedWorkers || []).map(w => (w && typeof w === 'object') ? w._id : w);
+                                                    const next = !isSelected
+                                                        ? [...currentIds, u._id]
+                                                        : currentIds.filter(id => id !== u._id);
+                                                    handleAssignWorkers(isAssigningWorkers, next);
+                                                }}
+                                                className={`group flex items-center justify-between p-4 rounded-3xl cursor-pointer transition-all border-2
+                                                    ${isSelected
+                                                        ? 'bg-blue-50/50 border-blue-600/30 shadow-sm'
+                                                        : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-transform group-hover:scale-105 ${
+                                                        isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-500'
+                                                    }`}>
+                                                        {u.fullName.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-base leading-none mb-1.5">{u.fullName}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider ${
+                                                                u.role === 'PM' ? 'bg-purple-100 text-purple-600' :
+                                                                u.role === 'FOREMAN' ? 'bg-orange-100 text-orange-600' :
+                                                                'bg-slate-100 text-slate-500'
+                                                            }`}>
+                                                                {u.role}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
+                                                    isSelected 
+                                                        ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-200' 
+                                                        : 'border-slate-200 group-hover:border-slate-300'
+                                                }`}>
+                                                    {isSelected && <Check size={16} className="text-white" />}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                
+                                {users.filter(u => ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(u.role)).length === 0 && (
+                                    <div className="py-20 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
+                                        <Users size={40} className="mx-auto text-slate-200 mb-3" />
+                                        <p className="text-sm font-bold text-slate-400">No personnel found.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 -mx-6 -mb-6 p-8">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Assigned</span>
+                                    <span className="text-lg font-black text-slate-900">
+                                        {jobs.find(j => j._id === isAssigningWorkers)?.assignedWorkers?.length || 0} Members
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => { setIsAssigningWorkers(null); setWorkerSearch(''); }}
+                                    className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
+
+                    {/* Assign Lead Modal */}
+                    <Modal
+                        isOpen={!!isAssigningLead}
+                        onClose={() => {
+                            setIsAssigningLead(null);
+                            setLeadSearch('');
+                        }}
+                        title="Assign Job Lead"
+                        maxWidth="max-w-2xl"
+                    >
+                        <div className="space-y-6">
+                            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest -mt-2">
+                                Select a lead for <span className="text-blue-600">{jobs.find(j => j._id === isAssigningLead)?.name || 'this job'}</span>
+                            </p>
+
+                            <div className="relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or role..."
+                                    value={leadSearch}
+                                    onChange={(e) => setLeadSearch(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="max-h-[450px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                {users
+                                    .filter(u => {
+                                        if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) return u.role === 'PM';
+                                        if (user?.role === 'PM') return ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                                        return false;
+                                    })
+                                    .filter(u => u.fullName.toLowerCase().includes(leadSearch.toLowerCase()))
+                                    .map(u => {
+                                        const currentJob = jobs.find(j => j._id === isAssigningLead);
+                                        const isSelected = (currentJob?.foremanId?._id || currentJob?.foremanId) === u._id;
+                                        
+                                        return (
+                                            <div
+                                                key={u._id}
+                                                onClick={async () => {
+                                                    await handleAssignForeman(isAssigningLead, u._id);
+                                                    setIsAssigningLead(null);
+                                                    setLeadSearch('');
+                                                }}
+                                                className={`group flex items-center justify-between p-4 rounded-3xl cursor-pointer transition-all border-2
+                                                    ${isSelected
+                                                        ? 'bg-blue-50/50 border-blue-600/30 shadow-sm'
+                                                        : 'bg-white border-slate-100 hover:border-slate-200'}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-transform group-hover:scale-105 ${
+                                                        isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-500'
+                                                    }`}>
+                                                        {u.fullName.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-base leading-none mb-1.5">{u.fullName}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider ${
+                                                                u.role === 'PM' ? 'bg-purple-100 text-purple-600' :
+                                                                u.role === 'FOREMAN' ? 'bg-orange-100 text-orange-600' :
+                                                                'bg-emerald-100 text-emerald-600'
+                                                            }`}>
+                                                                {u.role}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {isSelected && (
+                                                    <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                                                        <Check size={16} className="text-white" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                
+                                {users.filter(u => {
+                                    if (['COMPANY_OWNER', 'SUPER_ADMIN'].includes(user?.role)) return u.role === 'PM';
+                                    if (user?.role === 'PM') return ['FOREMAN', 'SUBCONTRACTOR'].includes(u.role);
+                                    return false;
+                                }).length === 0 && (
+                                    <div className="py-20 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
+                                        <Users size={40} className="mx-auto text-slate-200 mb-3" />
+                                        <p className="text-sm font-bold text-slate-400">No leads available for assignment.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 flex justify-end bg-slate-50/50 -mx-6 -mb-6 p-8">
+                                <button
+                                    onClick={() => { setIsAssigningLead(null); setLeadSearch(''); }}
+                                    className="px-10 py-4 bg-white border-2 border-slate-200 text-slate-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
                 </div>
             </div>
+        )}
+
+        {/* Job Details Modal */}
+        {selectedJobForDetails && (
+            <Modal
+                isOpen={!!selectedJobForDetails}
+                onClose={() => setSelectedJobForDetails(null)}
+                title="Job Details"
+                maxWidth="max-w-3xl"
+            >
+                <div className="space-y-8 pb-4">
+                    {/* Header Info */}
+                    <div className="flex items-start gap-6 bg-slate-50 p-8 rounded-[32px] border border-slate-100">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-100 shrink-0">
+                            <Briefcase size={32} />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">{selectedJobForDetails.name}</h3>
+                            <div className="flex flex-wrap gap-4 mt-3">
+                                <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">
+                                    <MapPin size={16} className="text-blue-500" />
+                                    {selectedJobForDetails.location || 'No location specified'}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <StatusBadge status={selectedJobForDetails.status} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Left Column */}
+                        <div className="space-y-8">
+                            {/* Schedule */}
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Calendar size={14} className="text-blue-500" /> Schedule Details
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Start Date</p>
+                                        <p className="font-bold text-slate-900">{selectedJobForDetails.startDate ? new Date(selectedJobForDetails.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">End Date</p>
+                                        <p className="font-bold text-slate-900">{selectedJobForDetails.endDate ? new Date(selectedJobForDetails.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Budget (Admin/PM only) */}
+                            {showBudget && (
+                                <div className="space-y-4">
+                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <DollarSign size={14} className="text-emerald-500" /> Financial Info
+                                    </h4>
+                                    <div className="bg-emerald-50/50 p-6 rounded-[32px] border border-emerald-100/50">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Allocated Budget</p>
+                                        <p className="text-2xl font-black text-slate-900">${(selectedJobForDetails.budget || 0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Description */}
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <FileText size={14} className="text-blue-500" /> Description / Notes
+                                </h4>
+                                <div className="bg-white p-6 rounded-[32px] border border-slate-100 text-sm font-medium text-slate-600 leading-relaxed min-h-[120px]">
+                                    {selectedJobForDetails.description || 'No description provided for this job unit.'}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="space-y-8">
+                            {/* Personnel */}
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Users size={14} className="text-orange-500" /> Personnel Assignment
+                                </h4>
+                                <div className="space-y-3">
+                                    {/* Lead */}
+                                    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs shrink-0">
+                                            {selectedJobForDetails.foremanId?.fullName?.[0] || 'L'}
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Job Lead</p>
+                                            <p className="font-bold text-slate-900">{selectedJobForDetails.foremanId?.fullName || 'Not Assigned'}</p>
+                                        </div>
+                                    </div>
+                                    {/* Crew Count */}
+                                    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs shrink-0">
+                                            {selectedJobForDetails.workers?.length || 0}
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Crew Size</p>
+                                            <p className="font-bold text-slate-900">{selectedJobForDetails.workers?.length || 0} Assigned Workers</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Equipment */}
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Briefcase size={14} className="text-blue-500" /> Equipment On Site
+                                </h4>
+                                <div className="bg-slate-50/50 p-6 rounded-[32px] border border-slate-100 min-h-[150px]">
+                                    {equipment.filter(e => (e.assignedJob?._id === selectedJobForDetails._id || e.assignedJob === selectedJobForDetails._id)).length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {equipment.filter(e => (e.assignedJob?._id === selectedJobForDetails._id || e.assignedJob === selectedJobForDetails._id)).map(item => (
+                                                <span key={item._id} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-tight shadow-sm">
+                                                    {item.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <p className="text-xs font-bold text-slate-300 italic">No equipment assigned</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-6 border-t border-slate-100 flex gap-4">
+                        <button
+                            onClick={() => setSelectedJobForDetails(null)}
+                            className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                        >
+                            Close
+                        </button>
+                        <button
+                            onClick={() => {
+                                const id = selectedJobForDetails._id;
+                                setSelectedJobForDetails(null);
+                                navigate(`/company-admin/projects/${projectId}/jobs/${id}`);
+                            }}
+                            className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            Open Dashboard <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         )}
 
             {activeTab === 'pos' && (

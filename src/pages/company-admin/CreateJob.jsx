@@ -12,7 +12,7 @@ const canSeeBudget = (role) =>
     ['COMPANY_OWNER', 'OWNER', 'PM', 'SUPER_ADMIN'].includes(role);
 
 const CreateJob = () => {
-    const { projectId } = useParams();   // project id from URL
+    const { projectId, jobId } = useParams();   // project id from URL
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -63,7 +63,7 @@ const CreateJob = () => {
         description: '',
     });
 
-    // ── Fetch project + team ────────────────────────────────────────────────────
+    // ── Fetch project + team + job (if editing) ─────────────────────────────────
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -77,9 +77,36 @@ const CreateJob = () => {
                 const team = teamRes.data || [];
                 setAssignableUsers(team);
 
+                // Fetch job details if editing
+                if (jobId) {
+                    try {
+                        const jobRes = await api.get(`/jobs/${jobId}`);
+                        const job = jobRes.data;
+                        setForm({
+                            name: job.name || '',
+                            location: job.location || '',
+                            startDate: job.startDate ? job.startDate.split('T')[0] : '',
+                            endDate: job.endDate ? job.endDate.split('T')[0] : '',
+                            pmId: job.foremanId?._id || job.foremanId || '',
+                            budget: job.budget || '',
+                            status: job.status || 'planning',
+                            description: job.description || '',
+                        });
+                        
+                        // Map selected equipment
+                        if (job.equipment) {
+                            setSelectedEquipment(job.equipment.map(e => e._id || e));
+                        }
+                    } catch (err) {
+                        console.error('Failed to load job details:', err);
+                        setError('Failed to load job details.');
+                    }
+                }
+
                 const availableEquip = (equipRes.data || []).filter(e => {
                     const isAssigned = e.assignedJob && (typeof e.assignedJob === 'object' ? e.assignedJob._id : e.assignedJob);
-                    return !isAssigned || e.status === 'idle';
+                    // If editing, include equipment already assigned to THIS job
+                    return !isAssigned || e.status === 'idle' || isAssigned === jobId;
                 });
                 setEquipment(availableEquip);
             } catch (err) {
@@ -90,7 +117,7 @@ const CreateJob = () => {
             }
         };
         fetchData();
-    }, [projectId, user?.role]);
+    }, [projectId, jobId, user?.role]);
 
     // ── Submit ──────────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
@@ -98,18 +125,26 @@ const CreateJob = () => {
         try {
             setSaving(true);
             setError('');
-            await api.post('/jobs', {
+            
+            const payload = {
                 ...form,
-                foremanId: form.pmId, // Mapping pmId back to foremanId field for backend compatibility
+                foremanId: form.pmId,
                 projectId,
                 companyId: user?.companyId,
                 equipmentIds: selectedEquipment,
-            });
+            };
+
+            if (jobId) {
+                await api.patch(`/jobs/${jobId}`, payload);
+            } else {
+                await api.post('/jobs', payload);
+            }
+            
             setSuccess(true);
             setTimeout(() => navigate(`/company-admin/projects/${projectId}`), 1500);
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.message || 'Failed to create job. Please try again.');
+            setError(err.response?.data?.message || `Failed to ${jobId ? 'update' : 'create'} job. Please try again.`);
         } finally {
             setSaving(false);
         }
@@ -137,7 +172,7 @@ const CreateJob = () => {
                         <CheckCircle size={44} className="text-emerald-500" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Job Created!</h2>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Job {jobId ? 'Updated' : 'Created'}!</h2>
                         <p className="text-slate-500 font-bold text-sm mt-1">Redirecting to project...</p>
                     </div>
                 </div>
@@ -164,7 +199,7 @@ const CreateJob = () => {
                             {project?.name || 'Project'}
                         </span>
                         <ChevronRight size={14} />
-                        <span className="text-slate-800">Create Job</span>
+                        <span className="text-slate-800">{jobId ? 'Edit' : 'Create'} Job</span>
                     </div>
                 </div>
             </div>
@@ -186,9 +221,9 @@ const CreateJob = () => {
                             <p className="text-blue-300 text-[11px] font-black uppercase tracking-widest mb-1">
                                 {project?.name || 'Project'}
                             </p>
-                            <h1 className="text-3xl font-black tracking-tight leading-tight">Create New Job</h1>
+                            <h1 className="text-3xl font-black tracking-tight leading-tight">{jobId ? 'Edit Job' : 'Create New Job'}</h1>
                             <p className="text-slate-400 text-sm font-bold mt-2">
-                                Fill in the details below to create and assign a job to this project.
+                                {jobId ? 'Modify the existing job details below.' : 'Fill in the details below to create and assign a job to this project.'}
                             </p>
                         </div>
                     </div>
@@ -597,11 +632,11 @@ const CreateJob = () => {
                                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'}`}>
                         {saving ? (
                             <>
-                                <Loader size={18} className="animate-spin" /> Creating Job...
+                                <Loader size={18} className="animate-spin" /> {jobId ? 'Updating' : 'Creating'} Job...
                             </>
                         ) : (
                             <>
-                                <CheckCircle size={18} /> Create Job
+                                <CheckCircle size={18} /> {jobId ? 'Save Changes' : 'Create Job'}
                             </>
                         )}
                     </button>
