@@ -5,12 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import {
   Shield, LayoutDashboard, Building, Users,
   CreditCard, Settings, Ticket, LogOut, Menu, X,
-  Bell, Search, TrendingUp, Bookmark, FileText, ChevronDown, MessageSquare
+  Bell, Search, TrendingUp, Bookmark, FileText, ChevronDown, MessageSquare, AlertCircle
 } from 'lucide-react';
 import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import sidebarlogo from '../assets/images/sidebarlogo.png';
 import { playSound } from '../utils/notificationSound';
+import Modal from '../components/Modal';
 
 const SuperAdminLayout = () => {
   const { logout, user } = useAuth();
@@ -22,6 +23,7 @@ const SuperAdminLayout = () => {
   const profileMenuRef = useRef(null);
   const notificationRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const socketRef = useRef();
 
   const fetchNotifications = async () => {
@@ -303,6 +305,32 @@ const SuperAdminLayout = () => {
                       <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No alerts</div>
                     )}
                   </div>
+                  <div className="p-2 border-t border-slate-50 flex items-center justify-between gap-2">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.patch('/notifications/mark-all-read');
+                          fetchNotifications();
+                        } catch (err) {
+                          console.error('Failed to mark all as read:', err);
+                        }
+                      }}
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors text-center"
+                    >
+                      Mark All as Read
+                    </button>
+                    <div className="w-[1px] h-3 bg-slate-200"></div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setShowClearConfirm(true);
+                      }}
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors text-center"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -346,6 +374,46 @@ const SuperAdminLayout = () => {
           <Outlet />
         </main>
       </div>
+      {/* Clear Notifications Confirmation Modal */}
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear Notifications"
+        maxWidth="max-w-sm"
+      >
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h4 className="text-lg font-bold text-slate-800 mb-2">Are you sure?</h4>
+          <p className="text-sm text-slate-500 mb-6">
+            This will permanently remove all your notifications. This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await api.delete('/notifications/clear-all');
+                  fetchNotifications();
+                  setShowClearConfirm(false);
+                  setIsNotificationOpen(false);
+                } catch (err) {
+                  console.error('Failed to clear notifications:', err);
+                }
+              }}
+              className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-red-200"
+            >
+              Yes, Clear All
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

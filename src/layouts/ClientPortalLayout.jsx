@@ -5,12 +5,13 @@ import { io } from 'socket.io-client';
 import {
   PieChart, Clock, Image, FileCheck, DollarSign,
   MessageCircle, LogOut, Menu, X, Bell, User,
-  Building2, LayoutDashboard, FileText, ClipboardList, Briefcase, MessageSquare
+  Building2, LayoutDashboard, FileText, ClipboardList, Briefcase, MessageSquare, AlertCircle
 } from 'lucide-react';
 import api, { BASE_URL } from '../utils/api';
 import Logo from '../assets/images/Logo.png';
 import { playSound } from '../utils/notificationSound';
 import toast from 'react-hot-toast';
+import Modal from '../components/Modal';
 
 const ClientPortalLayout = () => {
   const { logout, user } = useAuth();
@@ -23,6 +24,7 @@ const ClientPortalLayout = () => {
   const notificationRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const socketRef = useRef();
   const pathnameRef = useRef(location.pathname);
   useEffect(() => {
@@ -364,7 +366,7 @@ const ClientPortalLayout = () => {
                       </div>
                     )}
                   </div>
-                  <div className="p-2 border-t border-slate-50">
+                  <div className="p-2 border-t border-slate-50 flex items-center justify-between gap-2">
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -375,9 +377,19 @@ const ClientPortalLayout = () => {
                           console.error('Failed to mark all as read:', err);
                         }
                       }}
-                      className="w-full py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors text-center"
                     >
                       Mark All as Read
+                    </button>
+                    <div className="w-[1px] h-3 bg-slate-200"></div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setShowClearConfirm(true);
+                      }}
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors text-center"
+                    >
+                      Clear All
                     </button>
                   </div>
                 </div>
@@ -430,6 +442,46 @@ const ClientPortalLayout = () => {
           <Outlet />
         </main>
       </div>
+      {/* Clear Notifications Confirmation Modal */}
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Clear Notifications"
+        maxWidth="max-w-sm"
+      >
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <h4 className="text-lg font-bold text-slate-800 mb-2">Are you sure?</h4>
+          <p className="text-sm text-slate-500 mb-6">
+            This will permanently remove all your notifications. This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await api.delete('/notifications/clear-all');
+                  fetchNotifications();
+                  setShowClearConfirm(false);
+                  setIsNotificationOpen(false);
+                } catch (err) {
+                  console.error('Failed to clear notifications:', err);
+                }
+              }}
+              className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-red-200"
+            >
+              Yes, Clear All
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

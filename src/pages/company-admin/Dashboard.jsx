@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import api, { BASE_URL } from '../../utils/api';
 import CancellationModal from '../../components/jobs/CancellationModal';
+import Modal from '../../components/Modal';
 
 const SummaryCard = ({ title, value, subtext, icon: Icon, color, loading, showFinancials = true, extraValue }) => (
   <div className="bg-white p-3 md:p-3.5 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between group hover:shadow-md transition-all duration-300">
@@ -473,6 +474,20 @@ const CompanyAdminDashboard = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [clockInReason, setClockInReason] = useState('');
+  const [siteSearchTerm, setSiteSearchTerm] = useState('');
+  const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
+  const siteDropdownRef = useRef(null);
+
+  // Click outside to close site dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (siteDropdownRef.current && !siteDropdownRef.current.contains(event.target)) {
+        setIsSiteDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchDashboardData = async (silent = false) => {
     try {
@@ -872,48 +887,53 @@ const CompanyAdminDashboard = () => {
   return (
     <div className="space-y-6 pb-8 animate-fade-in w-full">
       {/* Reason Modal for Random Clock-In */}
-      {showReasonModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-8 space-y-6">
-            <div className="space-y-2 text-center">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                <AlertCircle size={32} />
-              </div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Random Clock-In</h3>
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
-            </div>
+      <Modal
+        isOpen={showReasonModal}
+        onClose={() => {
+          setShowReasonModal(false);
+          setClockInReason('');
+        }}
+        title="Random Clock-In"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6 text-center">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={32} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
+          </div>
+          
+          <div className="space-y-4">
+            <textarea
+              placeholder="e.g. Working at unlisted site / Special assignment..."
+              value={clockInReason}
+              onChange={(e) => setClockInReason(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors text-left"
+              autoFocus
+            />
             
-            <div className="space-y-4">
-              <textarea
-                placeholder="e.g. Working at unlisted site / Special assignment..."
-                value={clockInReason}
-                onChange={(e) => setClockInReason(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors"
-                autoFocus
-              />
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowReasonModal(false);
-                    setClockInReason('');
-                  }}
-                  className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleToggle}
-                  disabled={!clockInReason.trim() || loading}
-                  className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
-                >
-                  {loading ? 'Processing...' : 'Start Clock In'}
-                </button>
-              </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowReasonModal(false);
+                  setClockInReason('');
+                }}
+                className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleToggle}
+                disabled={!clockInReason.trim() || loading}
+                className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
+              >
+                {loading ? 'Processing...' : 'Start Clock In'}
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Header Content Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
@@ -940,7 +960,7 @@ const CompanyAdminDashboard = () => {
 
       {/* Worker / Subcontractor Clock Widget */}
       {(isWorker || isSubcontractor) && (
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-slate-200 overflow-hidden relative group">
+        <div className="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-slate-200 relative group">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <Clock size={120} />
           </div>
@@ -954,32 +974,134 @@ const CompanyAdminDashboard = () => {
                 {isClockedIn ? formatTime(timer) : '00:00:00'}
               </h2>
               {!isClockedIn && workerMetrics.assignedProjects?.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 max-w-sm mx-auto md:mx-0 relative" ref={siteDropdownRef}>
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Site for Clock In</label>
-                  <select
-                    value={selectedAssignment}
-                    onChange={(e) => setSelectedAssignment(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 w-full max-w-sm"
-                  >
-                    <option value="">-- Choose Task / Project --</option>
-                    {workerMetrics.assignedTasks?.length > 0 && <optgroup label="My Tasks">
-                      {workerMetrics.assignedTasks.map(t => (
-                        <option key={`task_${t._id}`} value={`task_${t._id}`}>
-                          {t.type === 'SubTask' ? 'Sub: ' : t.type === 'Task' ? 'Global: ' : 'Task: '}{t.title} ({t.jobName} / {t.projectName})
-                        </option>
-                      ))}
-                    </optgroup>}
-                    {workerMetrics.assignedProjects?.length > 0 && <optgroup label="General Site Attendance">
-                      {workerMetrics.assignedProjects.map(p => (
-                        <option key={`project_${p._id}`} value={`project_${p._id}`}>
-                          Project: {p.name} ({p.jobName})
-                        </option>
-                      ))}
-                    </optgroup>}
-                    <optgroup label="Other">
-                      <option value="random">Random Site / Emergency Attendance</option>
-                    </optgroup>
-                  </select>
+                  
+                  {/* Searchable Site Selector */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsSiteDropdownOpen(!isSiteDropdownOpen)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-bold text-slate-700 flex items-center justify-between hover:border-blue-400 transition-all focus:outline-none focus:ring-4 focus:ring-blue-100/50 group"
+                    >
+                      <span className="truncate pr-4">
+                        {selectedAssignment ? (
+                          selectedAssignment === 'random' ? 'Random Site / Emergency Attendance' : 
+                          selectedAssignment.startsWith('task_') ? 
+                            workerMetrics.assignedTasks?.find(t => t._id === selectedAssignment.replace('task_', ''))?.title :
+                            workerMetrics.assignedProjects?.find(p => p._id === selectedAssignment.replace('project_', ''))?.name
+                        ) : (
+                          <span className="text-slate-400">-- Choose Task / Project --</span>
+                        )}
+                      </span>
+                      <ChevronDown size={18} className={`text-slate-400 transition-transform duration-300 group-hover:text-blue-500 ${isSiteDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isSiteDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl border border-slate-100 shadow-2xl z-[1000] overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-left">
+                        {/* Search Input */}
+                        <div className="p-3 border-b border-slate-50">
+                          <div className="relative">
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                              type="text"
+                              placeholder="Search sites or tasks..."
+                              value={siteSearchTerm}
+                              onChange={(e) => setSiteSearchTerm(e.target.value)}
+                              className="w-full bg-slate-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-400"
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+
+                        {/* Results List */}
+                        <div className="max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                          {/* Random Site Option */}
+                          {(!siteSearchTerm || 'random'.includes(siteSearchTerm.toLowerCase())) && (
+                            <div className="px-3 py-2 border-b border-slate-50">
+                              <button
+                                onClick={() => {
+                                  setSelectedAssignment('random');
+                                  setIsSiteDropdownOpen(false);
+                                  setSiteSearchTerm('');
+                                }}
+                                className={`w-full text-left p-3 rounded-xl transition-colors flex items-center gap-3 ${selectedAssignment === 'random' ? 'bg-orange-50 border border-orange-100' : 'hover:bg-slate-50'}`}
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+                                  <AlertCircle size={16} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-slate-800">Random Site / Emergency</span>
+                                  <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">Manual entry required</span>
+                                </div>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Tasks Section */}
+                          {workerMetrics.assignedTasks?.filter(t => t.title.toLowerCase().includes(siteSearchTerm.toLowerCase()) || (t.jobName && t.jobName.toLowerCase().includes(siteSearchTerm.toLowerCase()))).length > 0 && (
+                            <div className="px-3 py-2">
+                              <div className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-50/50 rounded-lg mb-2">My Tasks</div>
+                              {workerMetrics.assignedTasks
+                                .filter(t => t.title.toLowerCase().includes(siteSearchTerm.toLowerCase()) || (t.jobName && t.jobName.toLowerCase().includes(siteSearchTerm.toLowerCase())))
+                                .map(t => (
+                                  <button
+                                    key={`task_${t._id}`}
+                                    onClick={() => {
+                                      setSelectedAssignment(`task_${t._id}`);
+                                      setIsSiteDropdownOpen(false);
+                                      setSiteSearchTerm('');
+                                    }}
+                                    className={`w-full text-left p-3 rounded-xl transition-colors mb-1 flex flex-col gap-0.5 ${selectedAssignment === `task_${t._id}` ? 'bg-blue-50 border border-blue-100' : 'hover:bg-slate-50'}`}
+                                  >
+                                    <span className="text-sm font-bold text-slate-800">{t.title}</span>
+                                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight truncate">
+                                      {t.jobName} / {t.projectName}
+                                    </span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+
+                          {/* Projects Section */}
+                          {workerMetrics.assignedProjects?.filter(p => p.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) || (p.jobName && p.jobName.toLowerCase().includes(siteSearchTerm.toLowerCase()))).length > 0 && (
+                            <div className="px-3 py-2">
+                              <div className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-50/50 rounded-lg mb-2">General Site Attendance</div>
+                              {workerMetrics.assignedProjects
+                                .filter(p => p.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) || (p.jobName && p.jobName.toLowerCase().includes(siteSearchTerm.toLowerCase())))
+                                .map(p => (
+                                  <button
+                                    key={`project_${p._id}`}
+                                    onClick={() => {
+                                      setSelectedAssignment(`project_${p._id}`);
+                                      setIsSiteDropdownOpen(false);
+                                      setSiteSearchTerm('');
+                                    }}
+                                    className={`w-full text-left p-3 rounded-xl transition-colors mb-1 flex flex-col gap-0.5 ${selectedAssignment === `project_${p._id}` ? 'bg-emerald-50 border border-emerald-100' : 'hover:bg-slate-50'}`}
+                                  >
+                                    <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight truncate">
+                                      {p.jobName || p.jobId?.name || 'Assigned Job'}
+                                    </span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+
+                          {/* No Results */}
+                          {workerMetrics.assignedTasks?.filter(t => t.title.toLowerCase().includes(siteSearchTerm.toLowerCase())).length === 0 &&
+                           workerMetrics.assignedProjects?.filter(p => p.name.toLowerCase().includes(siteSearchTerm.toLowerCase())).length === 0 &&
+                           siteSearchTerm && !'random'.includes(siteSearchTerm.toLowerCase()) && (
+                            <div className="p-8 text-center space-y-2">
+                              <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                <Search size={20} />
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No matching sites</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <p className="text-slate-500 font-bold flex items-center gap-2 justify-center md:justify-start">

@@ -18,7 +18,6 @@ const Timesheets = () => {
     const [loading, setLoading] = useState(true);
     const [selectedEntry, setSelectedEntry] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [gpsAddresses, setGpsAddresses] = useState({});
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -46,9 +45,6 @@ const Timesheets = () => {
             if (isAdminOrPM) {
                 fetchCorrections();
             }
-
-            // Fetch addresses for entries with GPS
-            fetchGpsAddresses(data);
         } catch (error) {
             console.error('Error fetching time logs:', error);
         } finally {
@@ -118,31 +114,7 @@ const Timesheets = () => {
         }
     };
 
-    const fetchGpsAddresses = async (data) => {
-        const addressMap = {};
-        const withGps = data.filter(e => e.gpsIn?.latitude && e.gpsIn?.longitude);
-        await Promise.all(withGps.map(async (entry) => {
-            try {
-                const { latitude: lat, longitude: lng } = entry.gpsIn;
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-                    { headers: { 'Accept-Language': 'en' } }
-                );
-                const json = await res.json();
-                const addr = json.address;
-                const short = [
-                    addr?.road || addr?.neighbourhood,
-                    addr?.city || addr?.town || addr?.village || addr?.county,
-                    addr?.country
-                ].filter(Boolean).join(', ');
-                addressMap[entry._id] = short || json.display_name?.split(',').slice(0, 2).join(',') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            } catch {
-                const { latitude: lat, longitude: lng } = entry.gpsIn;
-                addressMap[entry._id] = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            }
-        }));
-        setGpsAddresses(addressMap);
-    };
+    const lastFetchTime = useRef(0);
 
     useEffect(() => {
         fetchData();
@@ -163,9 +135,13 @@ const Timesheets = () => {
     }, []);
 
     const filteredEntries = entries.filter(entry => {
-        const nameMatch = entry.userId?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
-        const projectMatch = entry.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-        const searchMatch = nameMatch || projectMatch;
+        const lowerSearch = searchTerm.toLowerCase();
+        const nameMatch = entry.userId?.fullName?.toLowerCase().includes(lowerSearch);
+        const projectMatch = entry.projectId?.name?.toLowerCase().includes(lowerSearch);
+        const jobMatch = entry.jobId?.name?.toLowerCase().includes(lowerSearch);
+        const taskMatch = entry.taskId?.title?.toLowerCase().includes(lowerSearch);
+        
+        const searchMatch = !searchTerm || nameMatch || projectMatch || jobMatch || taskMatch;
 
         let dateMatch = true;
         if (dateFrom) dateMatch = dateMatch && new Date(entry.clockIn) >= new Date(dateFrom);
@@ -583,12 +559,12 @@ const Timesheets = () => {
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-black text-slate-500 border border-slate-200/50 shadow-sm group-hover:scale-110 transition-transform">
-                                                            {entry.userId?.fullName?.charAt(0)}
+                                                            {entry.userId?.fullName?.charAt(0) || '?'}
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-slate-900 leading-tight">{entry.userId?.fullName}</p>
+                                                            <p className="font-black text-slate-900 leading-tight">{entry.userId?.fullName || 'Deleted User'}</p>
                                                             <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
-                                                                {entry.userId?.role?.replace('COMPANY_', '')}
+                                                                {entry.userId?.role?.replace('COMPANY_', '') || 'Unknown'}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -596,9 +572,9 @@ const Timesheets = () => {
                                                 <td className="px-8 py-5">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-700">
-                                                            {entry.taskId ? `Task: ${entry.taskId.title}` : 
-                                                             (entry.projectId?.name || 
-                                                              (entry.reason ? 'Random Site Attendance' : 'Manual Log'))}
+                                                            {entry.taskId?.title ? `Task: ${entry.taskId.title}` : 
+                                                             (entry.projectId?.name || entry.jobId?.name || 
+                                                              (entry.reason ? 'Site Visit' : 'Manual Entry'))}
                                                         </span>
                                                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tight">
                                                             <Hash size={10} /> 
@@ -658,6 +634,11 @@ const Timesheets = () => {
                                                         <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${entry.isOutsideGeofence ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                                             {entry.isOutsideGeofence ? 'Outside' : 'Inside'}
                                                         </span>
+                                                        {entry.clockInAddress && (
+                                                            <span className="text-[8px] font-bold text-slate-400 mt-1 max-w-[120px] truncate" title={entry.clockInAddress}>
+                                                                {entry.clockInAddress}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5">
@@ -872,6 +853,18 @@ const Timesheets = () => {
                                 </div>
                             )}
                         </div>
+
+                        {selectedEntry.clockInAddress && (
+                            <div className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                    <MapPin size={14} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Verified Clock-In Address</p>
+                                    <p className="text-[11px] font-bold text-slate-600 truncate">{selectedEntry.clockInAddress}</p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-hidden group hover:border-blue-500/10 transition-colors">

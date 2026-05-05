@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Clock, MapPin, CheckCircle, Camera, RefreshCw, AlertCircle, Play, Square, History } from 'lucide-react';
+import { Clock, MapPin, CheckCircle, Camera, RefreshCw, AlertCircle, Play, Square, History, Search, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import api, { BASE_URL } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/Modal';
 
 const WorkerPunch = () => {
     const { user } = useAuth();
@@ -22,6 +23,20 @@ const WorkerPunch = () => {
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
     const [showReasonModal, setShowReasonModal] = useState(false);
     const [clockInReason, setClockInReason] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Click outside to close dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type, visible: true });
@@ -266,48 +281,53 @@ const WorkerPunch = () => {
     return (
         <div className="space-y-8 pb-12 animate-fade-in">
             {/* Reason Modal for Random Clock-In */}
-            {showReasonModal && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 p-8 space-y-6 text-center">
-                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle size={32} />
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Random Clock-In</h3>
-                            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
-                        </div>
+            <Modal
+                isOpen={showReasonModal}
+                onClose={() => {
+                    setShowReasonModal(false);
+                    setClockInReason('');
+                }}
+                title="Random Clock-In"
+                maxWidth="max-w-md"
+            >
+                <div className="space-y-6 text-center">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle size={32} />
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Please provide a reason for this login</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <textarea
+                            placeholder="e.g. Working at unlisted site / Special assignment..."
+                            value={clockInReason}
+                            onChange={(e) => setClockInReason(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors text-left"
+                            autoFocus
+                        />
                         
-                        <div className="space-y-4">
-                            <textarea
-                                placeholder="e.g. Working at unlisted site / Special assignment..."
-                                value={clockInReason}
-                                onChange={(e) => setClockInReason(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold min-h-[120px] focus:outline-none focus:border-blue-500 transition-colors text-left"
-                                autoFocus
-                            />
-                            
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setShowReasonModal(false);
-                                        setClockInReason('');
-                                    }}
-                                    className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleToggle}
-                                    disabled={!clockInReason.trim() || loading}
-                                    className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
-                                >
-                                    {loading ? 'Processing...' : 'Start Clock In'}
-                                </button>
-                            </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowReasonModal(false);
+                                    setClockInReason('');
+                                }}
+                                className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleToggle}
+                                disabled={!clockInReason.trim() || loading}
+                                className="flex-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-200 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-95"
+                            >
+                                {loading ? 'Processing...' : 'Start Clock In'}
+                            </button>
                         </div>
                     </div>
                 </div>
-            )}
+            </Modal>
 
             {/* Header */}
             <div className="text-center space-y-2 relative">
@@ -328,7 +348,7 @@ const WorkerPunch = () => {
             </div>
 
             {/* Main Punch Card */}
-            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-blue-900/10 border border-slate-100 overflow-hidden relative">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-blue-900/10 border border-slate-100 relative">
                 <div className="p-10 flex flex-col items-center text-center space-y-8">
                     {/* Status Badge */}
                     <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${isClockedIn ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'
@@ -343,36 +363,134 @@ const WorkerPunch = () => {
                             {isClockedIn ? formatTime(timer) : '00:00:00'}
                         </h2>
                         {!isClockedIn && (assignedProjects.length > 0 || assignedTasks.length > 0) && (
-                            <div className="mt-6 mb-4 max-w-sm mx-auto">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Select Working Site / Task</label>
-                                <select
-                                    value={selectedAssignment}
-                                    onChange={(e) => setSelectedAssignment(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500"
-                                >
-                                    <option value="">-- Choose Task / Project --</option>
-                                    {assignedTasks.length > 0 && (
-                                        <optgroup label="My Tasks">
-                                            {assignedTasks.map(t => (
-                                                <option key={`task_${t._id}`} value={`task_${t._id}`}>
-                                                    {t.type === 'SubTask' ? 'Sub: ' : t.type === 'Task' ? 'Global: ' : 'Task: '}{t.title} ({t.jobName} / {t.projectName})
-                                                </option>
-                                            ))}
-                                        </optgroup>
+                            <div className="mt-6 mb-4 max-w-sm mx-auto relative" ref={dropdownRef}>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block text-left">Select Working Site / Task</label>
+                                
+                                {/* Custom Searchable Select */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 flex items-center justify-between hover:border-blue-400 transition-all focus:outline-none focus:ring-4 focus:ring-blue-100/50 group"
+                                    >
+                                        <span className="truncate pr-4">
+                                            {selectedAssignment ? (
+                                                selectedAssignment === 'random' ? 'Random Site / Emergency Attendance' : 
+                                                selectedAssignment.startsWith('task_') ? 
+                                                    assignedTasks.find(t => t._id === selectedAssignment.replace('task_', ''))?.title :
+                                                    assignedProjects.find(p => p._id === selectedAssignment.replace('project_', ''))?.name
+                                            ) : (
+                                                <span className="text-slate-400">-- Choose Task / Project --</span>
+                                            )}
+                                        </span>
+                                        <ChevronDown size={18} className={`text-slate-400 transition-transform duration-300 group-hover:text-blue-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl border border-slate-100 shadow-2xl z-[1000] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                            {/* Search Input */}
+                                            <div className="p-3 border-b border-slate-50">
+                                                <div className="relative">
+                                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search sites or tasks..."
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                        className="w-full bg-slate-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/10 placeholder:text-slate-400"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Results List */}
+                                            <div className="max-h-[280px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                                                {/* Other Section (Always visible at top of list if no search or matching) */}
+                                                {(!searchTerm || 'random'.includes(searchTerm.toLowerCase())) && (
+                                                    <div className="px-3 py-2 border-b border-slate-50">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedAssignment('random');
+                                                                setIsDropdownOpen(false);
+                                                                setSearchTerm('');
+                                                            }}
+                                                            className={`w-full text-left p-3 rounded-xl transition-colors flex items-center gap-3 ${selectedAssignment === 'random' ? 'bg-orange-50 border border-orange-100' : 'hover:bg-slate-50'}`}
+                                                        >
+                                                            <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+                                                                <AlertCircle size={16} />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-slate-800">Random Site / Emergency</span>
+                                                                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">Manual site entry required</span>
+                                                            </div>
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Tasks Section */}
+                                                {assignedTasks.filter(t => t.title.toLowerCase().includes(searchTerm.toLowerCase()) || (t.jobName && t.jobName.toLowerCase().includes(searchTerm.toLowerCase()))).length > 0 && (
+                                                    <div className="px-3 py-2">
+                                                        <div className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-50/50 rounded-lg mb-2">My Tasks</div>
+                                                        {assignedTasks
+                                                            .filter(t => t.title.toLowerCase().includes(searchTerm.toLowerCase()) || (t.jobName && t.jobName.toLowerCase().includes(searchTerm.toLowerCase())))
+                                                            .map(t => (
+                                                                <button
+                                                                    key={`task_${t._id}`}
+                                                                    onClick={() => {
+                                                                        setSelectedAssignment(`task_${t._id}`);
+                                                                        setIsDropdownOpen(false);
+                                                                        setSearchTerm('');
+                                                                    }}
+                                                                    className={`w-full text-left p-3 rounded-xl transition-colors mb-1 flex flex-col gap-0.5 ${selectedAssignment === `task_${t._id}` ? 'bg-blue-50 border border-blue-100' : 'hover:bg-slate-50'}`}
+                                                                >
+                                                                    <span className="text-sm font-bold text-slate-800">{t.title}</span>
+                                                                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">
+                                                                        {t.jobName} / {t.projectName}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Projects Section */}
+                                                {assignedProjects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.jobName && p.jobName.toLowerCase().includes(searchTerm.toLowerCase()))).length > 0 && (
+                                                    <div className="px-3 py-2">
+                                                        <div className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-50/50 rounded-lg mb-2">General Site Attendance</div>
+                                                        {assignedProjects
+                                                            .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.jobName && p.jobName.toLowerCase().includes(searchTerm.toLowerCase())))
+                                                            .map(p => (
+                                                                <button
+                                                                    key={`project_${p._id}`}
+                                                                    onClick={() => {
+                                                                        setSelectedAssignment(`project_${p._id}`);
+                                                                        setIsDropdownOpen(false);
+                                                                        setSearchTerm('');
+                                                                    }}
+                                                                    className={`w-full text-left p-3 rounded-xl transition-colors mb-1 flex flex-col gap-0.5 ${selectedAssignment === `project_${p._id}` ? 'bg-emerald-50 border border-emerald-100' : 'hover:bg-slate-50'}`}
+                                                                >
+                                                                    <span className="text-sm font-bold text-slate-800">{p.name}</span>
+                                                                    <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight">
+                                                                        {p.jobName || p.jobId?.name || 'Assigned Job'}
+                                                                    </span>
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                )}
+
+                                                {/* No Results */}
+                                                {assignedTasks.filter(t => t.title.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 &&
+                                                 assignedProjects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 &&
+                                                 searchTerm && !'random'.includes(searchTerm.toLowerCase()) && (
+                                                    <div className="p-8 text-center space-y-2">
+                                                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                                                            <Search size={24} />
+                                                        </div>
+                                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No matching sites found</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     )}
-                                    {assignedProjects.length > 0 && (
-                                        <optgroup label="General Site Attendance">
-                                            {assignedProjects.map(p => (
-                                                <option key={`project_${p._id}`} value={`project_${p._id}`}>
-                                                    Project: {p.name} ({p.jobName || p.jobId?.name || 'Assigned Job'})
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    )}
-                                    <optgroup label="Other">
-                                        <option value="random">Random Site / Emergency Attendance</option>
-                                    </optgroup>
-                                </select>
+                                </div>
                             </div>
                         )}
                         <div className="flex items-center justify-center gap-4 text-slate-400 font-bold">

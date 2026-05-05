@@ -362,6 +362,39 @@ const ProjectTeamLayout = () => {
                       </button>
                     )}
                   </div>
+                  <div className="p-2 border-t border-slate-50 flex items-center justify-between gap-2">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.patch('/notifications/mark-all-read');
+                          fetchNotifications();
+                        } catch (err) {
+                          console.error('Failed to mark all as read:', err);
+                        }
+                      }}
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors text-center"
+                    >
+                      Mark All as Read
+                    </button>
+                    <div className="w-[1px] h-3 bg-slate-200"></div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Clear all notifications?')) {
+                          try {
+                            await api.delete('/notifications/clear-all');
+                            fetchNotifications();
+                          } catch (err) {
+                            console.error('Failed to clear notifications:', err);
+                          }
+                        }
+                      }}
+                      className="flex-1 py-2 text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors text-center"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
