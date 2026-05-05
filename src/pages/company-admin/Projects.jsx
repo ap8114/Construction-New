@@ -332,7 +332,6 @@ const InsightCard = ({ title, value, subtext, icon: Icon, color }) => {
 const Projects = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [workerTab, setWorkerTab] = useState('planning'); // 'planning' | 'active' | 'on-hold' | 'completed'
   const [jobs, setJobs] = useState([]);
   const [view, setView] = useState('grid');
   const [projects, setProjects] = useState([]);
@@ -554,12 +553,8 @@ const Projects = () => {
     const matchSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.projectId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    let matchTab = true;
-    if (!isForeman) {
-      const status = (j.status || '').toLowerCase().replace(' ', '-');
-      matchTab = status === workerTab;
-    }
-    return matchSearch && matchTab;
+    const matchStatus = filterStatus === 'all' || (j.status || '').toLowerCase() === filterStatus.toLowerCase();
+    return matchSearch && matchStatus;
   });
 
   const stats = {
@@ -591,34 +586,7 @@ const Projects = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {isWorker ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-1 flex shadow-sm w-full md:w-auto">
-              <button
-                onClick={() => setWorkerTab('planning')}
-                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'planning' ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-              >
-                Planning
-              </button>
-              <button
-                onClick={() => setWorkerTab('active')}
-                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-              >
-                Active
-              </button>
-              <button
-                onClick={() => setWorkerTab('on-hold')}
-                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'on-hold' ? 'bg-yellow-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-              >
-                On Hold
-              </button>
-              <button
-                onClick={() => setWorkerTab('completed')}
-                className={`flex-1 md:px-4 py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${workerTab === 'completed' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-              >
-                Complete
-              </button>
-            </div>
-          ) : isForeman ? null : (
+          {!isJobView && (
             <>
               <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
                 <button onClick={() => setView('grid')}
@@ -668,16 +636,14 @@ const Projects = () => {
             className="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 text-sm font-bold text-slate-700 placeholder:text-slate-400 transition-all"
           />
         </div>
-        {!isWorker && (
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="w-full md:w-auto px-4 md:px-6 py-2.5 bg-white border border-slate-200 rounded-xl md:rounded-2xl font-bold text-sm text-slate-600 outline-none hover:bg-slate-50 transition-all appearance-none cursor-pointer">
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="planning">Pre-Con</option>
-            <option value="on-hold">On Hold</option>
-            <option value="completed">Completed</option>
-          </select>
-        )}
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="w-full md:w-auto px-4 md:px-6 py-2.5 bg-white border border-slate-200 rounded-xl md:rounded-2xl font-bold text-sm text-slate-600 outline-none hover:bg-slate-50 transition-all appearance-none cursor-pointer">
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="planning">Pre-Con</option>
+          <option value="on-hold">On Hold</option>
+          <option value="completed">Completed</option>
+        </select>
       </div>
 
       {/* ── Content ── */}
