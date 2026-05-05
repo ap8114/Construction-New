@@ -4,10 +4,12 @@ import { createPortal } from 'react-dom';
 import {
     Plus, Search, Filter, Eye, XCircle,
     ChevronUp, ChevronDown, AlertTriangle, Clock,
-    Loader, RefreshCw, CheckCircle2, FileQuestion, X
+    Loader, RefreshCw, CheckCircle2, FileQuestion, X, Trash2
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/Modal';
+import { AlertCircle } from 'lucide-react';
 
 const statusColors = {
     open: 'bg-blue-100 text-blue-700 border border-blue-200',
@@ -22,25 +24,7 @@ const priorityColors = {
     high: 'bg-red-100 text-red-700 font-bold'
 };
 
-const Modal = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-    return createPortal(
-        <div onClick={(e) => e.target === e.currentTarget && onClose()} className="fixed inset-0 bg-slate-900/60 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-scale-in border border-white">
-                <div className="px-8 py-5 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-black text-slate-800 tracking-tight text-lg">{title}</h3>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
-                        <X size={20} />
-                    </button>
-                </div>
-                <div className="p-8">
-                    {children}
-                </div>
-            </div>
-        </div>,
-        document.body
-    );
-};
+
 
 const RFIList = () => {
     const navigate = useNavigate();
@@ -53,8 +37,13 @@ const RFIList = () => {
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
     const [rfiToClose, setRfiToClose] = useState(null);
     const [closing, setClosing] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [rfiToDelete, setRfiToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
 
     const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
+    const isAdmin = ['COMPANY_OWNER', 'PM'].includes(user?.role);
 
     useEffect(() => {
         Promise.all([
@@ -81,9 +70,30 @@ const RFIList = () => {
             setIsCloseModalOpen(false);
             setRfiToClose(null);
         } catch (err) {
-            alert('Failed to close RFI');
+            setErrorModal({ isOpen: true, message: 'Failed to close RFI' });
         } finally {
             setClosing(false);
+        }
+    };
+
+    const handleDeleteClick = (id, e) => {
+        e.stopPropagation();
+        setRfiToDelete(id);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteRFI = async () => {
+        if (!rfiToDelete) return;
+        try {
+            setDeleting(true);
+            await api.delete(`/rfis/${rfiToDelete}`);
+            setRfis(prev => prev.filter(r => r._id !== rfiToDelete));
+            setIsDeleteModalOpen(false);
+            setRfiToDelete(null);
+        } catch (err) {
+            setErrorModal({ isOpen: true, message: 'Failed to delete RFI' });
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -258,6 +268,15 @@ const RFIList = () => {
                                                             <XCircle size={14} />
                                                         </button>
                                                     )}
+                                                    {isAdmin && (
+                                                        <button
+                                                            onClick={e => handleDeleteClick(rfi._id, e)}
+                                                            className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -333,6 +352,62 @@ const RFIList = () => {
                             {closing ? <Loader size={16} className="animate-spin" /> : "Close RFI"}
                         </button>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete RFI">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-sm animate-pulse">
+                        <Trash2 size={40} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Delete RFI?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed">
+                            Are you sure you want to <span className="text-red-600">Permanently Delete</span> this RFI? This action cannot be undone and all data will be lost.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDeleteRFI}
+                            disabled={deleting}
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl transition shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {deleting ? <Loader size={16} className="animate-spin" /> : "Delete RFI"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Error Modal */}
+            <Modal 
+                isOpen={errorModal.isOpen} 
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title="Notice"
+                maxWidth="max-w-sm"
+            >
+                <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mb-2">Notice</h3>
+                    <p className="text-slate-500 text-sm font-medium mb-6">
+                        {errorModal.message}
+                    </p>
+                    <button
+                        onClick={() => setErrorModal({ ...errorModal, isOpen: false })}
+                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition shadow-lg active:scale-95"
+                    >
+                        Okay
+                    </button>
                 </div>
             </Modal>
         </div>

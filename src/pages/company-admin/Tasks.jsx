@@ -107,6 +107,16 @@ const getTaskUrgency = (task) => {
     return 'normal';
 };
 
+const formatDateForInput = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const urgencyStyles = {
     overdue: { card: 'border-red-200 bg-red-50/30', badge: 'bg-red-100 text-red-700', label: 'OVERDUE' },
     'due-soon': { card: 'border-yellow-200 bg-yellow-50/20', badge: 'bg-yellow-100 text-yellow-700', label: 'DUE SOON' },
@@ -686,8 +696,8 @@ const SubTaskTableRow = ({ subTask, depth, allSubTasks, taskId, team, canManage,
         assignedRoleType: subTask.assignedRoleType || '',
         priority: subTask.priority || 'Medium',
         status: subTask.status || 'todo',
-        startDate: subTask.startDate ? subTask.startDate.split('T')[0] : '',
-        dueDate: subTask.dueDate ? subTask.dueDate.split('T')[0] : ''
+        startDate: formatDateForInput(subTask.startDate),
+        dueDate: formatDateForInput(subTask.dueDate)
     });
     const [childTitle, setChildTitle] = useState('');
     const [childRole, setChildRole] = useState('');
@@ -1143,8 +1153,8 @@ const SubTaskTreeNode = ({ node, allSubTasks, depth = 0, taskId, team, canManage
         assignedRoleType: node.assignedRoleType || '',
         priority: node.priority || 'Medium',
         status: node.status || 'todo',
-        startDate: node.startDate ? node.startDate.split('T')[0] : '',
-        dueDate: node.dueDate ? node.dueDate.split('T')[0] : ''
+        startDate: formatDateForInput(node.startDate),
+        dueDate: formatDateForInput(node.dueDate)
     });
     const [childTitle, setChildTitle] = useState('');
     const [childRole, setChildRole] = useState('');
@@ -2409,7 +2419,7 @@ const Tasks = () => {
             });
             setSubTasks(prev => [...prev, res.data]);
             setNewSubTask({ title: '', assignedTo: '', startDate: '', dueDate: '', remarks: '', priority: 'Medium' });
-            fetchData();
+            fetchData(false);
         } catch (error) {
             console.error('Error adding subtask:', error);
         } finally {
@@ -2423,7 +2433,7 @@ const Tasks = () => {
             const res = await api.post(`/tasks/${selectedTask._id}/subtasks`, subTaskData);
             setSubTasks(prev => [...prev, res.data]);
             if (selectedTask?._id) fetchSubTasks(selectedTask._id, false);
-            fetchData();
+            fetchData(false);
         } catch (error) {
             console.error('Error adding nested subtask:', error);
         }
@@ -2468,7 +2478,7 @@ const Tasks = () => {
 
             setIsSubTaskDeleteModalOpen(false);
             setSubTaskToDeleteInfo(null);
-            fetchData();
+            fetchData(false);
             toast.success('Sub-task deleted');
         } catch (error) {
             console.error('Error deleting subtask:', error);
@@ -2484,7 +2494,7 @@ const Tasks = () => {
         try {
             const res = await api.patch(`/tasks/${selectedTask._id}/subtasks/${subTask._id}`, { status: newStatus });
             setSubTasks(prev => prev.map(s => s._id === subTask._id ? res.data : s));
-            fetchData();
+            fetchData(false);
         } catch (error) {
             console.error('Error toggling subtask:', error);
         }
@@ -2514,8 +2524,8 @@ const Tasks = () => {
             assignedRoleType: task.assignedRoleType || '',
             priority: task.priority || 'Medium',
             status: task.status || 'todo',
-            dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
-            startDate: task.startDate ? task.startDate.split('T')[0] : '',
+            dueDate: formatDateForInput(task.dueDate),
+            startDate: formatDateForInput(task.startDate),
             description: task.description || '',
             category: task.category || 'TASK'
         });
@@ -2564,8 +2574,8 @@ const Tasks = () => {
                 }
                 toast.success('Task created successfully');
             }
-            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData();
-            await fetchData();
+            if (['kanban', 'gantt', 'calendar'].includes(view)) fetchScheduleData(false);
+            await fetchData(false);
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving task:', error);
@@ -2613,7 +2623,7 @@ const Tasks = () => {
                 setSelectedTask(prev => ({ ...prev, progress: Math.min(100, (prev.progress || 0)) }));
             }
 
-            fetchData(); // Refresh main task progress
+            fetchData(false); // Refresh main task progress
             toast.success('Sub-task added');
         } catch (error) {
             console.error('Error saving quick sub-task:', error);
@@ -2643,7 +2653,7 @@ const Tasks = () => {
                 setSubTasks(prev => prev.map(st => st._id === subTask._id ? res.data : st));
             }
             toast.success('Sub-task updated');
-            fetchData();
+            fetchData(false);
         } catch (error) {
             console.error('Error updating sub-task:', error);
             toast.error('Failed to update sub-task');

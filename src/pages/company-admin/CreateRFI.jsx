@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Loader, Send, FileQuestion } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/Modal';
+import { AlertCircle } from 'lucide-react';
 
 const CreateRFI = () => {
     const navigate = useNavigate();
@@ -32,6 +34,9 @@ const CreateRFI = () => {
     });
     const [files, setFiles] = useState([]);
     const [errors, setErrors] = useState({});
+    const [isSizeLimitModalOpen, setIsSizeLimitModalOpen] = useState(false);
+    const [oversizedFile, setOversizedFile] = useState(null);
+    const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
 
     useEffect(() => {
         Promise.all([api.get('/projects'), api.get('/auth/users')])
@@ -55,7 +60,25 @@ const CreateRFI = () => {
 
     const handleFileChange = (e) => {
         const newFiles = Array.from(e.target.files);
-        setFiles(prev => [...prev, ...newFiles]);
+        const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+        
+        const validFiles = [];
+        let foundOversized = null;
+
+        newFiles.forEach(file => {
+            if (file.size > MAX_SIZE) {
+                foundOversized = file;
+            } else {
+                validFiles.push(file);
+            }
+        });
+
+        if (foundOversized) {
+            setOversizedFile(foundOversized);
+            setIsSizeLimitModalOpen(true);
+        }
+
+        setFiles(prev => [...prev, ...validFiles]);
     };
 
     const removeFile = (idx) => {
@@ -81,7 +104,7 @@ const CreateRFI = () => {
             });
             navigate(`${basePath}/rfi/${res.data._id}`);
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to create RFI');
+            setErrorModal({ isOpen: true, message: err.response?.data?.message || 'Failed to create RFI' });
         } finally {
             setSubmitting(false);
         }
@@ -277,6 +300,55 @@ const CreateRFI = () => {
                     </button>
                 </div>
             </form>
+            
+            {/* File Size Limit Modal */}
+            <Modal 
+                isOpen={isSizeLimitModalOpen} 
+                onClose={() => setIsSizeLimitModalOpen(false)}
+                title="File Too Large"
+                maxWidth="max-w-sm"
+            >
+                <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mb-2">Limit Exceeded</h3>
+                    <p className="text-slate-500 text-sm font-medium mb-6">
+                        The file <span className="text-slate-800 font-bold">"{oversizedFile?.name}"</span> exceeds our 50MB upload limit. 
+                        Please upload a smaller version or compress your file.
+                    </p>
+                    <button
+                        onClick={() => setIsSizeLimitModalOpen(false)}
+                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition shadow-lg active:scale-95"
+                    >
+                        Understood
+                    </button>
+                </div>
+            </Modal>
+
+            {/* Error Modal */}
+            <Modal 
+                isOpen={errorModal.isOpen} 
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title="Notice"
+                maxWidth="max-w-sm"
+            >
+                <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mb-2">Something went wrong</h3>
+                    <p className="text-slate-500 text-sm font-medium mb-6">
+                        {errorModal.message}
+                    </p>
+                    <button
+                        onClick={() => setErrorModal({ ...errorModal, isOpen: false })}
+                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition shadow-lg active:scale-95"
+                    >
+                        Okay
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 };

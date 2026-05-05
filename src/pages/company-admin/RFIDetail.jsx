@@ -4,10 +4,12 @@ import {
     ArrowLeft, Clock, AlertTriangle, CheckCircle2, XCircle,
     RefreshCw, MessageSquare, Send, Loader, User,
     MapPin, Tag, Calendar, Paperclip, Download,
-    ChevronDown, Edit2, CheckCheck, X
+    ChevronDown, Edit2, CheckCheck, X, Trash2
 } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/Modal';
+import { AlertCircle } from 'lucide-react';
 
 const statusColors = {
     open: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -37,6 +39,10 @@ const RFIDetail = () => {
     const [users, setUsers] = useState([]);
     const [reassignTo, setReassignTo] = useState('');
     const [showReassign, setShowReassign] = useState(false);
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
     const commentRef = useRef(null);
 
     const basePath = window.location.pathname.startsWith('/client-portal') ? '/client-portal' : '/company-admin';
@@ -72,7 +78,7 @@ const RFIDetail = () => {
             setRfi(res.data);
             setComment('');
         } catch (e) {
-            alert('Failed to add comment');
+            setErrorModal({ isOpen: true, message: 'Failed to add comment' });
         } finally {
             setSubmittingComment(false);
         }
@@ -84,7 +90,7 @@ const RFIDetail = () => {
             const res = await api.patch(`/rfis/${id}`, { status: newStatus });
             setRfi(prev => ({ ...prev, status: res.data.status }));
         } catch (e) {
-            alert('Failed to update status');
+            setErrorModal({ isOpen: true, message: 'Failed to update status' });
         } finally {
             setStatusChanging(false);
         }
@@ -96,7 +102,7 @@ const RFIDetail = () => {
             setRfi(prev => ({ ...prev, officialResponse: res.data.officialResponse, status: res.data.status }));
             setShowResponseBox(false);
         } catch (e) {
-            alert('Failed to save response');
+            setErrorModal({ isOpen: true, message: 'Failed to save response' });
         }
     };
 
@@ -108,13 +114,34 @@ const RFIDetail = () => {
             setShowReassign(false);
             setReassignTo('');
         } catch (e) {
-            alert('Failed to reassign');
+            setErrorModal({ isOpen: true, message: 'Failed to reassign' });
         }
     };
 
     const handleClose = async () => {
-        if (!window.confirm('Close this RFI permanently?')) return;
+        setIsCloseModalOpen(true);
+    };
+
+    const confirmCloseRFI = async () => {
+        setIsCloseModalOpen(false);
         await handleStatusChange('closed');
+    };
+
+    const handleDelete = () => {
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteRFI = async () => {
+        try {
+            setDeleting(true);
+            await api.delete(`/rfis/${id}`);
+            navigate(`${basePath}/rfi/list`);
+        } catch (e) {
+            setErrorModal({ isOpen: true, message: 'Failed to delete RFI' });
+        } finally {
+            setDeleting(false);
+            setIsDeleteModalOpen(false);
+        }
     };
 
     if (loading) {
@@ -381,10 +408,106 @@ const RFIDetail = () => {
                                     <XCircle size={16} /> Close RFI
                                 </button>
                             )}
+
+                            {/* Delete RFI */}
+                            <button
+                                onClick={handleDelete}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-600 text-white border border-red-600 rounded-xl text-sm font-bold hover:bg-red-700 transition shadow-lg shadow-red-200"
+                            >
+                                <Trash2 size={16} /> Delete RFI Permanently
+                            </button>
                         </div>
                     )}
                 </div>
             </div>
+            
+            {/* Close Confirmation Modal */}
+            <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title="Close RFI">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto border border-amber-100 shadow-sm animate-pulse">
+                        <AlertTriangle size={40} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Finalize RFI?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed">
+                            Are you sure you want to mark this RFI as <span className="text-emerald-600">Closed</span>? This indicates that all queries have been resolved.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                        <button
+                            onClick={() => setIsCloseModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmCloseRFI}
+                            disabled={statusChanging}
+                            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition shadow-lg shadow-emerald-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {statusChanging ? <Loader size={16} className="animate-spin" /> : "Close RFI"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete RFI">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500 mx-auto border border-red-100 shadow-sm animate-pulse">
+                        <Trash2 size={40} />
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Delete RFI?</h3>
+                        <p className="text-slate-500 font-bold text-sm mt-2 leading-relaxed">
+                            Are you sure you want to <span className="text-red-600">Permanently Delete</span> this RFI? This action cannot be undone and all data will be lost.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2 font-black uppercase tracking-widest text-[10px]">
+                        <button
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-2xl transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmDeleteRFI}
+                            disabled={deleting}
+                            className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl transition shadow-lg shadow-red-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {deleting ? <Loader size={16} className="animate-spin" /> : "Delete RFI"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Error Modal */}
+            <Modal 
+                isOpen={errorModal.isOpen} 
+                onClose={() => setErrorModal({ ...errorModal, isOpen: false })}
+                title="Notice"
+                maxWidth="max-w-sm"
+            >
+                <div className="flex flex-col items-center text-center py-4">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 mb-2">Notice</h3>
+                    <p className="text-slate-500 text-sm font-medium mb-6">
+                        {errorModal.message}
+                    </p>
+                    <button
+                        onClick={() => setErrorModal({ ...errorModal, isOpen: false })}
+                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition shadow-lg active:scale-95"
+                    >
+                        Okay
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 };
