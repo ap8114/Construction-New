@@ -285,7 +285,7 @@ const ProjectDetails = () => {
                 if (key === 'newImages') {
                     formData.newImages.forEach(file => data.append('images', file));
                 } else if (key === 'images') {
-                    data.append('currentImages', JSON.stringify(formData.images));
+                    data.append('images', JSON.stringify(formData.images));
                 } else {
                     data.append(key, formData[key]);
                 }

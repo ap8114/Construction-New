@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from '../Modal';
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode, error }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     
@@ -27,12 +27,15 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mod
         <div className="relative">
             <div 
                 onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}`}
+                className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer 
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}
+                    ${error ? 'border-red-500 ring-4 ring-red-500/5 bg-red-50/30' : 'border-slate-200'}
+                `}
             >
                 <span className={!selectedOption ? 'text-slate-400' : ''}>
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
-                <Filter size={14} className="text-slate-400" />
+                <Filter size={14} className={error ? 'text-red-400' : 'text-slate-400'} />
             </div>
 
             {isOpen && (
@@ -103,6 +106,7 @@ const DeficiencyModal = ({
     });
 
     const [selectedRole, setSelectedRole] = useState('all');
+    const [showErrors, setShowErrors] = useState(false);
 
     useEffect(() => {
         if (initialData) {
@@ -139,6 +143,11 @@ const DeficiencyModal = ({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!formData.title || !formData.assignedTo) {
+            setShowErrors(true);
+            return;
+        }
+        setShowErrors(false);
         onSave(formData);
     };
 
@@ -209,11 +218,17 @@ const DeficiencyModal = ({
                     </label>
                     <input
                         type="text"
-                        required
                         disabled={mode === 'view'}
                         value={formData.title}
-                        onChange={e => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-red-500/50 focus:ring-4 focus:ring-red-500/5 transition-all text-sm disabled:opacity-75"
+                        onChange={e => {
+                            setFormData({ ...formData, title: e.target.value });
+                            if (showErrors) setShowErrors(false);
+                        }}
+                        className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm disabled:opacity-75
+                            ${showErrors && !formData.title 
+                                ? 'border-red-500 ring-4 ring-red-500/5 bg-red-50/30' 
+                                : 'border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5'}
+                        `}
                         placeholder="e.g. Incomplete wiring in Unit 4"
                     />
                 </div>
@@ -280,7 +295,11 @@ const DeficiencyModal = ({
                             options={filteredUsers.map(u => ({ value: u._id, label: `${u.fullName} (${u.role})` }))}
                             value={formData.assignedTo}
                             disabled={mode === 'view'}
-                            onChange={val => setFormData({ ...formData, assignedTo: val })}
+                            onChange={val => {
+                                setFormData({ ...formData, assignedTo: val });
+                                if (showErrors) setShowErrors(false);
+                            }}
+                            error={showErrors && !formData.assignedTo}
                             placeholder="Select Assignee"
                             mode={mode}
                         />

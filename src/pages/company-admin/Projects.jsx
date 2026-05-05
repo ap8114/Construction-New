@@ -902,7 +902,7 @@ const Projects = () => {
                     </button>
                   )}
 
-                  {user?.role !== 'CLIENT' && (
+                  {['SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
                     <button onClick={(e) => requestDelete(project, e)}
                       className="p-2 md:p-2.5 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-300 hover:text-red-500 rounded-lg md:rounded-xl transition-all border border-red-100/50 shrink-0 shadow-sm"
                       title="Delete Project"
@@ -1017,12 +1017,14 @@ const Projects = () => {
                       >
                         <Edit size={18} />
                       </button>
-                      <button onClick={(e) => requestDelete(project, e)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
-                        title="Delete Project"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {['SUPER_ADMIN', 'COMPANY_OWNER'].includes(user?.role) && (
+                        <button onClick={(e) => requestDelete(project, e)}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-white hover:shadow-md rounded-xl transition-all"
+                          title="Delete Project"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

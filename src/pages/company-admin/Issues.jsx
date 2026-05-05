@@ -124,7 +124,7 @@ const DroppableColumn = ({ status, statusLabel, colorClass, dotClass, issues, on
   );
 };
 
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode }) => {
+const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mode, error }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -137,12 +137,15 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mod
     <div className="relative">
       <div 
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}`}
+        className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm flex justify-between items-center cursor-pointer 
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500'}
+          ${error ? 'border-red-500 ring-4 ring-red-500/5 bg-red-50/30' : 'border-slate-200'}
+        `}
       >
         <span className={!selectedOption ? 'text-slate-400' : ''}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <Filter size={14} className="text-slate-400" />
+        <Filter size={14} className={error ? 'text-red-400' : 'text-slate-400'} />
       </div>
 
       {isOpen && (
@@ -191,7 +194,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, mod
   );
 };
 
-const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, projectMembers, currentUser, isSubmitting, selectedRole, setSelectedRole }) => {
+const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, projectMembers, currentUser, isSubmitting, selectedRole, setSelectedRole, showErrors, setShowErrors }) => {
   const availableRoles = [
     { value: 'all', label: 'All Roles' },
     { value: 'PM', label: 'Project Manager' },
@@ -229,10 +232,16 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, proj
       </label>
       <input
         type="text"
-        required
         value={data.title}
-        onChange={e => setData({ ...data, title: e.target.value })}
-        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-red-500/50 focus:ring-4 focus:ring-red-500/5 transition-all text-sm"
+        onChange={e => {
+          setData({ ...data, title: e.target.value });
+          if (showErrors) setShowErrors(false);
+        }}
+        className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm
+          ${showErrors && !data.title 
+            ? 'border-red-500 ring-4 ring-red-500/5 bg-red-50/30' 
+            : 'border-slate-200 focus:border-red-500/50 focus:ring-4 focus:ring-red-500/5'}
+        `}
         placeholder="e.g. Water Seepage in Basement Slab"
       />
     </div>
@@ -244,9 +253,13 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, proj
           value={data.projectId}
           onChange={e => {
             setData({ ...data, projectId: e.target.value, assignedTo: '' });
+            if (showErrors) setShowErrors(false);
           }}
-          className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-all text-sm appearance-none"
-          required
+          className={`w-full bg-slate-50 border rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none transition-all text-sm appearance-none
+            ${showErrors && !data.projectId 
+              ? 'border-red-500 ring-4 ring-red-500/5 bg-red-50/30' 
+              : 'border-slate-200 focus:border-blue-500'}
+          `}
         >
           <option value="">Select Site</option>
           {projects.map(p => (
@@ -272,7 +285,11 @@ const IssueForm = ({ data, setData, onSubmit, submitLabel, projects, users, proj
       <SearchableSelect
         options={filteredUsers.map(u => ({ value: u._id, label: `${u.fullName} (${u.role})` }))}
         value={data.assignedTo}
-        onChange={val => setData({ ...data, assignedTo: val })}
+        onChange={val => {
+          setData({ ...data, assignedTo: val });
+          if (showErrors) setShowErrors(false);
+        }}
+        error={showErrors && !data.assignedTo}
         placeholder={data.projectId ? "Select Assignee" : "Select Project First"}
         disabled={isSubmitting || !data.projectId}
       />
@@ -428,6 +445,7 @@ const Issues = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [projectMembers, setProjectMembers] = useState([]);
   const [selectedRole, setSelectedRole] = useState('all');
+  const [showErrors, setShowErrors] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -481,6 +499,11 @@ const Issues = () => {
   };
 
   const handleSaveReport = async () => {
+    if (!formData.title || !formData.projectId || !formData.assignedTo) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     try {
       setIsSubmitting(true);
       const data = new FormData();
@@ -505,6 +528,11 @@ const Issues = () => {
   };
 
   const handleSaveEdit = async () => {
+    if (!formData.title || !formData.projectId || !formData.assignedTo) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     try {
       setIsSubmitting(true);
       const data = new FormData();
@@ -757,6 +785,8 @@ const Issues = () => {
             isSubmitting={isSubmitting}
             selectedRole={selectedRole}
             setSelectedRole={setSelectedRole}
+            showErrors={showErrors}
+            setShowErrors={setShowErrors}
           />
       </Modal>
 
@@ -773,6 +803,8 @@ const Issues = () => {
           isSubmitting={isSubmitting}
           selectedRole={selectedRole}
           setSelectedRole={setSelectedRole}
+          showErrors={showErrors}
+          setShowErrors={setShowErrors}
         />
       </Modal>
 
@@ -865,9 +897,13 @@ const Issues = () => {
                   setIsEditOpen(true); 
                   setIsViewOpen(false); 
                   setFormData({ 
-                    ...selectedIssue, 
-                    projectId: selectedIssue.projectId?._id, 
-                    assignedTo: selectedIssue.assignedTo?._id, 
+                    title: selectedIssue.title || '',
+                    description: selectedIssue.description || '',
+                    projectId: selectedIssue.projectId?._id || selectedIssue.projectId || '',
+                    assignedTo: selectedIssue.assignedTo?._id || selectedIssue.assignedTo || '',
+                    priority: selectedIssue.priority || 'medium',
+                    status: selectedIssue.status || 'open',
+                    category: selectedIssue.category || 'general',
                     dueDate: selectedIssue.dueDate ? new Date(selectedIssue.dueDate).toISOString().split('T')[0] : '',
                     images: selectedIssue.images || [],
                     newImages: []
