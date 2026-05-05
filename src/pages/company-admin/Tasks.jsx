@@ -1470,7 +1470,7 @@ const SortableSubTaskRow = (props) => {
 // ─── Main Tasks Page ───────────────────────────────────────────────────────────
 const Tasks = () => {
     const { user } = useAuth();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const highlightTaskId = searchParams.get('taskId');
     const [view, setView] = useState('list');
     const [tasks, setTasks] = useState([]);
@@ -1586,7 +1586,24 @@ const Tasks = () => {
     const [filterCategory, setFilterCategory] = useState('');
     const [filterDueFrom, setFilterDueFrom] = useState('');
     const [filterDueTo, setFilterDueTo] = useState('');
-    const [filterProject, setFilterProject] = useState('');
+    const [filterProject, setFilterProject] = useState(searchParams.get('projectId') || '');
+    
+    // Sync filterProject with URL searchParams
+    useEffect(() => {
+        const urlProjId = searchParams.get('projectId') || '';
+        if (urlProjId !== filterProject) {
+            setFilterProject(urlProjId);
+        }
+    }, [searchParams]);
+
+    const handleProjectFilterChange = (val) => {
+        setFilterProject(val);
+        setSearchParams(prev => {
+            if (val) prev.set('projectId', val);
+            else prev.delete('projectId');
+            return prev;
+        });
+    };
     const [formData, setFormData] = useState({
         title: '', projectId: '', jobId: '', assignedTo: [], assignedRoleType: '',
         priority: 'Medium', status: 'todo', dueDate: '', startDate: '', description: '',
@@ -1944,11 +1961,20 @@ const Tasks = () => {
 
     const fetchDropdownData = async () => {
         try {
-            const [projectsRes, usersRes] = await Promise.all([
+            const isFieldRole = ['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role);
+            const [projectsRes, usersRes, metricsRes] = await Promise.all([
                 api.get('/projects'),
-                api.get('/auth/users')
+                api.get('/auth/users'),
+                isFieldRole ? api.get('/reports/sidebar-metrics') : Promise.resolve({ data: { projects: [] } })
             ]);
-            setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+            
+            if (isFieldRole) {
+                // For field roles, 'projects' state will hold JOBS (from sidebar-metrics)
+                setProjects(metricsRes.data.projects || []);
+            } else {
+                setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+            }
+            
             setTeam((usersRes.data || []).filter(u =>
                 ['WORKER', 'FOREMAN', 'SUBCONTRACTOR', 'PM'].includes(u.role)
             ));
@@ -2121,7 +2147,11 @@ const Tasks = () => {
 
             const matchStatus = !filterStatus || task.status === filterStatus;
             const matchRole = !filterRole || task.assignedRoleType === filterRole;
-            const matchProject = !filterProject || (task.projectId?._id || task.projectId) === filterProject;
+            const isFieldRole = ['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role);
+            const matchProject = !filterProject || 
+                (isFieldRole 
+                    ? (task.jobId?._id || task.jobId) === filterProject 
+                    : (task.projectId?._id || task.projectId) === filterProject);
             const matchCategory = !filterCategory || task.category === filterCategory;
 
             // Important for Worker Dashboard: only show tasks they are involved in if on 'my_tasks'
@@ -2739,8 +2769,8 @@ const Tasks = () => {
                             <option value="SUBCONTRACTOR">Subcontractor</option>
                             <option value="PM">Project Manager</option>
                         </select>
-                        <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500">
-                            <option value="">All Projects</option>
+                        <select value={filterProject} onChange={e => handleProjectFilterChange(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500">
+                            <option value="">{['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role) ? 'All Jobs' : 'All Projects'}</option>
                             {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                         </select>
                         <input type="date" value={filterDueFrom} onChange={e => setFilterDueFrom(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-500" placeholder="Due From" />

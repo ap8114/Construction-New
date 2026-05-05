@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Briefcase, Clock, FileText,
@@ -37,13 +37,27 @@ const CompanyAdminLayout = () => {
   }, [location.pathname]);
 
   // Determine current project/job for dynamic header label
-  const projectIdInUrl = location.pathname.split('/projects/')[1]?.split('/')[0];
-  const jobIdInUrl = location.pathname.split('/jobs/')[1]?.split('/')[0];
-  
-  const activeProject = projectsList.find(p => {
-    if (p.isJob) return p._id === jobIdInUrl;
-    return p._id === projectIdInUrl;
-  });
+  const activeProject = useMemo(() => {
+    const projectIdInUrl = location.pathname.split('/projects/')[1]?.split('/')[0];
+    const jobIdInUrl = location.pathname.split('/jobs/')[1]?.split('/')[0];
+    
+    const searchParams = new URLSearchParams(location.search);
+    const projectIdInQuery = searchParams.get('projectId');
+
+    return projectsList.find(p => {
+      // 1. Exact Job ID match (from URL path or Query Param for Tasks filter)
+      if (p.isJob && (p._id === jobIdInUrl || p._id === projectIdInQuery)) return true;
+      
+      // 2. Exact Project ID match (from URL path or Query Param for Admins/PMs)
+      if (!p.isJob && p._id === (projectIdInUrl || projectIdInQuery)) return true;
+      
+      // 3. Fallback: If they filter by Project in Tasks (older sync logic), find their Job for that project
+      const pId = p.projectId?._id || p.projectId;
+      if (p.isJob && projectIdInQuery && pId?.toString() === projectIdInQuery && !jobIdInUrl) return true;
+
+      return false;
+    });
+  }, [location.pathname, location.search, projectsList]);
 
   const fetchSidebarMetrics = async () => {
     try {
