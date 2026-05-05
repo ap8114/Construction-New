@@ -405,11 +405,18 @@ const Team = () => {
   const isTeamTab = activeTab === 'team';
 
   const filteredMembers = members.filter(m => {
-    if (m.role === 'COMPANY_OWNER' || m.role === 'CLIENT') return false;
+    if (m.role === 'COMPANY_OWNER' || m.role === 'CLIENT' || m.role === 'SUBCONTRACTOR') return false;
     const matchSearch = m.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchRole = filterRole === 'All Roles' || m.role === filterRole;
     return matchSearch && matchRole;
+  });
+
+  const filteredSubcontractors = members.filter(m => {
+    if (m.role !== 'SUBCONTRACTOR') return false;
+    const matchSearch = m.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchSearch;
   });
 
   const filteredClients = clients.filter(c =>
@@ -419,7 +426,11 @@ const Team = () => {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleAddClick = () => {
-    setFormData(emptyForm(isTeamTab ? 'WORKER' : 'CLIENT'));
+    let defaultRole = 'WORKER';
+    if (activeTab === 'clients') defaultRole = 'CLIENT';
+    if (activeTab === 'subcontractors') defaultRole = 'SUBCONTRACTOR';
+    
+    setFormData(emptyForm(defaultRole));
     setIsAddOpen(true);
   };
 
@@ -435,7 +446,7 @@ const Team = () => {
     try {
       setIsSubmitting(true);
       await api.post('/auth/users', { ...formData });
-      if (isTeamTab) fetchMembers(); else fetchClients();
+      if (activeTab === 'clients') fetchClients(); else fetchMembers();
       setIsAddOpen(false);
       setToast({ message: 'User added successfully!', type: 'success' });
     } catch (error) {
@@ -473,7 +484,7 @@ const Team = () => {
     try {
       setIsSubmitting(true);
       await api.patch(`/auth/users/${selectedMember._id}`, formData);
-      if (isTeamTab) fetchMembers(); else fetchClients();
+      if (activeTab === 'clients') fetchClients(); else fetchMembers();
       setIsEditOpen(false);
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to update user.');
@@ -494,7 +505,7 @@ const Team = () => {
     try {
       setIsSubmitting(true);
       await api.delete(`/auth/users/${selectedMember._id}`);
-      if (isTeamTab) fetchMembers(); else fetchClients();
+      if (activeTab === 'clients') fetchClients(); else fetchMembers();
       setIsDeleteOpen(false);
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -503,9 +514,9 @@ const Team = () => {
     }
   };
 
-  const currentRoleOptions = isTeamTab ? TEAM_ROLE_OPTIONS : CLIENT_ROLE_OPTIONS;
-  const currentLoading = isTeamTab ? membersLoading : clientsLoading;
-  const currentList = isTeamTab ? filteredMembers : filteredClients;
+  const currentRoleOptions = activeTab === 'clients' ? CLIENT_ROLE_OPTIONS : TEAM_ROLE_OPTIONS;
+  const currentLoading = activeTab === 'clients' ? clientsLoading : membersLoading;
+  const currentList = activeTab === 'team' ? filteredMembers : (activeTab === 'subcontractors' ? filteredSubcontractors : filteredClients);
 
   return (
     <div className="space-y-6">
@@ -531,7 +542,16 @@ const Team = () => {
         >
           <Users size={16} /> Team Members
           <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'team' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
-            {members.filter(m => m.role !== 'COMPANY_OWNER' && m.role !== 'CLIENT').length}
+            {members.filter(m => m.role !== 'COMPANY_OWNER' && m.role !== 'CLIENT' && m.role !== 'SUBCONTRACTOR').length}
+          </span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('subcontractors'); setSearchQuery(''); setFilterRole('All Roles'); }}
+          className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition ${activeTab === 'subcontractors' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          <Shield size={16} /> Subcontractors
+          <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'subcontractors' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
+            {members.filter(m => m.role === 'SUBCONTRACTOR').length}
           </span>
         </button>
         <button
@@ -553,23 +573,28 @@ const Team = () => {
             <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
             <input
               type="text"
-              placeholder={isTeamTab ? 'Search team members...' : 'Search clients...'}
+              placeholder={activeTab === 'team' ? 'Search team members...' : (activeTab === 'subcontractors' ? 'Search subcontractors...' : 'Search clients...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
             />
           </div>
-          {isTeamTab && (
+          {(activeTab === 'team' || activeTab === 'subcontractors') && (
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
               className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none cursor-pointer hover:border-blue-500 transition"
             >
               <option>All Roles</option>
-              <option value="PM">Project Manager</option>
-              <option value="FOREMAN">Site Foreman</option>
-              <option value="WORKER">Worker</option>
-              <option value="SUBCONTRACTOR">Subcontractor</option>
+              {activeTab === 'team' ? (
+                <>
+                  <option value="PM">Project Manager</option>
+                  <option value="FOREMAN">Site Foreman</option>
+                  <option value="WORKER">Worker</option>
+                </>
+              ) : (
+                <option value="SUBCONTRACTOR">Subcontractor</option>
+              )}
             </select>
           )}
         </div>
@@ -586,7 +611,7 @@ const Team = () => {
             onDelete={handleDelete}
             onManagePermissions={handleManagePermissions}
             onChangePassword={handleChangePassword}
-            emptyMessage={isTeamTab ? 'No team members found.' : 'No clients found.'}
+            emptyMessage={activeTab === 'team' ? 'No team members found.' : (activeTab === 'subcontractors' ? 'No subcontractors found.' : 'No clients found.')}
           />
         )}
       </div>

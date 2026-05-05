@@ -58,7 +58,7 @@ const Drawings = () => {
   const [selectedDrawing, setSelectedDrawing] = useState(null);
   const [selectedVersion, setSelectedVersion] = useState(null);
   const [formData, setFormData] = useState({
-    projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null
+    projectId: '', title: '', drawingNumber: '', category: '', file: null
   });
 
   const fetchDrawings = async () => {
@@ -104,7 +104,7 @@ const Drawings = () => {
 
   // Handlers
   const handleUploadClick = () => {
-    setFormData({ projectId: '', title: '', drawingNumber: '', category: 'architectural', file: null });
+    setFormData({ projectId: '', title: '', drawingNumber: '', category: '', file: null });
     setIsUploadOpen(true);
   };
 
@@ -346,7 +346,7 @@ const Drawings = () => {
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">Drawing Name</th>
                 <th className="px-6 py-4 whitespace-nowrap">Project</th>
-                <th className="px-6 py-4 whitespace-nowrap">Version</th>
+                <th className="px-6 py-4 whitespace-nowrap">Category</th>
                 <th className="px-6 py-4 whitespace-nowrap">Date</th>
                 <th className="px-6 py-4 whitespace-nowrap">Status</th>
                 <th className="px-6 py-4 text-right whitespace-nowrap">Actions</th>
@@ -382,7 +382,7 @@ const Drawings = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 font-medium">{drawing.projectId?.name || '---'}</td>
-                    <td className="px-6 py-4 text-slate-500 font-medium">v{drawing.currentVersion}.0</td>
+                    <td className="px-6 py-4 font-bold text-slate-700 capitalize">{drawing.category || '---'}</td>
                     <td className="px-6 py-4">{new Date(drawing.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase inline-flex items-center gap-1
@@ -495,18 +495,13 @@ const Drawings = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-              <select
+              <input
+                type="text"
                 value={formData.category}
                 onChange={e => setFormData({ ...formData, category: e.target.value })}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 transition"
-              >
-                <option value="architectural">Architectural</option>
-                <option value="structural">Structural</option>
-                <option value="mechanical">Mechanical</option>
-                <option value="electrical">Electrical</option>
-                <option value="plumbing">Plumbing</option>
-                <option value="civil">Civil</option>
-              </select>
+                placeholder="e.g. Architectural, Structural, etc."
+              />
             </div>
           </div>
 
@@ -526,9 +521,11 @@ const Drawings = () => {
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSaveUpload}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200 flex items-center gap-2"
+              disabled={loading}
+              className={`bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition shadow-lg shadow-blue-200 flex items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              <Save size={18} /> Upload Drawing
+              {loading ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
+              {loading ? 'Uploading...' : 'Upload Drawing'}
             </button>
           </div>
         </div>

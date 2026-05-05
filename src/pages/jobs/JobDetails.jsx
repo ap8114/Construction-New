@@ -559,7 +559,7 @@ const JobDetails = () => {
         }
     };
 
-    const isWorkerOrForeman = ['WORKER', 'FOREMAN'].includes(user?.role);
+    const isWorkerOrForeman = ['WORKER', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
     const tabs = user?.role === 'WORKER'
         ? [
             { id: 'tasks', label: 'Tasks', icon: CheckCircle },

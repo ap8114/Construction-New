@@ -36,9 +36,14 @@ const CompanyAdminLayout = () => {
     pathnameRef.current = location.pathname;
   }, [location.pathname]);
 
-  // Determine current project for dynamic header label
-  const currentProjectId = location.pathname.split('/projects/')[1]?.split('/')[0];
-  const activeProject = projectsList.find(p => p._id === currentProjectId);
+  // Determine current project/job for dynamic header label
+  const projectIdInUrl = location.pathname.split('/projects/')[1]?.split('/')[0];
+  const jobIdInUrl = location.pathname.split('/jobs/')[1]?.split('/')[0];
+  
+  const activeProject = projectsList.find(p => {
+    if (p.isJob) return p._id === jobIdInUrl;
+    return p._id === projectIdInUrl;
+  });
 
   const fetchSidebarMetrics = async () => {
     try {
@@ -358,37 +363,54 @@ const CompanyAdminLayout = () => {
               </button>
               {isJobSelectorOpen && (
                 <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in max-h-64 overflow-y-auto custom-scrollbar">
-                  <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Active Projects</div>
-                  {projectsList.filter(p => ['active', 'planning'].includes(p.status)).length > 0 ? (
-                    projectsList.filter(p => ['active', 'planning'].includes(p.status)).map((project) => (
-                      <button
-                        key={project._id}
-                        onClick={() => {
-                          navigate(`/company-admin/projects/${project._id}`);
-                          setIsJobSelectorOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
-                      >
-                        <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${project.status === 'active' ? 'bg-emerald-500' : 'bg-orange-500'}`}></div>
-                        <span className="truncate flex-1">{project.name}</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                          project.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'
-                        }`}>
-                          {project.status === 'active' ? 'Active' : 'Planning'}
-                        </span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-3 text-xs text-slate-400 font-bold italic">No projects found</div>
-                  )}
-                  <div className="p-2 mt-1">
-                    <button
-                      onClick={() => { navigate('/company-admin/projects'); setIsJobSelectorOpen(false); }}
-                      className="w-full py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-[10px] font-black uppercase text-slate-500 tracking-wider transition-all"
-                    >
-                      View All Projects
-                    </button>
+                  <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">
+                    {['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role) ? 'Active Jobs' : 'Active Projects'}
                   </div>
+                    {projectsList.filter(p => ['active', 'planning', 'on-hold'].includes(p.status)).length > 0 ? (
+                      projectsList.filter(p => ['active', 'planning', 'on-hold'].includes(p.status)).map((project) => {
+                        const statusCfg = {
+                          active: { label: 'Active', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100', dot: 'bg-emerald-500' },
+                          planning: { label: 'Planning', cls: 'bg-orange-50 text-orange-600 border-orange-100', dot: 'bg-orange-500' },
+                          'on-hold': { label: 'On Hold', cls: 'bg-yellow-50 text-yellow-600 border-yellow-100', dot: 'bg-yellow-500' },
+                          completed: { label: 'Completed', cls: 'bg-emerald-50 text-emerald-600 border-emerald-100', dot: 'bg-emerald-500' },
+                        }[project.status] || { label: project.status, cls: 'bg-slate-50 text-slate-600 border-slate-100', dot: 'bg-slate-500' };
+
+                        return (
+                          <button
+                            key={project._id}
+                            onClick={() => {
+                              if (project.isJob) {
+                                navigate(`/company-admin/projects/${project.projectId}/jobs/${project._id}`);
+                              } else {
+                                navigate(`/company-admin/projects/${project._id}`);
+                              }
+                              setIsJobSelectorOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
+                          >
+                            <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${statusCfg.dot}`}></div>
+                            <span className="truncate flex-1">{project.name}</span>
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusCfg.cls}`}>
+                              {statusCfg.label}
+                            </span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                    <div className="px-4 py-3 text-xs text-slate-400 font-bold italic">
+                      No {['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role) ? 'jobs' : 'projects'} found
+                    </div>
+                  )}
+                  {!['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user?.role) && (
+                    <div className="p-2 mt-1">
+                      <button
+                        onClick={() => { navigate('/company-admin/projects'); setIsJobSelectorOpen(false); }}
+                        className="w-full py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-[10px] font-black uppercase text-slate-500 tracking-wider transition-all"
+                      >
+                        View All Projects
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -60,6 +60,13 @@ const ProjectDetails = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    
+    // Redirect field roles away from Project Details overview
+    useEffect(() => {
+        if (user && ['FOREMAN', 'WORKER', 'SUBCONTRACTOR'].includes(user.role)) {
+            navigate('/company-admin/projects');
+        }
+    }, [user, navigate]);
 
     const [project, setProject] = useState(null);
     const [jobs, setJobs] = useState([]);
