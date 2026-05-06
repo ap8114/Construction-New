@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     FileText, Plus, Download, Search, Filter, DollarSign,
-    Trash2, CreditCard, Send, MoreHorizontal, Save, Loader, Eye
+    Trash2, CreditCard, Send, MoreHorizontal, Save, Loader, Eye, Upload,
+    CheckCircle, Clock, AlertTriangle
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import api from '../../utils/api';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import logo from '../../assets/images/Logo.png';
+// ... (rest of imports)
 
 const Invoices = () => {
     const navigate = useNavigate();
@@ -24,8 +23,8 @@ const Invoices = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Form State
-    const [items, setItems] = useState([{ id: 1, description: '', quantity: 1, unitPrice: 0 }]);
-    const [formData, setFormData] = useState({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid' });
+    const [formData, setFormData] = useState({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid', totalAmount: '' });
+    const [file, setFile] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -64,24 +63,14 @@ const Invoices = () => {
 
     const openCreateModal = () => {
         const nextNumber = generateNextInvoiceNumber();
-        setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: nextNumber, status: 'unpaid' });
+        setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: nextNumber, status: 'unpaid', totalAmount: '' });
+        setFile(null);
         setIsModalOpen(true);
     };
 
     useEffect(() => {
         fetchData();
     }, [isModalOpen]);
-
-    const addItem = () => setItems([...items, { id: Date.now(), description: '', quantity: 1, unitPrice: 0 }]);
-    const removeItem = (id) => setItems(items.filter(i => i.id !== id));
-
-    const updateItem = (id, field, value) => {
-        setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
-    };
-
-    const calculateTotal = () => {
-        return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    };
 
     const handleSave = async () => {
         try {
@@ -90,24 +79,29 @@ const Invoices = () => {
                 return;
             }
             setIsSubmitting(true);
-            const total = calculateTotal();
-            const payload = {
-                ...formData,
-                items: items.map(({ description, quantity, unitPrice }) => ({
-                    description,
-                    quantity,
-                    unitPrice,
-                    total: quantity * unitPrice
-                })),
-                totalAmount: total
-            };
-            await api.post('/invoices', payload);
+
+            const uploadFormData = new FormData();
+            uploadFormData.append('projectId', formData.projectId);
+            uploadFormData.append('clientId', formData.clientId);
+            uploadFormData.append('dueDate', formData.dueDate);
+            uploadFormData.append('invoiceNumber', formData.invoiceNumber);
+            uploadFormData.append('status', formData.status);
+            uploadFormData.append('totalAmount', 0); // Default to 0 since field is removed
+            if (file) {
+                uploadFormData.append('image', file);
+            }
+
+            await api.post('/invoices', uploadFormData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             await fetchData();
             setIsModalOpen(false);
-            setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid' });
-            setItems([{ id: 1, description: '', quantity: 1, unitPrice: 0 }]);
+            setFormData({ projectId: '', clientId: '', dueDate: '', invoiceNumber: '', status: 'unpaid', totalAmount: '' });
+            setFile(null);
         } catch (error) {
             console.error('Error creating invoice:', error);
+            alert('Error creating invoice');
         } finally {
             setIsSubmitting(false);
         }
@@ -279,9 +273,10 @@ const Invoices = () => {
 
     // Derived Stats
     const stats = {
-        totalRevenue: invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (i.totalAmount || 0), 0),
-        outstanding: invoices.filter(i => ['unpaid', 'partially_paid'].includes(i.status)).reduce((sum, i) => sum + (i.totalAmount || 0), 0),
-        overdue: invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + (i.totalAmount || 0), 0)
+        total: invoices.length,
+        paid: invoices.filter(i => i.status === 'paid').length,
+        unpaid: invoices.filter(i => ['unpaid', 'partially_paid'].includes(i.status)).length,
+        overdue: invoices.filter(i => i.status === 'overdue').length
     };
 
     const formatStatus = (status) => {
@@ -293,7 +288,7 @@ const Invoices = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Invoices <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2">PDF Export Active</span></h1>
+                    <h1 className="text-2xl font-bold text-slate-800">Invoices <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2">Digital Tracking</span></h1>
                     <p className="text-slate-500 text-sm">Create and manage client invoices.</p>
                 </div>
                 <button
@@ -305,32 +300,41 @@ const Invoices = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
-                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
-                        <DollarSign size={18} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                        <FileText size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Total Revenue (Paid)</p>
-                        <p className="text-xl font-black text-slate-800 leading-none">${stats.totalRevenue.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Total Invoice</p>
+                        <p className="text-2xl font-black text-slate-800 leading-none">{stats.total}</p>
                     </div>
                 </div>
-                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
-                    <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl">
-                        <FileText size={18} />
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <CheckCircle size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Outstanding</p>
-                        <p className="text-xl font-black text-slate-800 leading-none">${stats.outstanding.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Total Paid</p>
+                        <p className="text-2xl font-black text-slate-800 leading-none">{stats.paid}</p>
                     </div>
                 </div>
-                <div className="bg-white p-3.5 md:p-4 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
-                    <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
-                        <CreditCard size={18} />
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                        <Clock size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Unpaid</p>
+                        <p className="text-2xl font-black text-slate-800 leading-none">{stats.unpaid}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                        <AlertTriangle size={20} />
                     </div>
                     <div>
                         <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Overdue</p>
-                        <p className="text-xl font-black text-slate-800 leading-none">${stats.overdue.toLocaleString()}</p>
+                        <p className="text-2xl font-black text-slate-800 leading-none">{stats.overdue}</p>
                     </div>
                 </div>
             </div>
@@ -364,7 +368,6 @@ const Invoices = () => {
                                 <th className="px-6 py-4">Client</th>
                                 <th className="px-6 py-4">Date</th>
                                 <th className="px-6 py-4">Due Date</th>
-                                <th className="px-6 py-4">Amount</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -374,14 +377,13 @@ const Invoices = () => {
                                 <tr
                                     key={inv._id}
                                     className="hover:bg-slate-50 transition cursor-pointer group"
-                                    onClick={() => navigate(`/company-admin/invoices/${inv._id}`)}
+                                    onClick={() => inv.invoiceImage && window.open(inv.invoiceImage, '_blank')}
                                 >
                                     <td className="px-6 py-4 font-bold text-slate-800 group-hover:text-blue-600 transition-colors uppercase tracking-tight">{inv.invoiceNumber}</td>
                                     <td className="px-6 py-4">{inv.projectId?.name || '---'}</td>
                                     <td className="px-6 py-4">{inv.clientId?.fullName || '---'}</td>
                                     <td className="px-6 py-4">{new Date(inv.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '---'}</td>
-                                    <td className="px-6 py-4 font-bold text-slate-800">${inv.totalAmount?.toLocaleString()}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold 
                             ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
@@ -393,20 +395,16 @@ const Invoices = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                         <button
-                                            onClick={() => navigate(`/company-admin/invoices/${inv._id}`)}
-                                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                            title="View Details"
-                                        >
-                                            <Eye size={16} />
-                                        </button>
-                                        <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                console.log('Download button clicked directly');
-                                                handleDownloadPDF(inv);
+                                                if (inv.invoiceImage) {
+                                                    window.open(inv.invoiceImage, '_blank');
+                                                } else {
+                                                    alert('No file uploaded for this invoice.');
+                                                }
                                             }}
                                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                            title="Download PDF"
+                                            title="Download File"
                                         >
                                             <Download size={16} />
                                         </button>
@@ -506,67 +504,39 @@ const Invoices = () => {
                         </select>
                     </div>
 
-                    <div className="border-t border-slate-200 pt-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-slate-800 text-sm">Line Items</h3>
-                            <button onClick={addItem} className="text-blue-600 text-xs font-bold hover:underline">+ Add Item</button>
-                        </div>
-                        <div className="flex gap-2 mb-2 text-sm font-semibold text-slate-500 uppercase px-1">
-                            <div className="flex-1">Description</div>
-                            <div className="w-16">Qty</div>
-                            <div className="w-24">Price</div>
-                            <div className="w-24 text-right">Total</div>
-                            <div className="w-6"></div>
-                        </div>
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                            {items.map((item, index) => (
-                                <div key={item.id} className="flex gap-2 items-center">
-                                    <input
-                                        type="text"
-                                        placeholder="Description"
-                                        value={item.description}
-                                        onChange={e => updateItem(item.id, 'description', e.target.value)}
-                                        className="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="Qty"
-                                        value={item.quantity}
-                                        onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                        className="w-16 bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none focus:border-blue-500"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="Rate"
-                                        value={item.unitPrice}
-                                        onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                                        className="w-24 bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none focus:border-blue-500"
-                                    />
-                                    <div className="w-24 text-right font-medium text-slate-700 text-sm">
-                                        ${(item.quantity * item.unitPrice).toFixed(2)}
-                                    </div>
-                                    <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-600 p-1">
-                                        <Trash2 size={16} />
-                                    </button>
+                    <div className="pt-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Upload Invoice</label>
+                        <div className="relative">
+                            <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                onChange={e => setFile(e.target.files[0])}
+                                className="hidden"
+                                id="invoice-upload"
+                            />
+                            <label
+                                htmlFor="invoice-upload"
+                                className="flex items-center justify-center gap-3 w-full bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 cursor-pointer hover:bg-slate-100 transition text-slate-500 text-sm group"
+                            >
+                                <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition duration-300">
+                                    <Upload size={24} className="text-blue-600" />
                                 </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-end mt-4 pt-4 border-t border-slate-100">
-                            <div className="text-right">
-                                <p className="text-sm text-slate-500">Total Amount</p>
-                                <p className="text-2xl font-bold text-slate-800">${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                            </div>
+                                <div className="flex flex-col items-start">
+                                    <span className="font-bold text-slate-700">{file ? file.name : 'Select Invoice File'}</span>
+                                    <span className="text-xs text-slate-400">Click to browse or drag and drop</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
-                    <div className="flex justify-end pt-2">
+                    <div className="flex justify-end pt-4 border-t border-slate-100">
                         <button
                             onClick={handleSave}
                             disabled={isSubmitting}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium transition flex items-center gap-2 disabled:opacity-50"
+                            className="bg-blue-600 text-white px-8 py-2.5 rounded-xl hover:bg-blue-700 font-bold transition flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-200"
                         >
                             {isSubmitting ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
-                            Generate Invoice
+                            {isSubmitting ? 'Generating...' : 'Generate Invoice'}
                         </button>
                     </div>
                 </div>

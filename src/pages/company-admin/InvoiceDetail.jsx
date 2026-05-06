@@ -309,32 +309,58 @@ const InvoiceDetail = () => {
                         </div>
                     </div>
 
-                    {/* Line Items Table */}
-                    <div className="overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="border-b border-slate-200">
-                                    <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Item / Description</th>
-                                    <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center w-24">Qty</th>
-                                    <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right w-32">Rate</th>
-                                    <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right w-32">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {invoice.items && invoice.items.map((item, index) => (
-                                    <tr key={index}>
-                                        <td className="py-6 pr-4">
-                                            <p className="text-sm font-bold text-slate-900">{item.description}</p>
-                                            <p className="text-xs text-slate-400 mt-1">Professional Grade Construction Material</p>
-                                        </td>
-                                        <td className="py-6 text-center text-sm font-bold text-slate-600">{item.quantity}</td>
-                                        <td className="py-6 text-right text-sm font-bold text-slate-600">£{(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                        <td className="py-6 text-right text-sm font-black text-slate-900">£{(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    {/* Invoice Image / Uploaded File Section */}
+                    {invoice.invoiceImage && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Uploaded Invoice:</h3>
+                                <a 
+                                    href={invoice.invoiceImage} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                                >
+                                    <FileText size={14} /> View Original
+                                </a>
+                            </div>
+                            <div className="rounded-2xl border border-slate-100 overflow-hidden bg-slate-50 p-4 flex justify-center">
+                                <img 
+                                    src={invoice.invoiceImage} 
+                                    alt="Invoice" 
+                                    className="max-h-[600px] w-auto shadow-sm rounded-lg object-contain"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Line Items Table (Only show if items exist) */}
+                    {invoice.items && invoice.items.length > 0 && (
+                        <div className="overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Item / Description</th>
+                                        <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center w-24">Qty</th>
+                                        <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right w-32">Rate</th>
+                                        <th className="py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right w-32">Total</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {invoice.items.map((item, index) => (
+                                        <tr key={index}>
+                                            <td className="py-6 pr-4">
+                                                <p className="text-sm font-bold text-slate-900">{item.description}</p>
+                                                <p className="text-xs text-slate-400 mt-1">Professional Grade Construction Material</p>
+                                            </td>
+                                            <td className="py-6 text-center text-sm font-bold text-slate-600">{item.quantity}</td>
+                                            <td className="py-6 text-right text-sm font-bold text-slate-600">£{(item.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-6 text-right text-sm font-black text-slate-900">£{(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Summary */}
                     <div className="flex justify-end pt-8">

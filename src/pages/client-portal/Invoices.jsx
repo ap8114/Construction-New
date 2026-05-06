@@ -186,10 +186,6 @@ const Invoices = () => {
           <h1 className="text-2xl font-bold text-slate-800">Invoices & Payments</h1>
           <p className="text-slate-500 text-sm">View and manage your project billing history.</p>
         </div>
-        <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm text-right hidden sm:block">
-          <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold block mb-1">Total Outstanding</span>
-          <span className="text-xl font-bold text-slate-800">${totalOutstanding.toLocaleString()}</span>
-        </div>
       </div>
 
       <div className="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
@@ -199,29 +195,33 @@ const Invoices = () => {
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Invoice ID</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Project</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
             {invoices.map((invoice) => (
-              <tr key={invoice._id} className="hover:bg-slate-50/50 transition-colors">
+              <tr key={invoice._id} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => invoice.invoiceImage && window.open(invoice.invoiceImage, '_blank')}>
                 <td className="px-6 py-4 font-medium text-slate-900">{invoice.invoiceNumber || invoice._id.slice(-8)}</td>
                 <td className="px-6 py-4 hidden md:table-cell">{invoice.projectId?.name || '---'}</td>
                 <td className="px-6 py-4 text-slate-500">{new Date(invoice.createdAt).toLocaleDateString()}</td>
-                <td className="px-6 py-4 font-semibold text-slate-800">${(invoice.totalAmount || 0).toLocaleString()}</td>
                 <td className="px-6 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${invoice.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
                     {invoice.status === 'paid' ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
                     {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => handleDownload(invoice)}
+                    onClick={() => {
+                      if (invoice.invoiceImage) {
+                        window.open(invoice.invoiceImage, '_blank');
+                      } else {
+                        handleDownload(invoice);
+                      }
+                    }}
                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                    title="Download PDF"
+                    title="Download Invoice"
                   >
                     <Download size={16} />
                   </button>
