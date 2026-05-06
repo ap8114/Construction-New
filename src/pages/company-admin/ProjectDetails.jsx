@@ -147,6 +147,7 @@ const ProjectDetails = () => {
     const [showUploadSuccess, setShowUploadSuccess] = useState(false);
     const [docToDelete, setDocToDelete] = useState(null);
     const [showSizeError, setShowSizeError] = useState(false);
+    const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
 
     const showBudget = canSeeBudget(user?.role);
 
@@ -436,7 +437,7 @@ const ProjectDetails = () => {
 
             setIsPostingUpdate(false);
             setNewUpdate({ title: '', description: '', date: new Date().toISOString().split('T')[0], isVisibleToClient: true, images: [] });
-            alert('Update posted successfully!');
+            setShowUpdateSuccess(true);
 
             // Refresh updates
             const uRes = await api.get(`/projects/${projectId}/client-updates`);
@@ -2932,6 +2933,26 @@ const ProjectDetails = () => {
                         </p>
                         <button 
                             onClick={() => setShowUploadSuccess(false)}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-900/20"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showUpdateSuccess && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-[400px] shadow-2xl relative overflow-hidden flex flex-col items-center text-center p-8">
+                        <div className="w-16 h-16 rounded-[20px] bg-emerald-50 text-emerald-500 flex items-center justify-center mb-6 border border-emerald-100/50">
+                            <CheckCircle size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Update Posted!</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                            The project update has been successfully posted and is now visible to the client.
+                        </p>
+                        <button 
+                            onClick={() => setShowUpdateSuccess(false)}
                             className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-900/20"
                         >
                             Continue
