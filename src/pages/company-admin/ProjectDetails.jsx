@@ -138,6 +138,16 @@ const ProjectDetails = () => {
     const [contactToDelete, setContactToDelete] = useState(null);
     const [isSubmittingContact, setIsSubmittingContact] = useState(false);
 
+    // Store Doc states
+    const [projectDocuments, setProjectDocuments] = useState([]);
+    const [docsLoading, setDocsLoading] = useState(false);
+    const [isAddingDoc, setIsAddingDoc] = useState(false);
+    const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
+    const [newDoc, setNewDoc] = useState({ title: '', description: '', uploadDate: new Date().toISOString().split('T')[0], file: null });
+    const [showUploadSuccess, setShowUploadSuccess] = useState(false);
+    const [docToDelete, setDocToDelete] = useState(null);
+    const [showSizeError, setShowSizeError] = useState(false);
+
     const showBudget = canSeeBudget(user?.role);
 
     // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -183,6 +193,18 @@ const ProjectDetails = () => {
             setEquipment(res.data || []);
         } catch (err) {
             console.error('Failed to load equipment:', err);
+        }
+    };
+
+    const fetchDocuments = async () => {
+        try {
+            setDocsLoading(true);
+            const res = await api.get(`/project-documents/${projectId}`);
+            setProjectDocuments(res.data || []);
+        } catch (err) {
+            console.error('Failed to fetch documents:', err);
+        } finally {
+            setDocsLoading(false);
         }
     };
 
@@ -470,6 +492,50 @@ const ProjectDetails = () => {
         }
     };
 
+    const handleUploadDocument = async (e) => {
+        e.preventDefault();
+        if (!newDoc.file) return alert('Please select a file');
+        try {
+            setIsSubmittingDoc(true);
+            const formData = new FormData();
+            formData.append('projectId', projectId);
+            formData.append('title', newDoc.title);
+            formData.append('description', newDoc.description);
+            formData.append('uploadDate', newDoc.uploadDate);
+            formData.append('file', newDoc.file);
+
+            await api.post('/project-documents', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            setIsAddingDoc(false);
+            setNewDoc({ title: '', description: '', uploadDate: new Date().toISOString().split('T')[0], file: null });
+            fetchDocuments();
+            setShowUploadSuccess(true);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to upload document');
+        } finally {
+            setIsSubmittingDoc(false);
+        }
+    };
+
+    const handleDeleteDocument = async (docId) => {
+        setDocToDelete(docId);
+    };
+
+    const confirmDeleteDocument = async () => {
+        if (!docToDelete) return;
+        try {
+            await api.delete(`/project-documents/${docToDelete}`);
+            setProjectDocuments(prev => prev.filter(d => d._id !== docToDelete));
+            setDocToDelete(null);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete document');
+        }
+    };
+
     // ── Filter ─────────────────────────────────────────────────────────────────
     const filteredJobs = jobs.filter(j => {
         // Role-based visibility check
@@ -703,6 +769,7 @@ const ProjectDetails = () => {
                     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
                     { id: 'deficiencies', label: 'Deficiencies', icon: AlertTriangle },
                     { id: 'contacts', label: 'Contacts', icon: Users },
+                    { id: 'documents', label: 'Store Doc', icon: FileText },
                     { id: 'updates', label: 'Client Updates', icon: MessageSquare },
                 ].filter(Boolean).map((tab) => (
                     <button
@@ -719,6 +786,9 @@ const ProjectDetails = () => {
                             }
                             if (tab.id === 'deficiencies') {
                                 fetchDeficiencies();
+                            }
+                            if (tab.id === 'documents') {
+                                fetchDocuments();
                             }
                         }}
                         className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id
@@ -2511,6 +2581,103 @@ const ProjectDetails = () => {
                 </div>
             )}
 
+            {/* ── Documents Tab ── */}
+            {activeTab === 'documents' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-[28px] border border-slate-200/60 shadow-sm">
+                        <div>
+                            <h2 className="text-xl font-black text-slate-900 tracking-tight">Project Documents</h2>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Store and manage project-related files</p>
+                        </div>
+                        {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                            <button
+                                onClick={() => setIsAddingDoc(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all"
+                            >
+                                <Plus size={16} /> Upload Document
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <th className="px-6 py-4">Title</th>
+                                        <th className="px-6 py-4">Description</th>
+                                        <th className="px-6 py-4">Upload Date</th>
+                                        <th className="px-6 py-4">Uploaded By</th>
+                                        <th className="px-6 py-4 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {docsLoading ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-16 text-center">
+                                                <Loader size={24} className="animate-spin text-blue-600 mx-auto" />
+                                            </td>
+                                        </tr>
+                                    ) : projectDocuments.map((doc) => (
+                                        <tr key={doc._id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                                                        <FileText size={16} />
+                                                    </div>
+                                                    <span className="font-black text-slate-900 text-sm">{doc.title}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-bold text-slate-500 max-w-xs truncate">
+                                                {doc.description || '—'}
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-black text-slate-700">
+                                                {new Date(doc.uploadDate).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                                                {doc.uploadedBy?.name || 'Unknown'}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <a 
+                                                        href={doc.fileUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all"
+                                                        title="View/Download"
+                                                    >
+                                                        <Eye size={14} />
+                                                    </a>
+                                                    {['COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role) && (
+                                                        <button 
+                                                            onClick={() => handleDeleteDocument(doc._id)}
+                                                            className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 border border-transparent hover:border-red-100 transition-all"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {projectDocuments.length === 0 && !docsLoading && (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-16 text-center">
+                                                <div className="flex flex-col items-center gap-3 text-slate-300">
+                                                    <FileText size={32} />
+                                                    <p className="font-black uppercase tracking-widest text-xs">No documents stored yet</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isAddingContact && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
@@ -2631,6 +2798,164 @@ const ProjectDetails = () => {
                                 {isSubmittingContact ? <Loader size={16} className="animate-spin" /> : <><Trash2 size={16} /> Remove</>}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {isAddingDoc && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-slate-100/50 shrink-0">
+                            <button 
+                                onClick={() => setIsAddingDoc(false)}
+                                className="absolute top-8 right-8 p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                            
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                                <Plus size={20} />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Upload Document</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Store Doc File</p>
+                        </div>
+                        
+                        <div className="p-8 overflow-y-auto min-h-0">
+                            <form onSubmit={handleUploadDocument} className="space-y-5">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Title *</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={newDoc.title} 
+                                        onChange={e => setNewDoc({...newDoc, title: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none"
+                                        placeholder="Document title"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Description</label>
+                                    <textarea 
+                                        value={newDoc.description} 
+                                        onChange={e => setNewDoc({...newDoc, description: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none min-h-[100px]"
+                                        placeholder="What is this document about?"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Upload Date *</label>
+                                    <input 
+                                        type="date" 
+                                        required
+                                        value={newDoc.uploadDate} 
+                                        onChange={e => setNewDoc({...newDoc, uploadDate: e.target.value})}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">File *</label>
+                                    <input 
+                                        type="file" 
+                                        required
+                                        onChange={e => {
+                                            const file = e.target.files[0];
+                                            if (file && file.size > 50 * 1024 * 1024) {
+                                                setShowSizeError(true);
+                                                e.target.value = '';
+                                                setNewDoc({...newDoc, file: null});
+                                            } else {
+                                                setNewDoc({...newDoc, file: file});
+                                            }
+                                        }}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 px-4 text-sm font-bold text-slate-900 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none"
+                                    />
+                                </div>
+                                
+                                <div className="pt-4 pb-2">
+                                    <button 
+                                        type="submit"
+                                        disabled={isSubmittingDoc}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-blue-50 outline-none flex items-center justify-center gap-2"
+                                    >
+                                        {isSubmittingDoc ? (
+                                            <>
+                                                <Loader size={16} className="animate-spin" />
+                                                <span>Uploading...</span>
+                                            </>
+                                        ) : (
+                                            'Upload Document'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {docToDelete && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-[400px] shadow-2xl relative overflow-hidden flex flex-col items-center text-center p-8">
+                        <div className="w-16 h-16 rounded-[20px] bg-red-50 text-red-500 flex items-center justify-center mb-6 border border-red-100/50">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Delete Document?</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                            Are you sure you want to delete this document? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-4 w-full">
+                            <button 
+                                onClick={() => setDocToDelete(null)}
+                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={confirmDeleteDocument}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={16} /> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showUploadSuccess && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-[400px] shadow-2xl relative overflow-hidden flex flex-col items-center text-center p-8">
+                        <div className="w-16 h-16 rounded-[20px] bg-emerald-50 text-emerald-500 flex items-center justify-center mb-6 border border-emerald-100/50">
+                            <CheckCircle size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Upload Successful!</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                            Your document has been uploaded and stored successfully in the project vault.
+                        </p>
+                        <button 
+                            onClick={() => setShowUploadSuccess(false)}
+                            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-900/20"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showSizeError && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[32px] w-full max-w-[400px] shadow-2xl relative overflow-hidden flex flex-col items-center text-center p-8">
+                        <div className="w-16 h-16 rounded-[20px] bg-orange-50 text-orange-500 flex items-center justify-center mb-6 border border-orange-100/50">
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">File Too Large</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
+                            The file you selected exceeds the <strong className="text-slate-900">50MB</strong> limit. Please select a smaller file or split it.
+                        </p>
+                        <button 
+                            onClick={() => setShowSizeError(false)}
+                            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-orange-500/20"
+                        >
+                            Understood
+                        </button>
                     </div>
                 </div>
             )}
