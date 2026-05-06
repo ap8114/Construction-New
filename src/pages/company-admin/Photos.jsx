@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Image, MoreVertical, Filter, Download, Plus, X, Trash2, Maximize2, UploadCloud, Loader } from 'lucide-react';
 import api, { getServerUrl } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
@@ -51,6 +52,7 @@ const Lightbox = ({ photo, onClose, onDelete }) => {
 };
 
 const Photos = () => {
+    const { user } = useAuth();
     const [photos, setPhotos] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -83,9 +85,20 @@ const Photos = () => {
         fetchData();
     }, []);
 
-    const filteredPhotos = filterProject === 'All'
-        ? photos
-        : photos.filter(p => p.projectId?._id === filterProject);
+    const filteredPhotos = photos.filter(p => {
+        // Role based filtering for subcontractor
+        if (user?.role === 'SUBCONTRACTOR') {
+            const isOwner = p.uploadedBy?._id === user._id || p.uploadedBy === user._id;
+            if (!isOwner) return false;
+        }
+
+        // Project filtering
+        if (filterProject !== 'All') {
+            return p.projectId?._id === filterProject;
+        }
+
+        return true;
+    });
 
     const handleUpload = async () => {
         if (!uploadData.file && !uploadData.imageUrl) return;

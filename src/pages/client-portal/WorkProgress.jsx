@@ -30,7 +30,7 @@ const WorkProgress = () => {
                 setProgressData(progRes.data);
                 setUpdates(updateRes.data);
                 setTasks(taskRes.data || []);
-                setRfis(rfiRes.data || []);
+                setRfis((rfiRes.data || []).filter(rfi => rfi.raisedBy?.role !== 'SUBCONTRACTOR'));
             } catch (err) {
                 console.error('Error fetching progress:', err);
             } finally {

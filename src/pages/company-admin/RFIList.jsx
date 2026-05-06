@@ -105,7 +105,8 @@ const RFIList = () => {
         const matchProject = !filters.projectId || r.projectId?._id === filters.projectId;
         const matchStatus = !filters.status || r.status === filters.status;
         const matchPriority = !filters.priority || r.priority === filters.priority;
-        return matchSearch && matchProject && matchStatus && matchPriority;
+        const matchClient = user?.role !== 'CLIENT' || r.raisedBy?.role !== 'SUBCONTRACTOR';
+        return matchSearch && matchProject && matchStatus && matchPriority && matchClient;
     });
 
     return (

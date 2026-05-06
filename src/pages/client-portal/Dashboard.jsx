@@ -75,7 +75,7 @@ const ClientPortalDashboard = () => {
           photos: photoRes.data.slice(0, 4),
           drawings: drawRes.data.slice(0, 3),
           logs: logRes.data.slice(0, 4),
-          rfis: rfiRes.data,
+          rfis: rfiRes.data.filter(rfi => rfi.raisedBy?.role !== 'SUBCONTRACTOR'),
           updates
         });
       } catch (error) {

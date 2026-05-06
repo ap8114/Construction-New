@@ -36,7 +36,14 @@ const RFIDashboard = () => {
         const fetch = async () => {
             try {
                 const res = await api.get('/rfis/stats');
-                setData(res.data);
+                let result = res.data;
+                if (user?.role === 'CLIENT') {
+                    const filterFn = r => r.raisedBy?.role !== 'SUBCONTRACTOR';
+                    if (result.recentRFIs) result.recentRFIs = result.recentRFIs.filter(filterFn);
+                    if (result.highPriorityRFIs) result.highPriorityRFIs = result.highPriorityRFIs.filter(filterFn);
+                    if (result.overdueRFIs) result.overdueRFIs = result.overdueRFIs.filter(filterFn);
+                }
+                setData(result);
             } catch (e) {
                 console.error(e);
             } finally {

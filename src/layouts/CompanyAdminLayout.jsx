@@ -372,9 +372,12 @@ const CompanyAdminLayout = () => {
                 className="flex items-center gap-2.5 bg-[#f8fafc] border border-slate-200 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-slate-700 hover:border-slate-300 transition-all w-60"
               >
                 <Search size={14} className="text-slate-400" />
-                <span className="flex-1 text-left truncate">
-                  {activeProject ? activeProject.name : 'Quick Select Job'}
-                </span>
+                <div className="flex-1 text-left truncate flex flex-col leading-none">
+                  <span className="truncate">{activeProject ? activeProject.name : 'Quick Select Job'}</span>
+                  {activeProject?.isJob && activeProject?.projectName && (
+                    <span className="text-[9px] text-slate-400 truncate mt-0.5 font-medium">Project: {activeProject.projectName}</span>
+                  )}
+                </div>
                 <ChevronDown size={12} className={`text-slate-400 transition-transform ${isJobSelectorOpen ? 'rotate-180' : ''}`} />
               </button>
               {isJobSelectorOpen && (
@@ -405,7 +408,12 @@ const CompanyAdminLayout = () => {
                             className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold flex items-center gap-3 transition-colors border-b border-slate-50 last:border-none"
                           >
                             <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${statusCfg.dot}`}></div>
-                            <span className="truncate flex-1">{project.name}</span>
+                            <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                              <span className="truncate">{project.name}</span>
+                              {project.isJob && project.projectName && (
+                                <span className="truncate text-[10px] text-slate-400 font-medium">Project: {project.projectName}</span>
+                              )}
+                            </div>
                             <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusCfg.cls}`}>
                               {statusCfg.label}
                             </span>

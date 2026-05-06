@@ -131,7 +131,7 @@ const priorityStyles = {
 };
 
 // ─── Kanban Task Card ──────────────────────────────────────────────────────────
-const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
+const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted, canManage }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id || task.id });
     const [menuOpen, setMenuOpen] = useState(false);
     const urgency = getTaskUrgency(task);
@@ -169,13 +169,15 @@ const DraggableTask = ({ task, onEdit, onDelete, onClick, isHighlighted }) => {
                         </span>
                     )}
                 </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-                    className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg transition-colors"
-                >
-                    <MoreVertical size={14} />
-                </button>
-                {menuOpen && (
+                {canManage && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+                        className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg transition-colors"
+                    >
+                        <MoreVertical size={14} />
+                    </button>
+                )}
+                {menuOpen && canManage && (
                     <div className="absolute right-4 top-12 w-40 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden py-1">
                         <button onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }} className="w-full text-left px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 flex items-center gap-2">
                             <Edit size={13} /> Edit Task
@@ -384,7 +386,7 @@ const SortableTemplateItem = ({ tmpl, selectedTemplates, handleSelectTemplate, s
 };
 
 // ─── Kanban Column ─────────────────────────────────────────────────────────────
-const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick, highlightTaskId }) => {
+const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTaskClick, highlightTaskId, canManage }) => {
     const { setNodeRef } = useDroppable({ id: status });
     const colTasks = filteredTasks.filter(t => t.status === status);
     const taskIds = colTasks.map(t => t._id || t.id);
@@ -412,6 +414,7 @@ const DroppableColumn = ({ status, style, filteredTasks, onEdit, onDelete, onTas
                             onDelete={onDelete}
                             onClick={onTaskClick}
                             isHighlighted={highlightTaskId === (task._id || task.id)}
+                            canManage={canManage}
                         />
                     ))}
                 </SortableContext>
@@ -473,6 +476,18 @@ const SortableTaskRow = ({ task, isCompactView, columnWidths, isHighlighted, ...
                         >
                             <ChevronRight size={12} />
                         </button>
+
+                        {/* Status Toggle Checkbox */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); props.onToggleStatus && props.onToggleStatus(task); }}
+                            className={`shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all shadow-sm ${task.status === 'completed'
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'bg-white border-slate-300 hover:border-blue-500 hover:bg-blue-50'
+                                }`}
+                        >
+                            {task.status === 'completed' && <Check size={10} strokeWidth={3} />}
+                        </button>
+
                         {props.urgency === 'overdue' && <div className="w-1 h-6 bg-red-500 rounded-full shrink-0" />}
                         {props.urgency === 'due-soon' && <div className="w-1 h-6 bg-yellow-400 rounded-full shrink-0" />}
                         {props.urgency === 'completed' && <div className="w-1 h-6 bg-emerald-400 rounded-full shrink-0" />}
@@ -2007,6 +2022,7 @@ const Tasks = () => {
         // Default to list view for workers/subcontractors for better mobile experience
         if (['WORKER', 'SUBCONTRACTOR'].includes(user?.role)) {
             setView('list');
+            setActiveTab('my_tasks');
         }
     }, [user?.role]);
 
@@ -2666,7 +2682,22 @@ const Tasks = () => {
         handleSubTaskUpdateInList(taskId, subTask, { status: newStatus });
     };
 
-    const canManage = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role);
+    const handleToggleTaskStatus = async (task) => {
+        const taskId = task._id || task.id;
+        const newStatus = task.status === 'completed' ? 'todo' : 'completed';
+        
+        // Optimistic UI update
+        setTasks(prev => prev.map(t => (t._id === taskId || t.id === taskId) ? { ...t, status: newStatus } : t));
+        
+        try {
+            await handleTaskUpdate(taskId, { status: newStatus });
+        } catch (error) {
+            console.error('Failed to toggle task status:', error);
+            // Revert is handled by handleTaskUpdate -> fetchData on failure
+        }
+    };
+
+    const canManage = ['ADMIN', 'SUPER_ADMIN', 'COMPANY_OWNER', 'PM', 'FOREMAN'].includes(user?.role);
 
     return (
         <div className={`space-y-4 animate-fade-in ${['calendar', 'list', 'kanban', 'gantt'].includes(view) ? 'pb-20' : 'h-[calc(100vh-80px)] flex flex-col'}`}>
@@ -2795,7 +2826,7 @@ const Tasks = () => {
             </div>
 
             {/* Role-based Tab Switcher - Lower Position */}
-            {['PM', 'FOREMAN', 'SUBCONTRACTOR'].includes(user?.role) && (
+            {['PM', 'FOREMAN'].includes(user?.role) && (
                 <div className="flex justify-start px-1 shrink-0">
                     <div className="flex p-1 bg-slate-100/80 backdrop-blur-sm rounded-2xl border border-slate-200/50 shadow-inner">
                         <button
@@ -2846,7 +2877,7 @@ const Tasks = () => {
                                         onEdit={openEdit}
                                         onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
                                         onTaskClick={openDetails}
-                                        highlightTaskId={highlightTaskId}
+                                        canManage={canManage}
                                     />
                                 ))}
                             </div>
@@ -2936,6 +2967,7 @@ const Tasks = () => {
                                                                 onSelect={handleSelectTask}
                                                                 onToggleExpansion={toggleTaskExpansion}
                                                                 onSaveAsTemplate={handleSaveAsTemplate}
+                                                                onToggleStatus={handleToggleTaskStatus}
                                                                 onEdit={openEdit}
                                                                 onDelete={(t) => { setTaskToDelete(t); setIsDeleteModalOpen(true); }}
                                                                 renderChildren={() => {
