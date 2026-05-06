@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Clock, CheckCircle, FileText, Download,
   TrendingUp, Calendar, AlertCircle,
@@ -9,13 +9,16 @@ import {
 import api, { getServerUrl } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
-const ClientStatCard = ({ title, value, subtext, icon: Icon, color }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 transition-all">
+const ClientStatCard = ({ title, value, subtext, icon: Icon, color, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 transition-all ${onClick ? 'cursor-pointer hover:border-blue-200' : ''}`}
+  >
     <div className="flex justify-between items-start">
       <div className={`p-3 rounded-xl ${color}`}>
         <Icon size={22} className="text-white" />
       </div>
-      <button className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg">
+      <button className="p-1.5 text-slate-300 hover:text-slate-500 rounded-lg" onClick={(e) => { e.stopPropagation(); }}>
         <MoreHorizontal size={20} />
       </button>
     </div>
@@ -94,7 +97,6 @@ const ClientPortalDashboard = () => {
   }
 
   const primaryProject = data.projects[0] || {};
-  const totalBudget = data.projects.reduce((acc, p) => acc + (p.budget || 0), 0);
   const avgProgress = data.projects.length > 0
     ? Math.round(data.projects.reduce((acc, p) => acc + (p.progress || 0), 0) / data.projects.length)
     : 0;
@@ -120,18 +122,12 @@ const ClientPortalDashboard = () => {
       {/* High-Level Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <ClientStatCard
-          title="Total Portfolio"
-          value={`$${(totalBudget / 1000000).toFixed(1)}M`}
-          subtext={`Across ${data.projects.length} project(s)`}
-          icon={DollarSign}
-          color="bg-blue-600 shadow-lg shadow-blue-100"
-        />
-        <ClientStatCard
           title="Avg Completion"
           value={`${avgProgress}%`}
           subtext="Overall portfolio progress"
           icon={Target}
           color="bg-emerald-500 shadow-lg shadow-emerald-100"
+          onClick={() => navigate('/client-portal/projects')}
         />
         <ClientStatCard
           title="Pending Invoices"
@@ -139,6 +135,7 @@ const ClientPortalDashboard = () => {
           subtext="Requiring your attention"
           icon={FileText}
           color="bg-amber-500 shadow-lg shadow-amber-100"
+          onClick={() => navigate('/client-portal/invoices')}
         />
         <ClientStatCard
           title="Site Photos"
@@ -146,6 +143,7 @@ const ClientPortalDashboard = () => {
           subtext="Latest visual updates"
           icon={ImageIcon}
           color="bg-indigo-600 shadow-lg shadow-indigo-100"
+          onClick={() => navigate('/client-portal/photos')}
         />
         <ClientStatCard
           title="RFIs"
@@ -153,6 +151,7 @@ const ClientPortalDashboard = () => {
           subtext="Requests for Information"
           icon={FileQuestion}
           color="bg-violet-600 shadow-lg shadow-violet-100"
+          onClick={() => navigate('/client-portal/rfi')}
         />
       </div>
 
@@ -279,7 +278,7 @@ const ClientPortalDashboard = () => {
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-black text-slate-800 text-sm uppercase tracking-widest">Latest Site Views</h3>
-              <a href="/client-portal/photos" className="text-[10px] font-black text-blue-600 uppercase hover:underline">View Gallery</a>
+              <Link to="/client-portal/photos" className="text-[10px] font-black text-blue-600 uppercase hover:underline">View Gallery</Link>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {data.photos.length > 0 ? (
@@ -344,9 +343,9 @@ const ClientPortalDashboard = () => {
                 <p className="text-xs text-center text-slate-400 py-4 italic">No drawings uploaded yet.</p>
               )}
             </div>
-            <a href="/client-portal/drawings" className="block w-full text-center mt-6 py-3 border border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition">
+            <Link to="/client-portal/drawings" className="block w-full text-center mt-6 py-3 border border-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition">
               View All Vault
-            </a>
+            </Link>
           </div>
         </div>
       </div>
